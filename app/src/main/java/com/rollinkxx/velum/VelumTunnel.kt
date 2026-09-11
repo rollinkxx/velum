@@ -1,4 +1,4 @@
-package com.rollinkxx.warp
+package com.rollinkxx.velum
 
 import android.content.Context
 import com.wireguard.android.backend.GoBackend
@@ -12,8 +12,8 @@ import com.wireguard.config.Peer
  * Singleton ringan: satu backend, satu tunnel, tanpa service tambahan —
  * VpnService milik library yang menjaga proses tetap hidup selama tersambung.
  */
-object WarpTunnel : Tunnel {
-    private const val NAME = "warp"
+object VelumTunnel : Tunnel {
+    private const val NAME = "velum"
     private const val MTU = 1280
     private const val DNS = "1.1.1.1, 1.0.0.1"
     private const val ALLOWED_IPS = "0.0.0.0/0, ::/0"
@@ -75,7 +75,7 @@ object WarpTunnel : Tunnel {
         val peer = Peer.Builder()
             .parsePublicKey(requireNotNull(prefs.peerPublicKey))
             .parseAllowedIPs(ALLOWED_IPS)
-            .parseEndpoint(prefs.endpoint ?: WarpApi.DEFAULT_ENDPOINT)
+            .parseEndpoint(prefs.endpoint ?: VelumApi.DEFAULT_ENDPOINT)
             .parsePersistentKeepalive("25")
             .build()
         return Config.Builder().setInterface(iface).addPeer(peer).build()

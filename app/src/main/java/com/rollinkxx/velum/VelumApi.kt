@@ -1,4 +1,4 @@
-package com.rollinkxx.warp
+package com.rollinkxx.velum
 
 import com.wireguard.crypto.KeyPair
 import org.json.JSONObject
@@ -16,7 +16,7 @@ import java.util.UUID
  * Hanya memakai HttpURLConnection + org.json bawaan Android agar tidak menambah dependensi.
  * Semua fungsi bersifat blocking: panggil dari thread latar.
  */
-object WarpApi {
+object VelumApi {
     private const val BASE = "https://api.cloudflareclient.com/v0a2158"
     private const val CLIENT_VERSION = "a-6.10-2158"
     private const val USER_AGENT = "okhttp/3.12.1"

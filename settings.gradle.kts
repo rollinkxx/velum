@@ -14,5 +14,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "warp"
+rootProject.name = "velum"
 include(":app")

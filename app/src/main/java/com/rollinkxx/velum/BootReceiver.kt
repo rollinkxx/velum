@@ -1,4 +1,4 @@
-package com.rollinkxx.warp
+package com.rollinkxx.velum
 
 import android.content.BroadcastReceiver
 import android.content.Context
@@ -26,7 +26,7 @@ class BootReceiver : BroadcastReceiver() {
         val pending = goAsync()
         Thread {
             try {
-                WarpTunnel.up(context, prefs)
+                VelumTunnel.up(context, prefs)
             } catch (e: Exception) {
                 Log.w(TAG, "boot: sambung ulang gagal", e)
             } finally {
@@ -36,6 +36,6 @@ class BootReceiver : BroadcastReceiver() {
     }
 
     private companion object {
-        const val TAG = "WarpLite"
+        const val TAG = "Velum"
     }
 }

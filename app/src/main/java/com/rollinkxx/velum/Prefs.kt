@@ -1,4 +1,4 @@
-package com.rollinkxx.warp
+package com.rollinkxx.velum
 
 import android.content.Context
 import android.content.SharedPreferences
@@ -6,7 +6,7 @@ import android.content.SharedPreferences
 /** Penyimpanan ringan untuk data registrasi WARP (SharedPreferences, tanpa library tambahan). */
 class Prefs(context: Context) {
     private val sp: SharedPreferences =
-        context.applicationContext.getSharedPreferences("warp", Context.MODE_PRIVATE)
+        context.applicationContext.getSharedPreferences("velum", Context.MODE_PRIVATE)
 
     var privateKey: String?
         get() = sp.getString(K_PRIV, null)

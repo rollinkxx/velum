@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">WARP Lite</string>
+    <string name="app_name">Velum</string>
     <string name="status_disconnected">Terputus</string>
     <string name="status_connecting">Menyambung…</string>
     <string name="status_connected">Tersambung</string>
@@ -15,10 +15,10 @@
     <string name="notif_channel">Status koneksi</string>
     <string name="notif_connected">Tersambung — lalu lintas lewat Cloudflare</string>
     <string name="test_running">Menguji…</string>
-    <string name="test_on">WARP aktif: lalu lintas lewat Cloudflare</string>
-    <string name="test_off">WARP tidak aktif</string>
-    <string name="test_on_dc">WARP aktif · DC %1$s · %2$s</string>
-    <string name="test_off_time">Belum lewat WARP · %1$s</string>
+    <string name="test_on">Velum aktif: lalu lintas lewat Cloudflare</string>
+    <string name="test_off">Velum tidak aktif</string>
+    <string name="test_on_dc">Velum aktif · DC %1$s · %2$s</string>
+    <string name="test_off_time">Belum lewat Velum · %1$s</string>
     <string name="test_failed">Gagal menguji</string>
     <string name="info_duration">Durasi</string>
     <string name="info_endpoint">Endpoint</string>

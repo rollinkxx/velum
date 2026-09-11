@@ -1,4 +1,4 @@
-package com.rollinkxx.warp
+package com.rollinkxx.velum
 
 import android.animation.ValueAnimator
 import android.app.Activity
@@ -83,20 +83,20 @@ class MainActivity : AppCompatActivity() {
         refreshStaticInfo()
         requestNotificationPermissionIfNeeded()
 
-        WarpTunnel.listener = { state -> main.post { render(state) } }
+        VelumTunnel.listener = { state -> main.post { render(state) } }
     }
 
     override fun onStart() {
         super.onStart()
-        render(WarpTunnel.state)
+        render(VelumTunnel.state)
         worker.execute {
-            val s = runCatching { WarpTunnel.refreshState(this) }.getOrDefault(WarpTunnel.state)
+            val s = runCatching { VelumTunnel.refreshState(this) }.getOrDefault(VelumTunnel.state)
             main.post { render(s) }
         }
     }
 
     override fun onDestroy() {
-        WarpTunnel.listener = null
+        VelumTunnel.listener = null
         main.removeCallbacks(ticker)
         pulse?.cancel()
         worker.shutdownNow()
@@ -107,7 +107,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun onToggle() {
         if (busy) return
-        if (WarpTunnel.state == Tunnel.State.UP) {
+        if (VelumTunnel.state == Tunnel.State.UP) {
             disconnect()
             return
         }
@@ -137,7 +137,7 @@ class MainActivity : AppCompatActivity() {
                     // Akun era lama tanpa flag WARP: coba sembuhkan otomatis (fail-safe,
                     // kegagalan tidak boleh menghalangi penyambungan).
                     try {
-                        WarpApi.ensureWarpEnabled(prefs)
+                        VelumApi.ensureWarpEnabled(prefs)
                         main.post { refreshStaticInfo() }
                     } catch (e: Exception) {
                         Log.w(TAG, "auto-heal akun gagal, lanjut tanpa heal", e)
@@ -146,16 +146,16 @@ class MainActivity : AppCompatActivity() {
                 if (!prefs.isRegistered) {
                     main.post { statusView.setText(R.string.status_registering) }
                     try {
-                        WarpApi.register(prefs)
+                        VelumApi.register(prefs)
                     } catch (e: Exception) {
                         fail(getString(R.string.err_register, e.message ?: e.javaClass.simpleName))
                         return@execute
                     }
                 }
                 main.post { statusView.setText(R.string.status_connecting) }
-                WarpTunnel.up(this, prefs)
+                VelumTunnel.up(this, prefs)
                 prefs.wasUp = true // memo untuk sambung ulang saat boot
-                main.post { setBusy(false); render(WarpTunnel.state) }
+                main.post { setBusy(false); render(VelumTunnel.state) }
             } catch (e: Exception) {
                 fail(getString(R.string.err_connect, e.message ?: e.javaClass.simpleName))
             }
@@ -167,8 +167,8 @@ class MainActivity : AppCompatActivity() {
         statusView.setText(R.string.status_disconnecting)
         prefs.wasUp = false // putus manual: jangan sambung lagi saat boot
         worker.execute {
-            runCatching { WarpTunnel.down(this) }
-            main.post { setBusy(false); render(WarpTunnel.state) }
+            runCatching { VelumTunnel.down(this) }
+            main.post { setBusy(false); render(VelumTunnel.state) }
         }
     }
 
@@ -183,7 +183,7 @@ class MainActivity : AppCompatActivity() {
         infoTest.setText(R.string.test_running)
         worker.execute {
             try {
-                val trace = WarpApi.fetchTrace()
+                val trace = VelumApi.fetchTrace()
                 val active = trace.warp == "on" || trace.warp == "plus"
                 val time = SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date())
                 main.post {
@@ -228,8 +228,8 @@ class MainActivity : AppCompatActivity() {
         if (busy) return
         setBusy(true)
         worker.execute {
-            runCatching { WarpTunnel.down(this) }
-            WarpApi.unregister(prefs)
+            runCatching { VelumTunnel.down(this) }
+            VelumApi.unregister(prefs)
             main.post {
                 setBusy(false)
                 render(Tunnel.State.DOWN)
@@ -245,7 +245,7 @@ class MainActivity : AppCompatActivity() {
     private fun fail(text: String) {
         main.post {
             setBusy(false)
-            render(WarpTunnel.state)
+            render(VelumTunnel.state)
             showMessage(text)
         }
     }
@@ -339,6 +339,6 @@ class MainActivity : AppCompatActivity() {
     private companion object {
         const val REQ_VPN = 1
         const val REQ_NOTIF = 2
-        const val TAG = "WarpLite"
+        const val TAG = "Velum"
     }
 }
