@@ -7,6 +7,7 @@ import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
 import android.util.Log
+import java.io.IOException
 import com.wireguard.android.backend.Tunnel
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
@@ -134,9 +135,9 @@ class VelumController(context: Context, private val ui: Ui) {
                 if (!prefs.isRegistered) {
                     main.post { ui.setStatusText(R.string.status_registering) }
                     try {
-                        VelumApi.register(prefs)
+                        registerWithRetry()
                     } catch (e: Exception) {
-                        fail(R.string.err_register, e.message ?: e.javaClass.simpleName)
+                        fail(R.string.err_register, e)
                         return@execute
                     }
                 }
@@ -151,9 +152,31 @@ class VelumController(context: Context, private val ui: Ui) {
                 ReconnectMonitor.ensure(app)
                 main.post { setBusy(false); applyState(VelumTunnel.state) }
             } catch (e: Exception) {
-                fail(R.string.err_connect, e.message ?: e.javaClass.simpleName)
+                fail(R.string.err_connect, e)
             }
         }
+    }
+
+    /**
+     * Registrasi dengan satu kali ulangan berjeda, khusus untuk kegagalan jaringan.
+     * Jaringan yang baru saja bangun (habis boot, baru ganti Wi-Fi/data) sering gagal
+     * pada percobaan pertama; penolakan dari server tidak pernah diulang karena
+     * mengulang permintaan ke klien yang ditolak tidak ada gunanya.
+     */
+    private fun registerWithRetry() {
+        try {
+            VelumApi.register(prefs)
+            return
+        } catch (first: Exception) {
+            if (VelumError.kindOf(first) != VelumError.Kind.NETWORK) throw first
+            Log.i(TAG, "registrasi gagal, mengulang sekali setelah jeda", first)
+        }
+        try {
+            Thread.sleep(REGISTER_RETRY_MS)
+        } catch (_: InterruptedException) {
+            throw IOException("registrasi dibatalkan")
+        }
+        VelumApi.register(prefs)
     }
 
     fun disconnect() {
@@ -313,11 +336,24 @@ class VelumController(context: Context, private val ui: Ui) {
         ui.setBusy(value)
     }
 
-    private fun fail(resId: Int, arg: String) {
+    /** Tampilkan kegagalan dengan pesan yang sesuai jenisnya (bukan sekadar teks exception). */
+    private fun fail(resId: Int, e: Exception) {
         main.post {
             setBusy(false)
             applyState(VelumTunnel.state)
-            ui.setMessage(app.getString(resId, arg))
+            ui.setMessage(messageFor(resId, e))
+        }
+    }
+
+    private fun messageFor(resId: Int, e: Exception): String {
+        val detail = e.message ?: e.javaClass.simpleName
+        return when (VelumError.kindOf(e)) {
+            VelumError.Kind.NETWORK -> app.getString(R.string.err_network, detail)
+            VelumError.Kind.SERVER_REJECT -> app.getString(
+                R.string.err_server_reject,
+                (e as? VelumApi.HttpError)?.code?.toString() ?: detail
+            )
+            VelumError.Kind.UNKNOWN -> app.getString(resId, detail)
         }
     }
 
@@ -330,5 +366,7 @@ class VelumController(context: Context, private val ui: Ui) {
         /** Jeda ulangan bila hasil uji negatif padahal tunnel masih UP. */
         const val TEST_RETRY_MS = 1500L
         const val MAX_TEST_ATTEMPTS = 2
+        /** Jeda sebelum registrasi diulang satu kali. */
+        const val REGISTER_RETRY_MS = 1500L
     }
 }

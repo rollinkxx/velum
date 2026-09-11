@@ -45,6 +45,14 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 - Proba endpoint tercepat saat menyambung (`EndpointProbe`): mengukur RTT paralel ke
   endpoint registrasi + kandidat anycast (batas ±6 detik), memakai pemenang selama
   1 jam; selalu fail-safe ke endpoint registrasi.
+- `VelumUpstream`: konstanta yang mengikuti layanan upstream (basis API, versi klien,
+  User-Agent, endpoint cadangan, kandidat anycast) kini dikumpulkan di satu berkas, dan
+  `VelumError` mengklasifikasi kegagalan: penolakan klien (HTTP 401/403/404/410/426)
+  berpesan bahwa versi Velum perlu diperbarui, kegagalan jaringan berpesan jaringan,
+  sisanya memakai pesan bawaan. Teruji unit.
+- Registrasi perangkat kini diulang **satu kali** setelah jeda 1,5 detik khusus untuk
+  kegagalan jaringan (jaringan yang baru bangun sering gagal di percobaan pertama);
+  penolakan dari server tidak pernah diulang karena percuma.
 - Pengujian unit murni JVM untuk logika yang rawan salah (`VelumFormat`: parse
   `cdn-cgi/trace`, pemformatan byte/durasi/jam, pemisahan host:port, deteksi IPv4) beserta
   job CI `unitTest` (`./gradlew testDebugUnitTest`) sebagai **pemblokir** — regresi logika

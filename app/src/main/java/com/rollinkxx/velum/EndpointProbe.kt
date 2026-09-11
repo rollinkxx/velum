@@ -27,16 +27,6 @@ object EndpointProbe {
     private const val MAX_PROBE_THREADS = 8
     private const val KEEP_ALIVE_SEC = 30L
 
-    /** Kandidat anycast Cloudflare yang dikenal melayani WARP (IPv4). */
-    private val CANDIDATES = listOf(
-        "162.159.192.1",
-        "162.159.193.1",
-        "162.159.195.1",
-        "188.114.96.1",
-        "188.114.97.1",
-        "188.114.98.1",
-        "188.114.99.1"
-    )
 
     /**
      * Menyegarkan [Prefs.speedEndpoint] bila basi (>1 jam). Tidak pernah melempar;
@@ -77,7 +67,7 @@ object EndpointProbe {
     private fun measure(registered: String?): List<String> {
         val hosts = LinkedHashSet<String>()
         registered?.let(VelumFormat::hostPart)?.takeIf { it.isNotEmpty() }?.let { hosts.add(it) }
-        hosts.addAll(CANDIDATES)
+        hosts.addAll(VelumUpstream.CANDIDATES)
         if (hosts.isEmpty()) return emptyList()
         val tasks = hosts.map { host -> Callable { host to tcpRttMs(host) } }
         return try {

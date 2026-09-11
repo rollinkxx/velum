@@ -17,10 +17,13 @@ import java.util.UUID
  * Semua fungsi bersifat blocking: panggil dari thread latar.
  */
 object VelumApi {
-    private const val BASE = "https://api.cloudflareclient.com/v0a2158"
-    private const val CLIENT_VERSION = "a-6.10-2158"
-    private const val USER_AGENT = "okhttp/3.12.1"
-    const val DEFAULT_ENDPOINT = "engage.cloudflareclient.com:2408"
+    /** Kode & pesan HTTP yang gagal, supaya UI bisa membedakan penolakan klien. */
+    class HttpError(val code: Int, message: String) : IOException(message)
+
+    private const val BASE = VelumUpstream.BASE
+    private const val CLIENT_VERSION = VelumUpstream.CLIENT_VERSION
+    private const val USER_AGENT = VelumUpstream.USER_AGENT
+    const val DEFAULT_ENDPOINT = VelumUpstream.DEFAULT_ENDPOINT
 
     /**
      * Matikan keep-alive HTTP. Android tidak memindahkan soket yang SUDAH terbuka ke VPN,
@@ -155,7 +158,13 @@ object VelumApi {
             val code = conn.responseCode
             val stream = if (code in 200..299) conn.inputStream else conn.errorStream
             val text = stream?.bufferedReader()?.use { it.readText() } ?: ""
-            if (code !in 200..299) throw IOException("HTTP $code: ${text.take(200)}")
+            if (code !in 200..299) {
+                throw if (VelumUpstream.isClientRejected(code)) {
+                    HttpError(code, "HTTP $code: ${text.take(120)}")
+                } else {
+                    IOException("HTTP $code: ${text.take(120)}")
+                }
+            }
             return if (text.isBlank()) JSONObject() else JSONObject(text)
         } finally {
             conn.disconnect()

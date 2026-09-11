@@ -31,3 +31,4 @@
 | 27 | Optimasi: tiker berhenti di latar belakang, Prefs sekali buka, izin notifikasi hanya bila perlu | Sedang | Selesai tervalidasi (PR #3, CI run 34592495242) |
 | 28 | Pengujian unit JVM (VelumFormat) + job CI pemblokir unitTest | Tinggi | Selesai, menunggu validasi CI |
 | 29 | Pemisahan orkestrasi ke VelumController + VelumTestDecision teruji unit | Tinggi | Selesai, menunggu validasi CI |
+| 30 | VelumUpstream + klasifikasi error (VelumError) + retry registrasi sekali | Tinggi | Selesai, menunggu validasi CI |
