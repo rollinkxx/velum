@@ -57,6 +57,7 @@ class MainActivity : AppCompatActivity() {
     private var lastTxBytes = -1L
     private var staleTicks = 0
     private var staleWarned = false
+    private var lastPollMs = 0L
 
     private val ticker = object : Runnable {
         override fun run() {
@@ -295,8 +296,9 @@ class MainActivity : AppCompatActivity() {
 
     private fun onConnectedVisual() {
         connectedSinceMs = SystemClock.elapsedRealtime()
-        lastRxBytes = -1L
-        lastTxBytes = -1L
+        lastRxBytes = 0L
+        lastTxBytes = 0L
+        lastPollMs = SystemClock.elapsedRealtime()
         staleTicks = 0
         staleWarned = false
         infoData.setText(R.string.value_none)
@@ -359,7 +361,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    /** Membaca statistik trafik tiap 5 detik selama UP; mendeteksi tunnel basi. */
+    /** Menampilkan laju trafik (KB/s) tiap 5 detik selama UP; mendeteksi tunnel basi. */
     private fun pollStats() {
         worker.execute {
             val t = VelumTunnel.traffic(this)
@@ -369,7 +371,12 @@ class MainActivity : AppCompatActivity() {
                     infoData.setText(R.string.value_none)
                     return@post
                 }
-                infoData.text = getString(R.string.data_format, formatBytes(t.rxBytes), formatBytes(t.txBytes))
+                val nowMs = SystemClock.elapsedRealtime()
+                val dtSec = ((nowMs - lastPollMs).coerceAtLeast(1)) / 1000.0
+                val rxRate = ((t.rxBytes - lastRxBytes).coerceAtLeast(0) / dtSec).toLong()
+                val txRate = ((t.txBytes - lastTxBytes).coerceAtLeast(0) / dtSec).toLong()
+                lastPollMs = nowMs
+                infoData.text = getString(R.string.data_format, formatBytes(rxRate), formatBytes(txRate))
                 if (t.rxBytes != lastRxBytes || t.txBytes != lastTxBytes) {
                     lastRxBytes = t.rxBytes
                     lastTxBytes = t.txBytes
