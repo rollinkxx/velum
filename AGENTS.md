@@ -11,7 +11,7 @@ Bila fakta di §5 berubah, perbarui dokumen ini dalam **1 commit khusus** berjud
 - Sandbox agen bersifat **ephemeral**. Satu-satunya state yang awet adalah yang sudah
   **ter-push ke GitHub**. Prinsip: **"belum push = belum kerja"**.
 - Setiap sesi Arena terikat pada satu branch berpola `arena/<id>-<suffix>`
-  (sesi ini: `arena/01a08ecf-warp`, bercabang dari `main` @ `76b33c9`).
+  (sesi ini: `arena/01a08f8f-warp`, bercabang dari `main` @ `fcae56c`).
   - Catatan pemulihan (2026-09-11): seluruh pekerjaan awal proyek berasal dari sesi
     `arena/01a08e90-warp` dan dipulihkan ke branch ini lewat dua merge (`26104f6`, lalu
     `4e0c75a`). Branch itu sempat dikira terhapus dari remote — ternyata hanya tidak
@@ -139,17 +139,17 @@ sebelum push.
   `com.wireguard.android:tunnel` (GoBackend) — tanpa Compose/OkHttp/coroutine demi ukuran
   APK & RAM kecil. `gradle.properties`: configuration-cache & build-cache aktif,
   `nonTransitiveRClass`. Resource hanya Bahasa Indonesia (`resourceConfigurations += "in"`).
-- **Identitas (ADR 001):** `applicationId` = `com.rollinkxx.warp` (debug: suffix `.debug`),
-  package Kotlin `com.rollinkxx.warp`, nama aplikasi **WARP Lite**, versi awal `0.1.0`/code 1.
-- **Struktur modul `app/`** (`app/src/main/java/com/rollinkxx/warp/`):
+- **Identitas (ADR 002):** `applicationId` = `com.rollinkxx.velum` (debug: suffix `.debug`),
+  package Kotlin `com.rollinkxx.velum`, nama aplikasi **Velum**, versi awal `0.1.0`/code 1.
+- **Struktur modul `app/`** (`app/src/main/java/com/rollinkxx/velum/`):
   - `MainActivity.kt` — UI satu layar (View XML), satu executor latar; panel info interaktif
     (durasi/endpoint/hasil uji+DC), izin notifikasi Android 13+, pintasan pengaturan VPN.
-  - `WarpApi.kt` — registrasi/hapus registrasi ke `api.cloudflareclient.com/v0a2158`
+  - `VelumApi.kt` — registrasi/hapus registrasi ke `api.cloudflareclient.com/v0a2158`
     (flag `warp_enabled: true`), auto-heal akun lama via GET+daftar ulang (fail-safe),
     parse `cdn-cgi/trace` (warp/colo/ip). HttpURLConnection + org.json.
-  - `WarpTunnel.kt` — singleton `Tunnel` untuk `GoBackend` (MTU 1280, DNS 1.1.1.1/1.0.0.1,
+  - `VelumTunnel.kt` — singleton `Tunnel` untuk `GoBackend` (MTU 1280, DNS 1.1.1.1/1.0.0.1,
     AllowedIPs 0.0.0.0/0 + ::/0, keepalive 25).
-  - `Prefs.kt` — SharedPreferences `warp` (+ memo `warpEnabled`, `wasUp`).
+  - `Prefs.kt` — SharedPreferences `velum` (+ memo `warpEnabled`, `wasUp`).
   - `BootReceiver.kt` — sambung ulang setelah boot bila terakhir UP & izin VPN berlaku.
   - `StatusNotifier.kt` — notifikasi persisten status (kanal `status`, IMPORTANCE_LOW).
   - `AndroidManifest.xml` — VpnService milik library (`GoBackend$VpnService`) di-merge
@@ -175,7 +175,7 @@ sebelum push.
 - Remote: `https://github.com/rollinkxx/warp.git`, default branch `main`.
 - Sandbox: tanpa JDK/Gradle/Android SDK; `gh` terautentikasi.
 - Dokumen: `README.md` (pointer), `CONTRIBUTING.md` (pointer ke dokumen ini), `CHANGELOG.md`,
-  `TODO.md`, `docs/adr/001-identitas-aplikasi.md` + indeks.
+  `TODO.md`, `docs/adr/` (001 superseded, 002 identitas Velum) + indeks.
 - Path referensi terlarang-ubah: belum ada (tidak ada snapshot test).
 
 **Catatan teknis penting (jebakan) — diperbarui setiap kali ada temuan:**
