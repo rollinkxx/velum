@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Garis tipis aksen emas yang memudar di kedua ujung: pemisah judul yang elegan.
+  Gradien kiri→kanan (angle=0) sehingga ujungnya transparan dan menyatu dengan kanvas.
+-->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <gradient
+        android:angle="0"
+        android:centerColor="@color/title_end"
+        android:endColor="@android:color/transparent"
+        android:startColor="@android:color/transparent" />
+    <size android:height="1dp" />
+</shape>

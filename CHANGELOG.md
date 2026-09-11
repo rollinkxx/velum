@@ -5,6 +5,21 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 
 ## [Unreleased]
 
+### Changed
+- Identitas visual & teks: seluruh teks yang terlihat pengguna kini mengikuti nama
+  aplikasi. `notif_connected` dan `test_on` tidak lagi menyebut pihak ketiga, dan
+  `desc_footer` menjadi "Hanya tunnel Velum. Tanpa iklan, tanpa pelacakan.".
+- Judul aplikasi di bagian atas layar utama tidak lagi tulisan polos: gradien
+  gading→emas (`title_start`→`title_end`) dengan pendar hangat, tagline kapital
+  "Tunnel aman yang ringan", dan garis tipis emas memudar di bawahnya.
+
+### Added
+- `drawable/divider_gold.xml` (garis aksen emas memudar) dan warna `title_start`,
+  `title_end`, `title_glow`.
+- `MainActivity.polishAppTitle()`: gradien diterapkan pada `onPreDraw` pertama, layer
+  software agar pendar tampil identik di semua perangkat.
+
+
 ### Added
 - Dokumen fondasi proyek: CHANGELOG, TODO, ADR 001 (identitas aplikasi), `.gitignore` Android.
 - Skeleton proyek Gradle (AGP 8.7.3, Kotlin 2.0.21, Gradle 8.9 wrapper, katalog `libs.versions.toml`, modul `app` minSdk 24).

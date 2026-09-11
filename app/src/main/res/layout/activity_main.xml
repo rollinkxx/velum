@@ -13,13 +13,32 @@
         android:padding="24dp">
 
         <TextView
+            android:id="@+id/appTitle"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:fontFamily="sans-serif-light"
-            android:letterSpacing="0.3"
+            android:includeFontPadding="false"
+            android:letterSpacing="0.34"
             android:text="@string/app_name"
             android:textColor="@color/fg"
-            android:textSize="30sp" />
+            android:textSize="34sp" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:fontFamily="sans-serif-medium"
+            android:letterSpacing="0.28"
+            android:text="@string/app_tagline"
+            android:textAllCaps="true"
+            android:textColor="@color/accent_dim"
+            android:textSize="10sp" />
+
+        <View
+            android:layout_width="52dp"
+            android:layout_height="1dp"
+            android:layout_marginTop="14dp"
+            android:background="@drawable/divider_gold" />
 
         <LinearLayout
             android:layout_width="match_parent"

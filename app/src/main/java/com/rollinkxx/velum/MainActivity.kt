@@ -3,12 +3,15 @@ package com.rollinkxx.velum
 import android.animation.ValueAnimator
 import android.app.Activity
 import android.content.Intent
+import android.graphics.LinearGradient
+import android.graphics.Shader
 import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
 import android.view.View
+import android.view.ViewTreeObserver
 import android.widget.Button
 import android.widget.TextView
 import android.widget.Toast
@@ -106,6 +109,41 @@ class MainActivity : AppCompatActivity(), VelumController.Ui {
 
         refreshStaticInfo()
         requestNotificationPermissionIfNeeded()
+        polishAppTitle()
+    }
+
+    /**
+     * Membuat judul aplikasi tampil elegan: gradien gading→emas dengan pendar hangat.
+     *
+     * Gradien butuh lebar yang sudah terukur, jadi baru diterapkan pada `onPreDraw`
+     * pertama dan pendengarnya langsung dilepas. Layer software dipilih supaya
+     * pendar dan gradien tampil identik di semua perangkat — aman karena ini satu
+     * TextView statis yang tidak pernah diubah isinya.
+     */
+    private fun polishAppTitle() {
+        val title = findViewById<TextView>(R.id.appTitle)
+        title.setLayerType(View.LAYER_TYPE_SOFTWARE, null)
+        title.viewTreeObserver.addOnPreDrawListener(object : ViewTreeObserver.OnPreDrawListener {
+            override fun onPreDraw(): Boolean {
+                title.viewTreeObserver.removeOnPreDrawListener(this)
+                val width = if (title.width > 0) {
+                    title.width.toFloat()
+                } else {
+                    title.paint.measureText(title.text.toString())
+                }
+                title.paint.shader = LinearGradient(
+                    0f, 0f, width, 0f,
+                    resources.getColor(R.color.title_start, theme),
+                    resources.getColor(R.color.title_end, theme),
+                    Shader.TileMode.CLAMP
+                )
+                title.paint.setShadowLayer(
+                    12f, 0f, 2f, resources.getColor(R.color.title_glow, theme)
+                )
+                title.invalidate()
+                return true
+            }
+        })
     }
 
     override fun onStart() {

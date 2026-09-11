@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Velum</string>
+    <string name="app_tagline">Tunnel aman yang ringan</string>
     <string name="status_disconnected">Terputus</string>
     <string name="status_connecting">Menyambung…</string>
     <string name="status_connected">Tersambung</string>
@@ -27,9 +28,9 @@
     <string name="diag_copied">Ringkasan disalin (tanpa kunci &amp; alamat IP)</string>
     <string name="err_no_settings">Pengaturan VPN tidak tersedia di perangkat ini</string>
     <string name="notif_channel">Status koneksi</string>
-    <string name="notif_connected">Tersambung — lalu lintas lewat Cloudflare</string>
+    <string name="notif_connected">Tersambung — lalu lintas lewat Velum</string>
     <string name="test_running">Menguji…</string>
-    <string name="test_on">Velum aktif: lalu lintas lewat Cloudflare</string>
+    <string name="test_on">Velum aktif: lalu lintas lewat Velum</string>
     <string name="test_off">Velum tidak aktif</string>
     <string name="test_on_dc">Velum aktif · DC %1$s · %2$s</string>
     <string name="test_off_time">Belum lewat Velum · %1$s</string>
@@ -47,5 +48,5 @@
     <string name="err_network">Kesalahan jaringan: %1$s</string>
     <string name="err_server_reject">Layanan menolak klien ini (HTTP %1$s). Versi Velum perlu diperbarui.</string>
     <string name="reset_done">Registrasi dihapus. Tekan Sambungkan untuk mendaftar ulang.</string>
-    <string name="desc_footer">Hanya tunnel WARP. Tanpa iklan, tanpa pelacakan.</string>
+    <string name="desc_footer">Hanya tunnel Velum. Tanpa iklan, tanpa pelacakan.</string>
 </resources>
