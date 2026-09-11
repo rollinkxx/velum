@@ -24,16 +24,17 @@ Bila fakta di §5 berubah, perbarui dokumen ini dalam **1 commit khusus** berjud
 - Aturan khusus maintainer repo ini: **agen tidak mengeksekusi perubahan apa pun sebelum
   diperintahkan secara eksplisit.** Sajikan rencana dulu, tunggu perintah, baru kerjakan.
   **Amandemen 2026-09-11 (lihat §6):** yang wajib menunggu perintah kini hanya tindakan
-  yang merusak atau tidak bisa dibatalkan — merge ke `main`, push paksa, hapus
-  registrasi/data, ganti `applicationId`/identitas. Pekerjaan biasa langsung
-  dikerjakan dengan asumsi bawaan yang disebutkan di awal (§6).
+  yang merusak, tidak bisa dibatalkan, atau berdampak publik — **merge ke `main`, push
+  paksa, hapus registrasi/data, ganti `applicationId`/identitas, dan bump
+  `versionName`/`versionCode` (§4)**. Pekerjaan biasa langsung dikerjakan dengan asumsi
+  bawaan yang disebutkan di awal (§6).
 
 ## §2 Aturan Emas: Push ≠ PR ≠ Merge
 
 | Aksi | Kapan | Siapa |
 |---|---|---|
 | Commit + push ke branch sesi | Setiap 1 perubahan logis selesai & lolos gerbang §3 | Agen |
-| Buka PR (`gh pr create`) | Hanya setelah SEMUA tugas sesi selesai **dan** maintainer konfirmasi eksplisit | Agen |
+| Buka PR (`gh pr create`) | Setelah SEMUA tugas yang diperintahkan selesai. Di bawah §6 **tidak ada putaran konfirmasi terpisah** — PR adalah cara mengantarkan tugas; yang tetap wewenang maintainer adalah merge (dan tugas lanjutan yang belum pernah diperintahkan) | Agen |
 | Merge PR | Dari UI GitHub, setelah CI hijau | Maintainer (bukan agen) |
 
 **Urutan 5 langkah per sesi**
@@ -65,6 +66,12 @@ Bila fakta di §5 berubah, perbarui dokumen ini dalam **1 commit khusus** berjud
 
 **Kedisiplinan push & CI**
 - Push itu mahal (kuota CI). Dilarang trial-and-error lewat CI.
+- **Kecepatan §6 tidak boleh dibayar dengan trial-and-error di CI.** Bila penyebab
+  kegagalan belum jelas: berhenti, diagnosis dulu (anotasi check-run, §5), lalu
+  kumpulkan SEMUA kemungkinan perbaikan dalam satu push — bukan satu push per tebakan.
+  Pelajaran nyata: memperbaiki satu peringatan lint butuh 3 run
+  (34596670455 → 34597044297 → 34597362335 → 34597848316) karena penyebabnya ditebak,
+  bukan dibaca.
 - CI merah: JANGAN langsung push lagi. Baca log penuh: `gh run view <id> --log-failed`.
   Jika gagal dengan EOF/blob storage, fallback ke step summary yang ditulis workflow
   (`$GITHUB_STEP_SUMMARY`), komentar PR, atau endpoint `gh api` (lihat §5). Tulis diagnosis,
