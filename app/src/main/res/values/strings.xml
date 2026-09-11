@@ -10,6 +10,8 @@
     <string name="btn_disconnect">Putuskan</string>
     <string name="btn_test">Uji koneksi</string>
     <string name="btn_reset">Daftar ulang</string>
+    <string name="btn_vpn_settings">Selalu aktif (pengaturan sistem)</string>
+    <string name="err_no_settings">Pengaturan VPN tidak tersedia di perangkat ini</string>
     <string name="test_running">Menguji…</string>
     <string name="test_on">WARP aktif: lalu lintas lewat Cloudflare</string>
     <string name="test_off">WARP tidak aktif</string>

@@ -186,6 +186,19 @@
             android:textColor="@color/muted"
             android:textSize="13sp" />
 
+        <Button
+            android:id="@+id/vpnSettings"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="?attr/selectableItemBackground"
+            android:minHeight="48dp"
+            android:paddingStart="24dp"
+            android:paddingEnd="24dp"
+            android:text="@string/btn_vpn_settings"
+            android:textAllCaps="false"
+            android:textColor="@color/off"
+            android:textSize="12sp" />
+
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"

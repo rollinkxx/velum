@@ -35,6 +35,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var toggleButton: Button
     private lateinit var testButton: Button
     private lateinit var resetButton: Button
+    private lateinit var vpnSettingsButton: Button
     private lateinit var infoDuration: TextView
     private lateinit var infoEndpoint: TextView
     private lateinit var infoTest: TextView
@@ -68,6 +69,7 @@ class MainActivity : AppCompatActivity() {
         toggleButton = findViewById(R.id.toggle)
         testButton = findViewById(R.id.test)
         resetButton = findViewById(R.id.reset)
+        vpnSettingsButton = findViewById(R.id.vpnSettings)
         infoDuration = findViewById(R.id.infoDuration)
         infoEndpoint = findViewById(R.id.infoEndpoint)
         infoTest = findViewById(R.id.infoTest)
@@ -75,6 +77,7 @@ class MainActivity : AppCompatActivity() {
         toggleButton.setOnClickListener { onToggle() }
         testButton.setOnClickListener { onTest() }
         resetButton.setOnClickListener { onReset() }
+        vpnSettingsButton.setOnClickListener { onOpenVpnSettings() }
 
         refreshStaticInfo()
 
@@ -197,6 +200,15 @@ class MainActivity : AppCompatActivity() {
                     }
                 }
             }
+        }
+    }
+
+    /** Membuka pengaturan VPN sistem (always-on & blokir tanpa VPN dikelola Android). */
+    private fun onOpenVpnSettings() {
+        try {
+            startActivity(Intent("android.settings.VPN_SETTINGS"))
+        } catch (e: Exception) {
+            showMessage(getString(R.string.err_no_settings))
         }
     }
 
