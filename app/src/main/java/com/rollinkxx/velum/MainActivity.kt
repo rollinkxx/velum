@@ -35,6 +35,7 @@ class MainActivity : AppCompatActivity(), VelumController.Ui {
     private lateinit var resetButton: Button
     private lateinit var vpnSettingsButton: Button
     private lateinit var copyDiagButton: Button
+    private lateinit var exclusionsButton: Button
     private lateinit var infoDuration: TextView
     private lateinit var infoEndpoint: TextView
     private lateinit var infoTest: TextView
@@ -88,6 +89,7 @@ class MainActivity : AppCompatActivity(), VelumController.Ui {
         resetButton = findViewById(R.id.reset)
         vpnSettingsButton = findViewById(R.id.vpnSettings)
         copyDiagButton = findViewById(R.id.copyDiag)
+        exclusionsButton = findViewById(R.id.exclusions)
         infoDuration = findViewById(R.id.infoDuration)
         infoEndpoint = findViewById(R.id.infoEndpoint)
         infoTest = findViewById(R.id.infoTest)
@@ -98,6 +100,7 @@ class MainActivity : AppCompatActivity(), VelumController.Ui {
         resetButton.setOnClickListener { onReset() }
         vpnSettingsButton.setOnClickListener { onOpenVpnSettings() }
         copyDiagButton.setOnClickListener { copyDiagnostics() }
+        exclusionsButton.setOnClickListener { onOpenExclusions() }
 
         controller = VelumController(this, this)
 
@@ -169,6 +172,11 @@ class MainActivity : AppCompatActivity(), VelumController.Ui {
         if (!granted) notifLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
     }
 
+    /** Membuka layar pemilihan aplikasi yang dikecualikan dari tunnel. */
+    private fun onOpenExclusions() {
+        startActivity(Intent(this, AppExclusionActivity::class.java))
+    }
+
     /**
      * Salin ringkasan keadaan ke clipboard untuk dilampirkan ke laporan gangguan.
      * Isinya sengaja ramah privasi: tanpa kunci privat, identitas perangkat, atau
@@ -186,7 +194,8 @@ class MainActivity : AppCompatActivity(), VelumController.Ui {
                     ?.let { (System.currentTimeMillis() - it) / 1000 },
                 rxBytes = stats?.rxBytes ?: 0L,
                 txBytes = stats?.txBytes ?: 0L,
-                connectedSec = if (up) (SystemClock.elapsedRealtime() - connectedSinceMs) / 1000 else 0L
+                connectedSec = if (up) (SystemClock.elapsedRealtime() - connectedSinceMs) / 1000 else 0L,
+                excludedApps = Prefs.of(this).excludedApps.toList()
             )
             val clipboard = getSystemService(android.content.ClipboardManager::class.java)
             clipboard?.setPrimaryClip(

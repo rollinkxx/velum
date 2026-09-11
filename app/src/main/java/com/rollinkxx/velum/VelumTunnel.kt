@@ -91,12 +91,14 @@ object VelumTunnel : Tunnel {
             append(prefs.addressV4).append("/32")
             prefs.addressV6?.takeIf { it.isNotEmpty() }?.let { append(", ").append(it).append("/128") }
         }
-        val iface = Interface.Builder()
+        val ifaceBuilder = Interface.Builder()
             .parsePrivateKey(requireNotNull(prefs.privateKey))
             .parseAddresses(addresses)
             .parseDnsServers(DNS)
             .parseMtu(MTU.toString())
-            .build()
+        val excluded = prefs.excludedApps
+        if (excluded.isNotEmpty()) ifaceBuilder.excludeApplications(excluded)
+        val iface = ifaceBuilder.build()
         val peer = Peer.Builder()
             .parsePublicKey(requireNotNull(prefs.peerPublicKey))
             .parseAllowedIPs(ALLOWED_IPS)

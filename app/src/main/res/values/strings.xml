@@ -18,6 +18,12 @@
     <string name="cd_status_down">Status: terputus</string>
     <string name="btn_vpn_settings">Selalu aktif (pengaturan sistem)</string>
     <string name="btn_copy_diag">Salin diagnostik</string>
+    <string name="btn_exclusions">Kecualikan aplikasi</string>
+    <string name="title_excluded">Kecualikan aplikasi</string>
+    <string name="btn_save">Simpan</string>
+    <string name="excluded_saved">Daftar pengecualian disimpan. Putuskan lalu Sambungkan agar berlaku.</string>
+    <string name="excluded_hint">Aplikasi yang dicentang dilewati dari tunnel dan memakai jalur internet langsung. Velum sendiri tidak ditawarkan agar pemeriksaan statusnya tetap bermakna. Perubahan berlaku setelah menyambung ulang.</string>
+    <string name="tile_label">Velum</string>
     <string name="diag_copied">Ringkasan disalin (tanpa kunci &amp; alamat IP)</string>
     <string name="err_no_settings">Pengaturan VPN tidak tersedia di perangkat ini</string>
     <string name="notif_channel">Status koneksi</string>

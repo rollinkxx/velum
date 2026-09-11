@@ -64,6 +64,15 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
   `isIpLiteral`) dipindahkan dari `MainActivity`/`VelumApi`/`EndpointProbe` ke `VelumFormat`
   agar dapat diuji unit tanpa Android framework; `VelumApi.fetchTrace()` kini mengembalikan
   `VelumFormat.TraceInfo` dan deteksi WARP memakai `VelumFormat.isWarpActive()`.
+- **Pengecualian aplikasi (split tunneling)**: aplikasi yang dipilih dilewati dari tunnel
+  dan memakai jalur internet langsung, sisanya tetap lewat Velum. Daftar disimpan
+  terenkripsi di `Prefs.excludedApps` dan diterapkan lewat `excludeApplications()` pada
+  konfigurasi WireGuard. Daftar aplikasi dibatasi oleh `<queries>` di manifest (aplikasi
+  peluncur) sehingga tidak perlu izin `QUERY_ALL_PACKAGES` yang dibatasi; Velum sendiri
+  tidak bisa dikecualikan agar pemeriksaan statusnya tetap bermakna.
+- **Ubin pengaturan cepat** (`VelumTileService`): menyambung/memutus dari panel cepat tanpa
+  membuka aplikasi; bila persetujuan VPN belum ada, ubin membuka aplikasi.
+
 - Tombol **Salin diagnostik**: menyalin ringkasan keadaan (versi, status, endpoint, umur
   handshake, durasi, trafik) ke clipboard untuk dilampirkan pada laporan gangguan. Isinya
   sengaja ramah privasi — tanpa kunci privat, identitas perangkat, token, atau alamat IP —

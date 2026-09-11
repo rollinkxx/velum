@@ -9,6 +9,15 @@
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
+    <!-- Batas visibilitas paket: hanya aplikasi peluncur yang perlu dibaca
+         untuk layar pengecualian, tanpa izin QUERY_ALL_PACKAGES yang dibatasi. -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.LAUNCHER" />
+        </intent>
+    </queries>
+
     <application
         android:allowBackup="false"
         android:icon="@mipmap/ic_launcher"
@@ -26,6 +35,23 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <activity
+            android:name=".AppExclusionActivity"
+            android:exported="false"
+            android:label="@string/title_excluded" />
+
+        <!-- Ubin pengaturan cepat: sambung/putus tanpa membuka aplikasi (API 24+). -->
+        <service
+            android:name=".VelumTileService"
+            android:exported="true"
+            android:icon="@drawable/ic_launcher_foreground"
+            android:label="@string/tile_label"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+        </service>
 
         <!-- Sambung ulang otomatis setelah boot (hanya bila terakhir UP & izin VPN berlaku). -->
         <receiver

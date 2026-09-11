@@ -56,6 +56,11 @@ class Prefs(context: Context) {
     val effectiveEndpoint: String?
         get() = speedEndpoint ?: endpoint
 
+    /** Paket aplikasi yang dikecualikan dari tunnel (split tunneling). */
+    var excludedApps: Set<String>
+        get() = sp.getStringSet(K_EXCLUDED, null)?.toSet() ?: emptySet()
+        set(v) = sp.edit().putStringSet(K_EXCLUDED, v).apply()
+
     /** Memo: akun terkonfirmasi memakai flag WARP penuh (set oleh registrasi/ensure). */
     var warpEnabled: Boolean
         get() = sp.getBoolean(K_WARP, false)
@@ -106,6 +111,7 @@ class Prefs(context: Context) {
         const val K_SPEED_AT = "speed_at"
         const val K_WARP = "warp_enabled"
         const val K_WAS_UP = "was_up"
+        const val K_EXCLUDED = "excluded_apps"
 
         private fun open(ctx: Context): SharedPreferences {
             val encrypted = try {
