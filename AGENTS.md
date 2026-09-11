@@ -23,18 +23,21 @@ Bila fakta di §5 berubah, perbarui dokumen ini dalam **1 commit khusus** berjud
 - Branch default repo: `main`. Agen **tidak pernah** merge ke `main` (merge mengakhiri sesi).
 - Aturan khusus maintainer repo ini: **agen tidak mengeksekusi perubahan apa pun sebelum
   diperintahkan secara eksplisit.** Sajikan rencana dulu, tunggu perintah, baru kerjakan.
-  **Amandemen 2026-09-11 (lihat §6):** yang wajib menunggu perintah kini hanya tindakan
-  yang merusak, tidak bisa dibatalkan, atau berdampak publik — **merge ke `main`, push
-  paksa, hapus registrasi/data, ganti `applicationId`/identitas, dan bump
-  `versionName`/`versionCode` (§4)**. Pekerjaan biasa langsung dikerjakan dengan asumsi
-  bawaan yang disebutkan di awal (§6).
+  **Penegasan 2026-09-11 (lihat §6):** aturan ini berlaku PENUH walau §6 menuntut
+  kecepatan. Sebelum ada perintah, agen hanya boleh membaca/menganalisis dan menyajikan
+  rencana — **tidak menyentuh berkas apa pun, termasuk berkas dokumen**. Yang diatur §6
+  hanyalah *cara* bekerja setelah perintah turun: rencana disajikan lengkap sekali jadi
+  dengan asumsi & default, tanpa pertanyaan yang bisa disimpulkan, dan tanpa
+  trial-and-error di CI. Yang selalu wajib izin tertulis walau sudah ada perintah lain:
+  merge ke `main`, push paksa, hapus registrasi/data, ganti `applicationId`/identitas,
+  bump `versionName`/`versionCode` (§4).
 
 ## §2 Aturan Emas: Push ≠ PR ≠ Merge
 
 | Aksi | Kapan | Siapa |
 |---|---|---|
 | Commit + push ke branch sesi | Setiap 1 perubahan logis selesai & lolos gerbang §3 | Agen |
-| Buka PR (`gh pr create`) | Setelah SEMUA tugas yang diperintahkan selesai. Di bawah §6 **tidak ada putaran konfirmasi terpisah** — PR adalah cara mengantarkan tugas; yang tetap wewenang maintainer adalah merge (dan tugas lanjutan yang belum pernah diperintahkan) | Agen |
+| Buka PR (`gh pr create`) | Hanya setelah SEMUA tugas selesai **dan** maintainer konfirmasi eksplisit | Agen |
 | Merge PR | Dari UI GitHub, setelah CI hijau | Maintainer (bukan agen) |
 
 **Urutan 5 langkah per sesi**
@@ -286,7 +289,9 @@ Setiap detik pipeline CI mahal dan setiap iterasi yang gagal membuang waktu. §6
    Gradle 8.9, Kotlin 2.0.21, JDK 17, compileSdk/targetSdk 35, minSdk 24.
 3. **Tanpa pertanyaan yang bisa disimpulkan** — jangan tanya hal yang sudah terjawab oleh
    log error, kode yang ada, atau §5.
-4. **Solusi sekali jalan** — berikan solusi lengkap; jangan menyuruh pengguna "lanjut ke
+4. **Solusi sekali jalan** — sebelum perintah: sajikan RENCANA lengkap sekali jadi
+   (tujuan, asumsi/default, berkas terdampak, risiko) agar satu putaran persetujuan
+   cukup. Setelah perintah: eksekusi lengkap, jangan menyuruh pengguna "lanjut ke
    langkah berikutnya".
 5. **Antisipasi masalah turunan** — sertakan pencegahannya di respons/kode yang sama.
 6. **Sadari cache** — jangan merusak cache Gradle & dependensi di CI (lihat §3 langkah 7).
@@ -332,10 +337,13 @@ atas tetap dipakai sebagai isi laporan dan body PR.
 
 ```
 Permintaan masuk
-├─ Info cukup?      → YA  → langsung eksekusi + sebutkan asumsi
-└─ Info kurang?
-   ├─ Bisa default? → YA  → pakai default, eksekusi
-   └─ Tidak bisa?   → tanya SEKALI (batch), lalu langsung eksekusi
+├─ Sudah ada perintah eksplisit?
+│    ├─ Info kurang & kritis? → tanya SEKALI (batch), lalu eksekusi lengkap
+│    └─ Info cukup?           → eksekusi lengkap + sebutkan asumsi/default
+└─ Belum ada perintah?
+     ├─ Info kurang & kritis? → tanya SEKALI (batch) untuk melengkapi rencana
+     └─ Sajikan RENCANA lengkap sekali jadi, lalu TUNGGU instruksi.
+        Dilarang menyentuh berkas apa pun sebelum instruksi turun (§1).
 ```
 
 Protokol ini aktif sejak 2026-09-11 sampai maintainer menulis "stop protocol" atau
