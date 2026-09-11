@@ -27,3 +27,5 @@
 | 23 | Anotasi advisory Node.js 20 deprecated di runner (actions dipaksa ke Node 24; non-pemblokir, terlihat di run 34581202095) | Rendah | Dicatat; menunggu upstream actions |
 | 24 | Indikator laju kecepatan (KB/s) di baris Data | Tinggi | Selesai tervalidasi (CI run 34586619601) |
 | 25 | Proba endpoint tercepat saat menyambung | Tinggi | Selesai tervalidasi (CI run 34586619601) |
+| 26 | Fix false negative "Belum lewat Velum" di Uji terakhir: tunggu handshake, keep-alive off, ulang sekali | Tinggi | Selesai, menunggu validasi CI |
+| 27 | Optimasi: tiker berhenti di latar belakang, Prefs sekali buka, izin notifikasi hanya bila perlu | Sedang | Selesai, menunggu validasi CI |

@@ -22,6 +22,15 @@ object VelumApi {
     private const val USER_AGENT = "okhttp/3.12.1"
     const val DEFAULT_ENDPOINT = "engage.cloudflareclient.com:2408"
 
+    /**
+     * Matikan keep-alive HTTP. Android tidak memindahkan soket yang SUDAH terbuka ke VPN,
+     * jadi koneksi yang tersisa dari sebelum tunnel aktif akan dipakai ulang dan keluar
+     * langsung ke internet — hasil `cdn-cgi/trace` lalu salah (`warp=off`) meski tunnel UP.
+     */
+    init {
+        runCatching { System.setProperty("http.keepAlive", "false") }
+    }
+
     /** Mendaftarkan perangkat baru dan menyimpan hasilnya ke [prefs]. */
     @Throws(IOException::class)
     fun register(prefs: Prefs) {
@@ -118,6 +127,9 @@ object VelumApi {
             conn.connectTimeout = 8000
             conn.readTimeout = 8000
             conn.setRequestProperty("User-Agent", USER_AGENT)
+            // Soket baru untuk setiap uji: jangan pakai koneksi dari sebelum tunnel aktif.
+            conn.setRequestProperty("Connection", "close")
+            conn.useCaches = false
             val text = conn.inputStream.bufferedReader().use { it.readText() }
             var warp = ""
             var colo = ""
@@ -145,6 +157,8 @@ object VelumApi {
             conn.setRequestProperty("User-Agent", USER_AGENT)
             conn.setRequestProperty("CF-Client-Version", CLIENT_VERSION)
             conn.setRequestProperty("Accept", "application/json")
+            conn.setRequestProperty("Connection", "close")
+            conn.useCaches = false
             if (bearer != null) conn.setRequestProperty("Authorization", "Bearer $bearer")
             if (body != null) {
                 conn.doOutput = true

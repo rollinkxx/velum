@@ -44,6 +44,8 @@ class MainActivity : AppCompatActivity() {
 
     private val main = Handler(Looper.getMainLooper())
     private val worker: ExecutorService = Executors.newSingleThreadExecutor()
+    /** Terpisah dari [worker] agar uji yang lambat tidak menahan Sambungkan/Putuskan. */
+    private val testWorker: ExecutorService = Executors.newSingleThreadExecutor()
 
     @Volatile
     private var busy = false
@@ -58,6 +60,10 @@ class MainActivity : AppCompatActivity() {
     private var staleTicks = 0
     private var staleWarned = false
     private var lastPollMs = 0L
+
+    /** Penanda uji berjalan: hasil uji lama dibuang bila nilainya sudah berganti. */
+    private var testJobId = 0
+    private var pendingTest: Runnable? = null
 
     private val ticker = object : Runnable {
         override fun run() {
@@ -123,9 +129,11 @@ class MainActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         VelumTunnel.listener = null
+        cancelPendingTest()
         main.removeCallbacks(ticker)
         pulse?.cancel()
         worker.shutdownNow()
+        testWorker.shutdownNow()
         super.onDestroy()
     }
 
@@ -210,34 +218,100 @@ class MainActivity : AppCompatActivity() {
         runTraceTest(fromButton = true)
     }
 
-    /** Menjalankan uji trace; dipakai tombol Uji koneksi dan auto-uji saat tersambung. */
-    private fun runTraceTest(fromButton: Boolean) {
-        if (fromButton) showMessage(getString(R.string.test_running))
+    /**
+     * Menjalankan uji trace; dipakai tombol Uji koneksi dan auto-uji saat tersambung.
+     *
+     * Uji SENGAJA tidak langsung menembak jaringan: `State.UP` dari backend hanya berarti
+     * antarmuka TUN sudah dibuat, belum tentu handshake WireGuard-nya selesai. Permintaan
+     * yang lewat sebelum handshake (atau memakai soket sisa sesi sebelum VPN aktif) keluar
+     * bukan lewat WARP → `warp=off` → "Belum lewat Velum" palsu. Karena itu: tunggu
+     * handshake nyata dulu, dan ulangi sekali bila hasilnya negatif padahal tunnel UP.
+     */
+    private fun runTraceTest(fromButton: Boolean, attempt: Int = 0) {
+        cancelPendingTest(invalidate = false)
+        val job = ++testJobId
         infoTest.setText(R.string.test_running)
-        worker.execute {
-            try {
-                val trace = VelumApi.fetchTrace()
-                val active = trace.warp == "on" || trace.warp == "plus"
-                val time = SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date())
-                main.post {
-                    infoTest.text = if (active) {
-                        getString(R.string.test_on_dc, trace.colo.ifEmpty { "?" }, time)
-                    } else {
-                        getString(R.string.test_off_time, time)
-                    }
-                    if (fromButton) {
-                        showMessage(getString(if (active) R.string.test_on else R.string.test_off))
-                    }
-                }
-            } catch (e: Exception) {
-                main.post {
-                    infoTest.setText(R.string.test_failed)
-                    if (fromButton) {
-                        showMessage(getString(R.string.err_network, e.message ?: e.javaClass.simpleName))
-                    }
+        if (fromButton) showMessage(getString(R.string.test_running))
+        testWorker.execute {
+            val ready = awaitHandshake(HANDSHAKE_WAIT_MS)
+            var trace: VelumApi.TraceInfo? = null
+            var error: String? = null
+            if (ready) {
+                try {
+                    trace = VelumApi.fetchTrace()
+                } catch (e: Exception) {
+                    error = e.message ?: e.javaClass.simpleName
                 }
             }
+            main.post { publishTestResult(job, trace, error, fromButton, attempt) }
         }
+    }
+
+    /**
+     * Menunggu handshake WireGuard pertama (bukti tunnel benar-benar bisa dilewati) dengan
+     * batas [maxWaitMs]; berhenti lebih awal bila tunnel turun. Blocking — jalankan di latar.
+     */
+    private fun awaitHandshake(maxWaitMs: Long): Boolean {
+        val deadline = SystemClock.elapsedRealtime() + maxWaitMs
+        while (SystemClock.elapsedRealtime() < deadline) {
+            if (VelumTunnel.state != Tunnel.State.UP) return false
+            if ((VelumTunnel.traffic(this)?.latestHandshakeMs ?: 0L) > 0L) return true
+            try {
+                Thread.sleep(HANDSHAKE_POLL_MS)
+            } catch (_: InterruptedException) {
+                return false
+            }
+        }
+        return VelumTunnel.state == Tunnel.State.UP
+    }
+
+    /** Menampilkan hasil uji; hasil dari uji yang sudah usang/turun tidak pernah ditulis. */
+    private fun publishTestResult(
+        job: Int,
+        trace: VelumApi.TraceInfo?,
+        error: String?,
+        fromButton: Boolean,
+        attempt: Int
+    ) {
+        if (job != testJobId) return // uji ini sudah dibatalkan/diganti uji baru
+        val up = VelumTunnel.state == Tunnel.State.UP
+        val active = trace != null && (trace.warp == "on" || trace.warp == "plus")
+        if (!active && error == null && up && attempt + 1 < MAX_TEST_ATTEMPTS) {
+            // Bisa jadi permintaannya masih memakai soket dari sebelum tunnel aktif
+            // (keep-alive sudah dimatikan, jadi ulangan ini pasti memakai soket baru).
+            val retry = Runnable { runTraceTest(fromButton, attempt + 1) }
+            pendingTest = retry
+            main.postDelayed(retry, TEST_RETRY_MS)
+            return
+        }
+        if (!up) {
+            // Tunnel turun di tengah uji: jangan simpan hasil yang menyesatkan.
+            infoTest.setText(R.string.value_none)
+            if (fromButton) showMessage("")
+            return
+        }
+        val time = SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date())
+        infoTest.text = when {
+            active && trace != null -> getString(R.string.test_on_dc, trace.colo.ifEmpty { "?" }, time)
+            trace != null -> getString(R.string.test_off_time, time)
+            else -> getString(R.string.test_failed)
+        }
+        if (fromButton) {
+            showMessage(
+                when {
+                    active -> getString(R.string.test_on)
+                    trace != null -> getString(R.string.test_off)
+                    else -> getString(R.string.err_network, error ?: "")
+                }
+            )
+        }
+    }
+
+    /** Membatalkan uji tertunda; [invalidate] juga membatalkan hasil uji yang sedang jalan. */
+    private fun cancelPendingTest(invalidate: Boolean = true) {
+        if (invalidate) testJobId++
+        pendingTest?.let { main.removeCallbacks(it) }
+        pendingTest = null
     }
 
     /** Android 13+: minta izin notifikasi sekali; versi lama auto-granted. */
@@ -260,6 +334,7 @@ class MainActivity : AppCompatActivity() {
     private fun onReset() {
         if (busy) return
         setBusy(true)
+        cancelPendingTest()
         prefs.wasUp = false // daftar ulang manual = putus permanen: jangan sambung saat boot
         ReconnectMonitor.stop(this)
         worker.execute {
@@ -320,6 +395,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun onDisconnectedVisual() {
         testedSinceUp = false
+        cancelPendingTest()
         main.removeCallbacks(ticker)
         stopPulse()
         StatusNotifier.hide(this)
@@ -426,5 +502,12 @@ class MainActivity : AppCompatActivity() {
         const val REQ_VPN = 1
         const val REQ_NOTIF = 2
         const val TAG = "Velum"
+
+        /** Batas menunggu handshake sebelum uji trace dijalankan. */
+        const val HANDSHAKE_WAIT_MS = 6000L
+        const val HANDSHAKE_POLL_MS = 250L
+        /** Jeda ulangan bila hasil uji negatif padahal tunnel masih UP. */
+        const val TEST_RETRY_MS = 1500L
+        const val MAX_TEST_ATTEMPTS = 2
     }
 }

@@ -68,3 +68,13 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 - `Prefs.clear()` tidak lagi menghapus memo `wasUp`, sehingga penyembuhan akun otomatis
   tidak mematikan niat sambung-ulang saat boot; aksi Daftar ulang manual kini eksplisit
   menandai `wasUp=false` seperti Putuskan.
+- Baris "Uji terakhir" tidak lagi menampilkan "Belum lewat Velum" palsu sesaat setelah
+  tersambung, meski status sudah "Tersambung". Dua penyebabnya: (1) uji `cdn-cgi/trace`
+  ditembakkan seketika saat `State.UP`, padahal saat itu hanya antarmuka TUN yang baru
+  dibuat — handshake WireGuard belum tentu selesai; (2) `HttpURLConnection` bisa memakai
+  ulang soket keep-alive dari sebelum VPN aktif, dan Android tidak memindahkan soket yang
+  sudah terbuka ke VPN sehingga permintaannya keluar langsung ke internet (`warp=off`).
+  Perbaikan: keep-alive dimatikan (`Connection: close` + `http.keepAlive=false`), uji
+  menunggu handshake yang nyata (batas 6 detik, berhenti lebih awal bila tunnel turun),
+  diulang satu kali dengan soket baru bila hasilnya negatif padahal tunnel masih UP, dan
+  dibatalkan bila tunnel putus di tengah uji.
