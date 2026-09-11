@@ -152,6 +152,7 @@ class MainActivity : AppCompatActivity() {
                 }
                 main.post { statusView.setText(R.string.status_connecting) }
                 WarpTunnel.up(this, prefs)
+                prefs.wasUp = true // memo untuk sambung ulang saat boot
                 main.post { setBusy(false); render(WarpTunnel.state) }
             } catch (e: Exception) {
                 fail(getString(R.string.err_connect, e.message ?: e.javaClass.simpleName))
@@ -162,6 +163,7 @@ class MainActivity : AppCompatActivity() {
     private fun disconnect() {
         setBusy(true)
         statusView.setText(R.string.status_disconnecting)
+        prefs.wasUp = false // putus manual: jangan sambung lagi saat boot
         worker.execute {
             runCatching { WarpTunnel.down(this) }
             main.post { setBusy(false); render(WarpTunnel.state) }
