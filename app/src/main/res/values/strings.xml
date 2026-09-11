@@ -1,11 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">WARP Lite</string>
+    <string name="app_name">Velum</string>
     <string name="status_disconnected">Terputus</string>
     <string name="status_connecting">Menyambung…</string>
     <string name="status_connected">Tersambung</string>
     <string name="status_disconnecting">Memutus…</string>
     <string name="status_registering">Mendaftarkan perangkat…</string>
+    <string name="status_probing">Mencari endpoint tercepat…</string>
     <string name="btn_connect">Sambungkan</string>
     <string name="btn_disconnect">Putuskan</string>
     <string name="btn_test">Uji koneksi</string>
@@ -15,14 +16,17 @@
     <string name="notif_channel">Status koneksi</string>
     <string name="notif_connected">Tersambung — lalu lintas lewat Cloudflare</string>
     <string name="test_running">Menguji…</string>
-    <string name="test_on">WARP aktif: lalu lintas lewat Cloudflare</string>
-    <string name="test_off">WARP tidak aktif</string>
-    <string name="test_on_dc">WARP aktif · DC %1$s · %2$s</string>
-    <string name="test_off_time">Belum lewat WARP · %1$s</string>
+    <string name="test_on">Velum aktif: lalu lintas lewat Cloudflare</string>
+    <string name="test_off">Velum tidak aktif</string>
+    <string name="test_on_dc">Velum aktif · DC %1$s · %2$s</string>
+    <string name="test_off_time">Belum lewat Velum · %1$s</string>
     <string name="test_failed">Gagal menguji</string>
     <string name="info_duration">Durasi</string>
     <string name="info_endpoint">Endpoint</string>
     <string name="info_last_test">Uji terakhir</string>
+    <string name="info_data">Data</string>
+    <string name="data_format">↓ %1$s/s · ↑ %2$s/s</string>
+    <string name="stale_warn">Tersambung, tetapi tidak ada lalu lintas. Coba Putuskan lalu Sambungkan.</string>
     <string name="value_none">—</string>
     <string name="err_vpn_denied">Izin VPN ditolak</string>
     <string name="err_register">Registrasi gagal: %1$s</string>

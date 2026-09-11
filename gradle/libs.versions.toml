@@ -7,10 +7,12 @@ targetSdk = "35"
 minSdk = "24"
 appcompat = "1.7.0"
 wireguardTunnel = "1.0.20250531"
+securityCrypto = "1.1.0"
 
 [libraries]
 androidx-appcompat = { module = "androidx.appcompat:appcompat", version.ref = "appcompat" }
 wireguard-tunnel = { module = "com.wireguard.android:tunnel", version.ref = "wireguardTunnel" }
+androidx-security-crypto = { module = "androidx.security:security-crypto", version.ref = "securityCrypto" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

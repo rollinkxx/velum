@@ -1,4 +1,4 @@
-package com.rollinkxx.warp
+package com.rollinkxx.velum
 
 import android.animation.ValueAnimator
 import android.app.Activity
@@ -23,7 +23,7 @@ import java.util.concurrent.Executors
 
 /**
  * Satu layar: status + tombol Sambungkan/Putuskan + Uji koneksi + panel info interaktif
- * (durasi, endpoint, hasil uji terakhir). Pekerjaan jaringan/tunnel berjalan di satu
+ * (durasi, endpoint, hasil uji terakhir, trafik data). Pekerjaan jaringan/tunnel berjalan di satu
  * thread latar tunggal (tanpa coroutine library) agar footprint tetap kecil; tiker durasi
  * & animasi denyut hanya hidup selama tunnel UP.
  */
@@ -40,6 +40,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var infoDuration: TextView
     private lateinit var infoEndpoint: TextView
     private lateinit var infoTest: TextView
+    private lateinit var infoData: TextView
 
     private val main = Handler(Looper.getMainLooper())
     private val worker: ExecutorService = Executors.newSingleThreadExecutor()
@@ -51,10 +52,18 @@ class MainActivity : AppCompatActivity() {
     private var connectedSinceMs = 0L
     private var testedSinceUp = false
     private var pulse: ValueAnimator? = null
+    private var tickCount = 0
+    private var lastRxBytes = -1L
+    private var lastTxBytes = -1L
+    private var staleTicks = 0
+    private var staleWarned = false
+    private var lastPollMs = 0L
 
     private val ticker = object : Runnable {
         override fun run() {
             infoDuration.text = formatDuration(SystemClock.elapsedRealtime() - connectedSinceMs)
+            tickCount++
+            if (tickCount % 5 == 0) pollStats()
             main.postDelayed(this, 1000)
         }
     }
@@ -74,6 +83,7 @@ class MainActivity : AppCompatActivity() {
         infoDuration = findViewById(R.id.infoDuration)
         infoEndpoint = findViewById(R.id.infoEndpoint)
         infoTest = findViewById(R.id.infoTest)
+        infoData = findViewById(R.id.infoData)
 
         toggleButton.setOnClickListener { onToggle() }
         testButton.setOnClickListener { onTest() }
@@ -83,20 +93,36 @@ class MainActivity : AppCompatActivity() {
         refreshStaticInfo()
         requestNotificationPermissionIfNeeded()
 
-        WarpTunnel.listener = { state -> main.post { render(state) } }
+        VelumTunnel.listener = { state -> main.post { render(state) } }
     }
 
     override fun onStart() {
         super.onStart()
-        render(WarpTunnel.state)
+        render(VelumTunnel.state)
         worker.execute {
-            val s = runCatching { WarpTunnel.refreshState(this) }.getOrDefault(WarpTunnel.state)
-            main.post { render(s) }
+            val s = runCatching { VelumTunnel.refreshState(this) }.getOrDefault(VelumTunnel.state)
+            main.post {
+                render(s)
+                resumeIfNeeded()
+            }
+        }
+    }
+
+    /**
+     * Memulihkan sesi bila proses lahir ulang: diniatkan UP tapi tunnel DOWN dan
+     * persetujuan VPN masih berlaku → sambung otomatis; monitor selalu dipastikan
+     * aktif selama diniatkan UP.
+     */
+    private fun resumeIfNeeded() {
+        if (!prefs.wasUp || !prefs.isRegistered) return
+        ReconnectMonitor.ensure(this)
+        if (!busy && VelumTunnel.state != Tunnel.State.UP && VpnService.prepare(this) == null) {
+            connect()
         }
     }
 
     override fun onDestroy() {
-        WarpTunnel.listener = null
+        VelumTunnel.listener = null
         main.removeCallbacks(ticker)
         pulse?.cancel()
         worker.shutdownNow()
@@ -107,7 +133,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun onToggle() {
         if (busy) return
-        if (WarpTunnel.state == Tunnel.State.UP) {
+        if (VelumTunnel.state == Tunnel.State.UP) {
             disconnect()
             return
         }
@@ -137,7 +163,7 @@ class MainActivity : AppCompatActivity() {
                     // Akun era lama tanpa flag WARP: coba sembuhkan otomatis (fail-safe,
                     // kegagalan tidak boleh menghalangi penyambungan).
                     try {
-                        WarpApi.ensureWarpEnabled(prefs)
+                        VelumApi.ensureWarpEnabled(prefs)
                         main.post { refreshStaticInfo() }
                     } catch (e: Exception) {
                         Log.w(TAG, "auto-heal akun gagal, lanjut tanpa heal", e)
@@ -146,16 +172,22 @@ class MainActivity : AppCompatActivity() {
                 if (!prefs.isRegistered) {
                     main.post { statusView.setText(R.string.status_registering) }
                     try {
-                        WarpApi.register(prefs)
+                        VelumApi.register(prefs)
                     } catch (e: Exception) {
                         fail(getString(R.string.err_register, e.message ?: e.javaClass.simpleName))
                         return@execute
                     }
                 }
-                main.post { statusView.setText(R.string.status_connecting) }
-                WarpTunnel.up(this, prefs)
+                main.post { statusView.setText(R.string.status_probing) }
+                EndpointProbe.refresh(prefs)
+                main.post {
+                    statusView.setText(R.string.status_connecting)
+                    refreshStaticInfo()
+                }
+                VelumTunnel.up(this, prefs)
                 prefs.wasUp = true // memo untuk sambung ulang saat boot
-                main.post { setBusy(false); render(WarpTunnel.state) }
+                ReconnectMonitor.ensure(this)
+                main.post { setBusy(false); render(VelumTunnel.state) }
             } catch (e: Exception) {
                 fail(getString(R.string.err_connect, e.message ?: e.javaClass.simpleName))
             }
@@ -166,9 +198,10 @@ class MainActivity : AppCompatActivity() {
         setBusy(true)
         statusView.setText(R.string.status_disconnecting)
         prefs.wasUp = false // putus manual: jangan sambung lagi saat boot
+        ReconnectMonitor.stop(this)
         worker.execute {
-            runCatching { WarpTunnel.down(this) }
-            main.post { setBusy(false); render(WarpTunnel.state) }
+            runCatching { VelumTunnel.down(this) }
+            main.post { setBusy(false); render(VelumTunnel.state) }
         }
     }
 
@@ -183,7 +216,7 @@ class MainActivity : AppCompatActivity() {
         infoTest.setText(R.string.test_running)
         worker.execute {
             try {
-                val trace = WarpApi.fetchTrace()
+                val trace = VelumApi.fetchTrace()
                 val active = trace.warp == "on" || trace.warp == "plus"
                 val time = SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date())
                 main.post {
@@ -227,9 +260,11 @@ class MainActivity : AppCompatActivity() {
     private fun onReset() {
         if (busy) return
         setBusy(true)
+        prefs.wasUp = false // daftar ulang manual = putus permanen: jangan sambung saat boot
+        ReconnectMonitor.stop(this)
         worker.execute {
-            runCatching { WarpTunnel.down(this) }
-            WarpApi.unregister(prefs)
+            runCatching { VelumTunnel.down(this) }
+            VelumApi.unregister(prefs)
             main.post {
                 setBusy(false)
                 render(Tunnel.State.DOWN)
@@ -245,7 +280,7 @@ class MainActivity : AppCompatActivity() {
     private fun fail(text: String) {
         main.post {
             setBusy(false)
-            render(WarpTunnel.state)
+            render(VelumTunnel.state)
             showMessage(text)
         }
     }
@@ -261,11 +296,17 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun refreshStaticInfo() {
-        infoEndpoint.text = prefs.endpoint ?: getString(R.string.value_none)
+        infoEndpoint.text = prefs.effectiveEndpoint ?: getString(R.string.value_none)
     }
 
     private fun onConnectedVisual() {
         connectedSinceMs = SystemClock.elapsedRealtime()
+        lastRxBytes = 0L
+        lastTxBytes = 0L
+        lastPollMs = SystemClock.elapsedRealtime()
+        staleTicks = 0
+        staleWarned = false
+        infoData.setText(R.string.value_none)
         main.removeCallbacks(ticker)
         main.post(ticker)
         startPulse()
@@ -283,6 +324,7 @@ class MainActivity : AppCompatActivity() {
         stopPulse()
         StatusNotifier.hide(this)
         infoDuration.setText(R.string.value_none)
+        infoData.setText(R.string.value_none)
     }
 
     private fun startPulse() {
@@ -324,6 +366,50 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    /** Menampilkan laju trafik (KB/s) tiap 5 detik selama UP; mendeteksi tunnel basi. */
+    private fun pollStats() {
+        worker.execute {
+            val t = VelumTunnel.traffic(this)
+            main.post {
+                if (VelumTunnel.state != Tunnel.State.UP) return@post
+                if (t == null) {
+                    infoData.setText(R.string.value_none)
+                    return@post
+                }
+                val nowMs = SystemClock.elapsedRealtime()
+                val dtSec = ((nowMs - lastPollMs).coerceAtLeast(1)) / 1000.0
+                val rxRate = ((t.rxBytes - lastRxBytes).coerceAtLeast(0) / dtSec).toLong()
+                val txRate = ((t.txBytes - lastTxBytes).coerceAtLeast(0) / dtSec).toLong()
+                lastPollMs = nowMs
+                infoData.text = getString(R.string.data_format, formatBytes(rxRate), formatBytes(txRate))
+                if (t.rxBytes != lastRxBytes || t.txBytes != lastTxBytes) {
+                    lastRxBytes = t.rxBytes
+                    lastTxBytes = t.txBytes
+                    staleTicks = 0
+                    staleWarned = false
+                    return@post
+                }
+                staleTicks++
+                val hsAge = System.currentTimeMillis() - t.latestHandshakeMs
+                if (!staleWarned && staleTicks >= 6 &&
+                    (t.latestHandshakeMs == 0L || hsAge > 180_000)
+                ) {
+                    staleWarned = true
+                    showMessage(getString(R.string.stale_warn))
+                }
+            }
+        }
+    }
+
+    private fun formatBytes(bytes: Long): String {
+        if (bytes < 1024) return "$bytes B"
+        val kb = bytes / 1024.0
+        if (kb < 1024) return String.format(Locale.US, "%.1f KB", kb)
+        val mb = kb / 1024.0
+        if (mb < 1024) return String.format(Locale.US, "%.1f MB", mb)
+        return String.format(Locale.US, "%.2f GB", mb / 1024.0)
+    }
+
     private fun formatDuration(ms: Long): String {
         val totalSec = ms / 1000
         val h = totalSec / 3600
@@ -339,6 +425,6 @@ class MainActivity : AppCompatActivity() {
     private companion object {
         const val REQ_VPN = 1
         const val REQ_NOTIF = 2
-        const val TAG = "WarpLite"
+        const val TAG = "Velum"
     }
 }

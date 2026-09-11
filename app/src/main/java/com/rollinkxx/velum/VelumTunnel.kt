@@ -1,4 +1,4 @@
-package com.rollinkxx.warp
+package com.rollinkxx.velum
 
 import android.content.Context
 import com.wireguard.android.backend.GoBackend
@@ -12,8 +12,8 @@ import com.wireguard.config.Peer
  * Singleton ringan: satu backend, satu tunnel, tanpa service tambahan —
  * VpnService milik library yang menjaga proses tetap hidup selama tersambung.
  */
-object WarpTunnel : Tunnel {
-    private const val NAME = "warp"
+object VelumTunnel : Tunnel {
+    private const val NAME = "velum"
     private const val MTU = 1280
     private const val DNS = "1.1.1.1, 1.0.0.1"
     private const val ALLOWED_IPS = "0.0.0.0/0, ::/0"
@@ -61,6 +61,31 @@ object WarpTunnel : Tunnel {
         backend(context).setState(this, Tunnel.State.DOWN, null)
     }
 
+    /** Hasil baca statistik transfer dari backend; null bila gagal. */
+    class TrafficStats(val rxBytes: Long, val txBytes: Long, val latestHandshakeMs: Long)
+
+    /**
+     * Membaca statistik transfer (jumlah semua peer). Blocking ringan;
+     * null bila backend gagal. Panggil dari thread latar.
+     */
+    fun traffic(context: Context): TrafficStats? {
+        return try {
+            val stats = backend(context).getStatistics(this)
+            var rx = 0L
+            var tx = 0L
+            var hs = 0L
+            for (key in stats.peers()) {
+                val p = stats.peer(key) ?: continue
+                rx += p.rxBytes
+                tx += p.txBytes
+                if (p.latestHandshakeEpochMillis > hs) hs = p.latestHandshakeEpochMillis
+            }
+            TrafficStats(rx, tx, hs)
+        } catch (_: Exception) {
+            null
+        }
+    }
+
     private fun buildConfig(prefs: Prefs): Config {
         val addresses = buildString {
             append(prefs.addressV4).append("/32")
@@ -75,7 +100,7 @@ object WarpTunnel : Tunnel {
         val peer = Peer.Builder()
             .parsePublicKey(requireNotNull(prefs.peerPublicKey))
             .parseAllowedIPs(ALLOWED_IPS)
-            .parseEndpoint(prefs.endpoint ?: WarpApi.DEFAULT_ENDPOINT)
+            .parseEndpoint(prefs.effectiveEndpoint ?: VelumApi.DEFAULT_ENDPOINT)
             .parsePersistentKeepalive("25")
             .build()
         return Config.Builder().setInterface(iface).addPeer(peer).build()

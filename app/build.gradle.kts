@@ -4,11 +4,11 @@ plugins {
 }
 
 android {
-    namespace = "com.rollinkxx.warp"
+    namespace = "com.rollinkxx.velum"
     compileSdk = libs.versions.compileSdk.get().toInt()
 
     defaultConfig {
-        applicationId = "com.rollinkxx.warp"
+        applicationId = "com.rollinkxx.velum"
         minSdk = libs.versions.minSdk.get().toInt()
         targetSdk = libs.versions.targetSdk.get().toInt()
         versionCode = 1
@@ -66,4 +66,5 @@ android {
 dependencies {
     implementation(libs.androidx.appcompat)
     implementation(libs.wireguard.tunnel)
+    implementation(libs.androidx.security.crypto)
 }
