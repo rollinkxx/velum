@@ -1,0 +1,17 @@
+# Satu-satunya sumber kebenaran versi dependensi & plugin (lihat AGENTS.md §4).
+[versions]
+agp = "8.7.3"
+kotlin = "2.0.21"
+compileSdk = "35"
+targetSdk = "35"
+minSdk = "24"
+appcompat = "1.7.0"
+wireguardTunnel = "1.0.20250531"
+
+[libraries]
+androidx-appcompat = { module = "androidx.appcompat:appcompat", version.ref = "appcompat" }
+wireguard-tunnel = { module = "com.wireguard.android:tunnel", version.ref = "wireguardTunnel" }
+
+[plugins]
+android-application = { id = "com.android.application", version.ref = "agp" }
+kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
