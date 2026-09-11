@@ -122,10 +122,12 @@ sebelum push.
   nama tampilan **WARP Lite**. Sumber: `MainActivity.kt` (UI), `WarpApi.kt` (registrasi WARP
   via `api.cloudflareclient.com`), `WarpTunnel.kt` (tunnel GoBackend), `Prefs.kt` (akun).
 - CI: `.github/workflows/build.yml` — trigger `push` (mengabaikan `**.md` & `docs/**`,
-  lihat §5.5) + `workflow_dispatch`; job tunggal `assembleDebug`: checkout → JDK 17 temurin →
-  `android-actions/setup-android` → `gradle/actions/setup-gradle` →
+  lihat catatan teknis di bawah) + `workflow_dispatch`; job tunggal `assembleDebug`:
+  checkout → JDK 17 temurin → `android-actions/setup-android` → `gradle/actions/setup-gradle` →
   `./gradlew --no-daemon --stacktrace assembleDebug` → ringkasan step → artifact `app-debug`.
   Step pemblokir: build. Step advisory: belum ada.
+  Run hijau: 34562586434 (3m38s, commit `26104f6`) & 34565410965 (3m27s, merge `9f0adb9`).
+  Durasi normal ≈ 3–4 menit.
 - Remote: `https://github.com/rollinkxx/warp.git`, default branch `main`.
 - Sandbox: tanpa JDK/Gradle/Android SDK; `gh` terautentikasi.
 - Dokumen: `README.md` (pointer), `CONTRIBUTING.md` (pointer ke dokumen ini), `CHANGELOG.md`,
@@ -140,3 +142,9 @@ sebelum push.
   berlaku ganda.
 - Pra-antisipasi: `gradle-wrapper.jar` biner harus ikut ter-commit (sudah); `local.properties`
   tidak boleh di-commit (di-ignore); SDK path disediakan runner.
+- (2026-09-11) Workflow memakai `paths-ignore` untuk `**.md` & `docs/**` → push khusus dokumen
+  TIDAK memicu CI. Konsekuensi: validasi perubahan docs sepenuhnya beban gerbang lokal §3,
+  dan status TODO untuk item docs tidak membawa rujukan run CI.
+- (2026-09-11, run 34565410965) Warning advisory: `actions/setup-java@v4` deprecated,
+  disarankan migrasi ke `@v5`. Tidak memblokir build → dicatat sebagai kandidat TODO baru
+  (No. 9), bukan perbaikan darurat.
