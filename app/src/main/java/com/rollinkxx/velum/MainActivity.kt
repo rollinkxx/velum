@@ -178,7 +178,12 @@ class MainActivity : AppCompatActivity() {
                         return@execute
                     }
                 }
-                main.post { statusView.setText(R.string.status_connecting) }
+                main.post { statusView.setText(R.string.status_probing) }
+                EndpointProbe.refresh(prefs)
+                main.post {
+                    statusView.setText(R.string.status_connecting)
+                    refreshStaticInfo()
+                }
                 VelumTunnel.up(this, prefs)
                 prefs.wasUp = true // memo untuk sambung ulang saat boot
                 ReconnectMonitor.ensure(this)
@@ -291,7 +296,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun refreshStaticInfo() {
-        infoEndpoint.text = prefs.endpoint ?: getString(R.string.value_none)
+        infoEndpoint.text = prefs.effectiveEndpoint ?: getString(R.string.value_none)
     }
 
     private fun onConnectedVisual() {

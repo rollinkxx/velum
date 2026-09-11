@@ -41,6 +41,20 @@ class Prefs(context: Context) {
         get() = sp.getString(K_ENDPOINT, null)
         set(v) = sp.edit().putString(K_ENDPOINT, v).apply()
 
+    /** Endpoint tercepat hasil proba (null = pakai endpoint registrasi). */
+    var speedEndpoint: String?
+        get() = sp.getString(K_SPEED_EP, null)
+        set(v) = sp.edit().putString(K_SPEED_EP, v).apply()
+
+    /** Waktu proba terakhir (epoch ms); basi setelah 1 jam. */
+    var speedEndpointAt: Long
+        get() = sp.getLong(K_SPEED_AT, 0L)
+        set(v) = sp.edit().putLong(K_SPEED_AT, v).apply()
+
+    /** Endpoint efektif: hasil proba bila ada, sonst endpoint registrasi. */
+    val effectiveEndpoint: String?
+        get() = speedEndpoint ?: endpoint
+
     /** Memo: akun terkonfirmasi memakai flag WARP penuh (set oleh registrasi/ensure). */
     var warpEnabled: Boolean
         get() = sp.getBoolean(K_WARP, false)
@@ -74,6 +88,8 @@ class Prefs(context: Context) {
         const val K_V6 = "addr_v6"
         const val K_PEER = "peer_pub"
         const val K_ENDPOINT = "endpoint"
+        const val K_SPEED_EP = "speed_ep"
+        const val K_SPEED_AT = "speed_at"
         const val K_WARP = "warp_enabled"
         const val K_WAS_UP = "was_up"
 

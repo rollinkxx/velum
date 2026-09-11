@@ -100,7 +100,7 @@ object VelumTunnel : Tunnel {
         val peer = Peer.Builder()
             .parsePublicKey(requireNotNull(prefs.peerPublicKey))
             .parseAllowedIPs(ALLOWED_IPS)
-            .parseEndpoint(prefs.endpoint ?: VelumApi.DEFAULT_ENDPOINT)
+            .parseEndpoint(prefs.effectiveEndpoint ?: VelumApi.DEFAULT_ENDPOINT)
             .parsePersistentKeepalive("25")
             .build()
         return Config.Builder().setInterface(iface).addPeer(peer).build()

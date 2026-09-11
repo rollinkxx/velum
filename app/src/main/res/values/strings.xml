@@ -6,6 +6,7 @@
     <string name="status_connected">Tersambung</string>
     <string name="status_disconnecting">Memutus…</string>
     <string name="status_registering">Mendaftarkan perangkat…</string>
+    <string name="status_probing">Mencari endpoint tercepat…</string>
     <string name="btn_connect">Sambungkan</string>
     <string name="btn_disconnect">Putuskan</string>
     <string name="btn_test">Uji koneksi</string>
