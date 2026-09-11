@@ -12,13 +12,14 @@ Bila fakta di §5 berubah, perbarui dokumen ini dalam **1 commit khusus** berjud
   **ter-push ke GitHub**. Prinsip: **"belum push = belum kerja"**.
 - Setiap sesi Arena terikat pada satu branch berpola `arena/<id>-<suffix>`
   (sesi ini: `arena/01a08ecf-warp`, bercabang dari `main` @ `76b33c9`).
-  - Catatan pemulihan (2026-09-11): sesi sebelumnya `arena/01a08e90-warp` berisi seluruh
-    pekerjaan awal proyek; branch-nya terhapus di remote. Commit HEAD-nya (`26104f6`,
-    CI hijau) dipulihkan lewat pengambilan SHA dangling dari workflow run, lalu di-merge
-    ke branch sesi ini.
+  - Catatan pemulihan (2026-09-11): seluruh pekerjaan awal proyek berasal dari sesi
+    `arena/01a08e90-warp` dan dipulihkan ke branch ini lewat dua merge (`26104f6`, lalu
+    `4e0c75a`). Branch itu sempat dikira terhapus dari remote — ternyata hanya tidak
+    terlihat karena refspec fetch sandbox yang terbatas (lihat Catatan teknis di §5).
 - Semua kerja HANYA di branch sesi. Dilarang `checkout`/`switch`/membuat branch lain,
   dilarang push ke branch lain.
-- Sebelum mulai tugas apa pun: `git branch --show-current` dan `git status` — tree harus bersih.
+- Sebelum mulai tugas apa pun: `git branch --show-current`, `git status` — tree harus
+  bersih — **dan bandingkan `git log` HEAD dengan `git ls-remote origin`** (alasan di §5).
 - Branch default repo: `main`. Agen **tidak pernah** merge ke `main` (merge mengakhiri sesi).
 - Aturan khusus maintainer repo ini: **agen tidak mengeksekusi perubahan apa pun sebelum
   diperintahkan secara eksplisit.** Sajikan rencana dulu, tunggu perintah, baru kerjakan.
@@ -45,11 +46,13 @@ Bila fakta di §5 berubah, perbarui dokumen ini dalam **1 commit khusus** berjud
 - Push itu mahal (kuota CI). Dilarang trial-and-error lewat CI.
 - CI merah: JANGAN langsung push lagi. Baca log penuh: `gh run view <id> --log-failed`.
   Jika gagal dengan EOF/blob storage, fallback ke step summary yang ditulis workflow
-  (`$GITHUB_STEP_SUMMARY`) atau komentar PR. Tulis diagnosis, kumpulkan SEMUA fix →
-  1 commit → 1 push. Tidak boleh ada run merah tanpa penjelasan.
+  (`$GITHUB_STEP_SUMMARY`), komentar PR, atau endpoint `gh api` (lihat §5). Tulis diagnosis,
+  kumpulkan SEMUA fix → 1 commit → 1 push. Tidak boleh ada run merah tanpa penjelasan.
 
 **Checklist pra-push permanen**
 - [ ] `git status` bersih selain perubahan yang dimaksud; tidak ada file build/artefak.
+- [ ] HEAD berada di ujung yang diharapkan (`git log --oneline -2` cocok dengan
+      `git ls-remote origin <branch-sesi>`).
 - [ ] Tepat 1 perubahan logis dalam commit ini; pesan commit sesuai §4.
 - [ ] Gerbang §3 dijalankan dan lolos untuk semua yang bisa diuji lokal.
 - [ ] Tidak ada kredensial/keystore/.env/token di diff (`git diff --cached | grep -inE
@@ -60,13 +63,16 @@ Bila fakta di §5 berubah, perbarui dokumen ini dalam **1 commit khusus** berjud
 ## §3 Gerbang Kualitas Pra-Commit
 
 **Kondisi sandbox saat ini (fakta, diverifikasi 2026-09-11):** tidak ada `java`, `gradle`,
-Android SDK (`ANDROID_HOME` kosong). Artinya **build/lint/test Android TIDAK bisa dijalankan
-lokal**; **CI GitHub Actions adalah validasi final** untuk kompilasi. Mitigasi wajib sebelum push:
+Android SDK (`ANDROID_HOME` kosong); modul python `yaml` juga tidak terpasang. Artinya
+**build/lint/test Android TIDAK bisa dijalankan lokal**; **CI GitHub Actions adalah validasi
+final** untuk kompilasi. Mitigasi wajib sebelum push:
 
 1. **Review diff dua lapis**: (a) baca ulang tiap file yang diubah secara utuh; (b) baca
    `git diff --cached` baris per baris.
 2. **Parse file konfigurasi yang disentuh**:
    - YAML workflow: `python3 -c "import yaml,sys;yaml.safe_load(open(sys.argv[1]))" <file>`
+     (bila modul `yaml` tersedia; bila tidak — review manual + andalkan bahwa workflow
+     yang sama sudah terbukti hijau di run sebelumnya)
    - XML (manifest/layout/strings): `python3 -c "import xml.dom.minidom,sys;xml.dom.minidom.parse(sys.argv[1])" <file>`
    - TOML (catalog): `python3 -c "import tomllib,sys;tomllib.load(open(sys.argv[1],'rb'))" <file>`
 3. **Keseimbangan kurung** untuk `.kt`/`.kts`: hitung `{`/`}` dan `(`/`)` per file
@@ -112,39 +118,69 @@ sebelum push.
 
 ## §5 Fakta Proyek
 
-**Keadaan repo (fakta per 2026-09-11):**
+**Keadaan repo (fakta per 2026-09-11, gabungan audit dua sesi):**
 - Aplikasi Android ringan fungsi **WARP saja** (tunnel WireGuard ke Cloudflare), tanpa mode
   DNS, tanpa iklan/analitik/akun. UI Bahasa Indonesia.
-- Stack: Kotlin, Android Gradle Plugin, minSdk 24, UI XML/AppCompat (tanpa Jetpack Compose
-  demi RAM & ukuran APK kecil). Dependensi inti: `com.wireguard.android:tunnel` (GoBackend).
-  Versi terpusat di `gradle/libs.versions.toml` (lihat CHANGELOG `[Unreleased]`).
-- Modul tunggal `app/`, `applicationId`/package = **`com.rollinkxx.warp`** (ADR 001);
-  nama tampilan **WARP Lite**. Sumber: `MainActivity.kt` (UI), `WarpApi.kt` (registrasi WARP
-  via `api.cloudflareclient.com`), `WarpTunnel.kt` (tunnel GoBackend), `Prefs.kt` (akun).
-- CI: `.github/workflows/build.yml` — trigger `push` (mengabaikan `**.md` & `docs/**`,
-  lihat catatan teknis di bawah) + `workflow_dispatch`; job tunggal `assembleDebug`:
-  checkout → JDK 17 temurin → `android-actions/setup-android` → `gradle/actions/setup-gradle` →
-  `./gradlew --no-daemon --stacktrace assembleDebug` → ringkasan step → artifact `app-debug`.
-  Step pemblokir: build. Step advisory: belum ada.
-  Run hijau: 34562586434 (3m38s, commit `26104f6`) & 34565410965 (3m27s, merge `9f0adb9`).
-  Durasi normal ≈ 3–4 menit.
+- **Stack aktual** (dari `gradle/libs.versions.toml`, satu-satunya sumber versi): Gradle 8.9
+  (wrapper ter-commit, termasuk `gradle-wrapper.jar`), AGP 8.7.3, Kotlin 2.0.21, JDK 17,
+  compileSdk/targetSdk 35, minSdk 24. Dependensi runtime hanya `androidx.appcompat` dan
+  `com.wireguard.android:tunnel` (GoBackend) — tanpa Compose/OkHttp/coroutine demi ukuran
+  APK & RAM kecil. `gradle.properties`: configuration-cache & build-cache aktif,
+  `nonTransitiveRClass`. Resource hanya Bahasa Indonesia (`resourceConfigurations += "in"`).
+- **Identitas (ADR 001):** `applicationId` = `com.rollinkxx.warp` (debug: suffix `.debug`),
+  package Kotlin `com.rollinkxx.warp`, nama aplikasi **WARP Lite**, versi awal `0.1.0`/code 1.
+- **Struktur modul `app/`** (`app/src/main/java/com/rollinkxx/warp/`):
+  - `MainActivity.kt` — UI satu layar (View XML), satu executor latar.
+  - `WarpApi.kt` — registrasi/hapus registrasi ke `api.cloudflareclient.com/v0a2158`,
+    uji `cdn-cgi/trace` (`warp=on|plus`). HttpURLConnection + org.json.
+  - `WarpTunnel.kt` — singleton `Tunnel` untuk `GoBackend` (MTU 1280, DNS 1.1.1.1/1.0.0.1,
+    AllowedIPs 0.0.0.0/0 + ::/0, keepalive 25).
+  - `Prefs.kt` — SharedPreferences `warp`.
+  - `AndroidManifest.xml` — VpnService milik library (`GoBackend$VpnService`) di-merge
+    (`tools:node="merge"`) untuk menambah `foregroundServiceType="specialUse"` + property
+    subtype `vpn`.
+  - Ikon adaptif vektor + PNG polos untuk API 24–25.
+- **CI (`.github/workflows/build.yml`):** trigger `push` semua branch (paths-ignore `**.md`,
+  `docs/**`) + `workflow_dispatch`. Job tunggal `assembleDebug` (pemblokir): checkout →
+  setup-java 17 temurin → android-actions/setup-android@v3 → gradle/actions/setup-gradle@v4 →
+  `./gradlew --no-daemon --stacktrace assembleDebug` → step summary → artifact `app-debug`.
+  Step advisory: "Ringkasan (fallback log)" (`if: always()`), tidak memblokir.
+  Run hijau: 34562586434 (3m38s, `26104f6`) & 34565410965 (3m27s, `9f0adb9`).
+  Durasi normal ≈ 3–4 menit (cache dingin). Artifact debug ≈ 9,1 MB (4 ABI native WireGuard,
+  belum minify; release nantinya memakai minify+shrink).
 - Remote: `https://github.com/rollinkxx/warp.git`, default branch `main`.
 - Sandbox: tanpa JDK/Gradle/Android SDK; `gh` terautentikasi.
 - Dokumen: `README.md` (pointer), `CONTRIBUTING.md` (pointer ke dokumen ini), `CHANGELOG.md`,
   `TODO.md`, `docs/adr/001-identitas-aplikasi.md` + indeks.
-- Path referensi terlarang-ubah: belum ada.
+- Path referensi terlarang-ubah: belum ada (tidak ada snapshot test).
 
 **Catatan teknis penting (jebakan) — diperbarui setiap kali ada temuan:**
-- (2026-09-11) Branch sesi `arena/01a08e90-warp` terhapus di remote setelah sesi berakhir,
-  lalu kontennya **tidak tampak** di `git fetch` biasa walaupun commit-nya masih ada.
-  Pemulihan berhasil lewat `headSha` workflow run (`gh run view <id> --json headSha`) +
-  `git fetch origin <sha>` — pelajaran: selalu catat SHA penting; "belum push = belum kerja"
-  berlaku ganda.
-- Pra-antisipasi: `gradle-wrapper.jar` biner harus ikut ter-commit (sudah); `local.properties`
-  tidak boleh di-commit (di-ignore); SDK path disediakan runner.
+- (2026-09-11, run 34562586434) Run pertama **hijau** tanpa perbaikan. Belum ada run merah
+  yang tak terjelaskan.
+- **(2026-09-11, insiden rangkap — koreksi entri lama "branch terhapus")** Branch sesi
+  ternyata TIDAK pernah terhapus. Akar sebenarnya: sandbox agen di-clone dengan **refspec
+  fetch terbatas** (`+refs/heads/main` saja), sehingga `origin/arena/*` tidak pernah tampak
+  di `git branch -r`/`git fetch` biasa. Ground truth = **`git ls-remote origin`** (mendaftar
+  semua refs), lalu ambil eksplisit:
+  `git fetch origin '+refs/heads/<b>:refs/remotes/origin/<b>'`.
+  Insiden kedua di hari yang sama: **sandbox ter-recreate di tengah sesi** (clone baru,
+  HEAD kembali ke `76b33c9`, working tree tetap dari snapshot) — gejala khas: commit mendadak
+  berisi puluhan `create mode`. Penyelamat: git **menolak push non-fast-forward**. Perbaikan:
+  fetch refs eksplisit → `git reset --mixed origin/<branch-sesi>` → commit ulang di atas
+  ujung yang benar. Pelajaran: verifikasi HEAD vs `ls-remote` SEBELUM commit; dan prinsip
+  "belum push = belum kerja" terbukti menyelamatkan dua kali dalam sehari.
+- (2026-09-11) Dari sandbox agen, `gh run download` dan `gh run view --log` gagal dengan
+  **EOF ke blob storage Azure**. Gunakan `gh api repos/<owner>/<repo>/actions/runs/<id>/jobs`
+  (status & waktu per step) dan `.../artifacts` (ukuran) sebagai sumber diagnosis, plus
+  step summary workflow.
+- (2026-09-11) Sandbox juga tidak bisa mengunduh raw.githubusercontent.com/Maven/Gradle
+  langsung; ambil file referensi upstream via
+  `gh api repos/.../contents/<path> -H "Accept: application/vnd.github.raw"`.
+- (2026-09-11) Gradle wrapper diambil dari tag `v8.9.0` upstream; `distributionUrl` diarahkan
+  manual ke `gradle-8.9-bin.zip` (file upstream di tag itu masih menunjuk rc-2).
 - (2026-09-11) Workflow memakai `paths-ignore` untuk `**.md` & `docs/**` → push khusus dokumen
   TIDAK memicu CI. Konsekuensi: validasi perubahan docs sepenuhnya beban gerbang lokal §3,
   dan status TODO untuk item docs tidak membawa rujukan run CI.
 - (2026-09-11, run 34565410965) Warning advisory: `actions/setup-java@v4` deprecated,
-  disarankan migrasi ke `@v5`. Tidak memblokir build → dicatat sebagai kandidat TODO baru
-  (No. 9), bukan perbaikan darurat.
+  disarankan migrasi ke `@v5`. Tidak memblokir build → dicatat sebagai TODO (No. 9),
+  bukan perbaikan darurat.

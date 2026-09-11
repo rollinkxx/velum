@@ -13,6 +13,9 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 - UI satu layar Bahasa Indonesia (`MainActivity`, layout XML, tema AppCompat, ikon adaptif): Sambungkan/Putuskan, status, Uji koneksi, Daftar ulang.
 - CI GitHub Actions `build.yml`: `assembleDebug`, artifact `app-debug`, step summary sebagai fallback log.
 
+### Changed
+- AGENTS.md §3/§5 disinkronkan dengan stack, CI, dan temuan run pertama.
+
 ### Fixed
 - Registrasi perangkat kini menyertakan flag `warp_enabled: true` agar akun terdaftar dengan
   WARP penuh (paritas klien resmi). Gejala sebelumnya: `one.one.one.one/help` menampilkan
