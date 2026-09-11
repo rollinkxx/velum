@@ -4,6 +4,7 @@ import android.animation.ValueAnimator
 import android.app.Activity
 import android.content.Intent
 import android.net.VpnService
+import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -80,6 +81,7 @@ class MainActivity : AppCompatActivity() {
         vpnSettingsButton.setOnClickListener { onOpenVpnSettings() }
 
         refreshStaticInfo()
+        requestNotificationPermissionIfNeeded()
 
         WarpTunnel.listener = { state -> main.post { render(state) } }
     }
@@ -205,6 +207,14 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    /** Android 13+: minta izin notifikasi sekali; versi lama auto-granted. */
+    private fun requestNotificationPermissionIfNeeded() {
+        if (Build.VERSION.SDK_INT >= 33) {
+            @Suppress("DEPRECATION")
+            requestPermissions(arrayOf(android.Manifest.permission.POST_NOTIFICATIONS), REQ_NOTIF)
+        }
+    }
+
     /** Membuka pengaturan VPN sistem (always-on & blokir tanpa VPN dikelola Android). */
     private fun onOpenVpnSettings() {
         try {
@@ -260,6 +270,7 @@ class MainActivity : AppCompatActivity() {
         main.post(ticker)
         startPulse()
         refreshStaticInfo()
+        StatusNotifier.show(this, getString(R.string.notif_connected))
         if (!testedSinceUp && prefs.isRegistered) {
             testedSinceUp = true
             runTraceTest(fromButton = false)
@@ -270,6 +281,7 @@ class MainActivity : AppCompatActivity() {
         testedSinceUp = false
         main.removeCallbacks(ticker)
         stopPulse()
+        StatusNotifier.hide(this)
         infoDuration.setText(R.string.value_none)
     }
 
