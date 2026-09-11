@@ -1,23 +1,29 @@
 package com.rollinkxx.warp
 
+import android.animation.ValueAnimator
 import android.app.Activity
 import android.content.Intent
 import android.net.VpnService
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.os.SystemClock
 import android.view.View
 import android.widget.Button
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import com.wireguard.android.backend.Tunnel
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 
 /**
- * Satu layar: status + tombol Sambungkan/Putuskan + Uji koneksi.
- * Pekerjaan jaringan/tunnel dijalankan di satu thread latar tunggal (tanpa coroutine
- * library) agar footprint tetap kecil.
+ * Satu layar: status + tombol Sambungkan/Putuskan + Uji koneksi + panel info interaktif
+ * (durasi, endpoint, hasil uji terakhir). Pekerjaan jaringan/tunnel berjalan di satu
+ * thread latar tunggal (tanpa coroutine library) agar footprint tetap kecil; tiker durasi
+ * & animasi denyut hanya hidup selama tunnel UP.
  */
 class MainActivity : AppCompatActivity() {
 
@@ -28,12 +34,27 @@ class MainActivity : AppCompatActivity() {
     private lateinit var toggleButton: Button
     private lateinit var testButton: Button
     private lateinit var resetButton: Button
+    private lateinit var infoDuration: TextView
+    private lateinit var infoEndpoint: TextView
+    private lateinit var infoTest: TextView
 
     private val main = Handler(Looper.getMainLooper())
     private val worker: ExecutorService = Executors.newSingleThreadExecutor()
 
     @Volatile
     private var busy = false
+
+    private var prevState: Tunnel.State = Tunnel.State.DOWN
+    private var connectedSinceMs = 0L
+    private var testedSinceUp = false
+    private var pulse: ValueAnimator? = null
+
+    private val ticker = object : Runnable {
+        override fun run() {
+            infoDuration.text = formatDuration(SystemClock.elapsedRealtime() - connectedSinceMs)
+            main.postDelayed(this, 1000)
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -46,10 +67,15 @@ class MainActivity : AppCompatActivity() {
         toggleButton = findViewById(R.id.toggle)
         testButton = findViewById(R.id.test)
         resetButton = findViewById(R.id.reset)
+        infoDuration = findViewById(R.id.infoDuration)
+        infoEndpoint = findViewById(R.id.infoEndpoint)
+        infoTest = findViewById(R.id.infoTest)
 
         toggleButton.setOnClickListener { onToggle() }
         testButton.setOnClickListener { onTest() }
         resetButton.setOnClickListener { onReset() }
+
+        refreshStaticInfo()
 
         WarpTunnel.listener = { state -> main.post { render(state) } }
     }
@@ -65,6 +91,8 @@ class MainActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         WarpTunnel.listener = null
+        main.removeCallbacks(ticker)
+        pulse?.cancel()
         worker.shutdownNow()
         super.onDestroy()
     }
@@ -128,14 +156,36 @@ class MainActivity : AppCompatActivity() {
 
     private fun onTest() {
         if (busy) return
-        showMessage(getString(R.string.test_running))
+        runTraceTest(fromButton = true)
+    }
+
+    /** Menjalankan uji trace; dipakai tombol Uji koneksi dan auto-uji saat tersambung. */
+    private fun runTraceTest(fromButton: Boolean) {
+        if (fromButton) showMessage(getString(R.string.test_running))
+        infoTest.setText(R.string.test_running)
         worker.execute {
-            val text = try {
-                if (WarpApi.isWarpActive()) getString(R.string.test_on) else getString(R.string.test_off)
+            try {
+                val trace = WarpApi.fetchTrace()
+                val active = trace.warp == "on" || trace.warp == "plus"
+                val time = SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date())
+                main.post {
+                    infoTest.text = if (active) {
+                        getString(R.string.test_on_dc, trace.colo.ifEmpty { "?" }, time)
+                    } else {
+                        getString(R.string.test_off_time, time)
+                    }
+                    if (fromButton) {
+                        showMessage(getString(if (active) R.string.test_on else R.string.test_off))
+                    }
+                }
             } catch (e: Exception) {
-                getString(R.string.err_network, e.message ?: e.javaClass.simpleName)
+                main.post {
+                    infoTest.setText(R.string.test_failed)
+                    if (fromButton) {
+                        showMessage(getString(R.string.err_network, e.message ?: e.javaClass.simpleName))
+                    }
+                }
             }
-            main.post { showMessage(text) }
         }
     }
 
@@ -148,6 +198,8 @@ class MainActivity : AppCompatActivity() {
             main.post {
                 setBusy(false)
                 render(Tunnel.State.DOWN)
+                refreshStaticInfo()
+                infoTest.setText(R.string.value_none)
                 showMessage(getString(R.string.reset_done))
             }
         }
@@ -173,8 +225,52 @@ class MainActivity : AppCompatActivity() {
         messageView.text = text
     }
 
+    private fun refreshStaticInfo() {
+        infoEndpoint.text = prefs.endpoint ?: getString(R.string.value_none)
+    }
+
+    private fun onConnectedVisual() {
+        connectedSinceMs = SystemClock.elapsedRealtime()
+        main.removeCallbacks(ticker)
+        main.post(ticker)
+        startPulse()
+        refreshStaticInfo()
+        if (!testedSinceUp && prefs.isRegistered) {
+            testedSinceUp = true
+            runTraceTest(fromButton = false)
+        }
+    }
+
+    private fun onDisconnectedVisual() {
+        testedSinceUp = false
+        main.removeCallbacks(ticker)
+        stopPulse()
+        infoDuration.setText(R.string.value_none)
+    }
+
+    private fun startPulse() {
+        stopPulse()
+        pulse = ValueAnimator.ofFloat(1f, 0.3f).apply {
+            duration = 900
+            repeatMode = ValueAnimator.REVERSE
+            repeatCount = ValueAnimator.INFINITE
+            addUpdateListener { statusDot.alpha = it.animatedValue as Float }
+            start()
+        }
+    }
+
+    private fun stopPulse() {
+        pulse?.cancel()
+        pulse = null
+        statusDot.alpha = 1f
+    }
+
     private fun render(state: Tunnel.State) {
         if (busy) return
+        if (state != prevState) {
+            prevState = state
+            if (state == Tunnel.State.UP) onConnectedVisual() else onDisconnectedVisual()
+        }
         when (state) {
             Tunnel.State.UP -> {
                 statusView.setText(R.string.status_connected)
@@ -188,6 +284,18 @@ class MainActivity : AppCompatActivity() {
                 statusDot.setBackgroundResource(R.drawable.dot_off)
                 toggleButton.setText(R.string.btn_connect)
             }
+        }
+    }
+
+    private fun formatDuration(ms: Long): String {
+        val totalSec = ms / 1000
+        val h = totalSec / 3600
+        val m = (totalSec % 3600) / 60
+        val s = totalSec % 60
+        return if (h > 0) {
+            String.format(Locale.US, "%d:%02d:%02d", h, m, s)
+        } else {
+            String.format(Locale.US, "%02d:%02d", m, s)
         }
     }
 

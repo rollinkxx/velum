@@ -70,16 +70,29 @@ object WarpApi {
         prefs.clear()
     }
 
-    /** Mengembalikan true bila lalu lintas sudah lewat WARP (cdn-cgi/trace: warp=on/plus). */
+    /** Hasil parse baris kunci dari cdn-cgi/trace. */
+    class TraceInfo(val warp: String, val colo: String, val ip: String)
+
+    /** Mengambil dan mem-parse cdn-cgi/trace (mengikuti jalur koneksi saat ini). Blocking. */
     @Throws(IOException::class)
-    fun isWarpActive(): Boolean {
+    fun fetchTrace(): TraceInfo {
         val conn = (URL("https://www.cloudflare.com/cdn-cgi/trace").openConnection() as HttpURLConnection)
         try {
             conn.connectTimeout = 8000
             conn.readTimeout = 8000
             conn.setRequestProperty("User-Agent", USER_AGENT)
             val text = conn.inputStream.bufferedReader().use { it.readText() }
-            return text.lineSequence().any { it == "warp=on" || it == "warp=plus" }
+            var warp = ""
+            var colo = ""
+            var ip = ""
+            for (line in text.lineSequence()) {
+                when {
+                    line.startsWith("warp=") -> warp = line.removePrefix("warp=")
+                    line.startsWith("colo=") -> colo = line.removePrefix("colo=")
+                    line.startsWith("ip=") -> ip = line.removePrefix("ip=")
+                }
+            }
+            return TraceInfo(warp, colo, ip)
         } finally {
             conn.disconnect()
         }
