@@ -35,3 +35,4 @@
 | 31 | UX: konfirmasi Daftar ulang, aksesibilitas, Activity Result API, proba endpoint saat pantulan | Sedang | Selesai, menunggu validasi CI |
 | 32 | Salin diagnostik (ramah privasi) + Dependabot + job lint advisori | Sedang | Selesai, menunggu validasi CI |
 | 33 | Pengecualian aplikasi (split tunneling) + ubin pengaturan cepat | Sedang | Selesai, menunggu validasi CI |
+| 34 | Fix lint: startActivityAndCollapse usang (varian PendingIntent di API 34+) + laporan teks lint | Rendah | Selesai, menunggu validasi CI |

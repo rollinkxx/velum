@@ -1,6 +1,8 @@
 package com.rollinkxx.velum
 
+import android.app.PendingIntent
 import android.content.Intent
+import android.os.Build
 import android.net.VpnService
 import android.os.Handler
 import android.os.Looper
@@ -67,10 +69,20 @@ class VelumTileService : TileService() {
         }
     }
 
-    @Suppress("DEPRECATION")
+    /**
+     * Membuka aplikasi (izin VPN belum ada / belum terdaftar).
+     * `startActivityAndCollapse(Intent)` usang sejak API 34 dan diganti varian
+     * PendingIntent — keduanya dipakai sesuai versi karena minSdk masih 24.
+     */
     private fun openApp() {
         val intent = Intent(this, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        startActivityAndCollapse(intent)
+        if (Build.VERSION.SDK_INT >= 34) {
+            val flags = PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            startActivityAndCollapse(PendingIntent.getActivity(this, 0, intent, flags))
+        } else {
+            @Suppress("DEPRECATION")
+            startActivityAndCollapse(intent)
+        }
     }
 
     private companion object {

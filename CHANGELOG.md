@@ -64,6 +64,10 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
   `isIpLiteral`) dipindahkan dari `MainActivity`/`VelumApi`/`EndpointProbe` ke `VelumFormat`
   agar dapat diuji unit tanpa Android framework; `VelumApi.fetchTrace()` kini mengembalikan
   `VelumFormat.TraceInfo` dan deteksi WARP memakai `VelumFormat.isWarpActive()`.
+- Job lint CI kini menulis laporan teks (`lint { textReport = true }`) dan mencetaknya ke
+  log/ringkasan: artifact laporan tidak bisa diunduh dari sandbox, sehingga tanpa ini
+  temuan lint praktis tidak terbaca.
+
 - **Pengecualian aplikasi (split tunneling)**: aplikasi yang dipilih dilewati dari tunnel
   dan memakai jalur internet langsung, sisanya tetap lewat Velum. Daftar disimpan
   terenkripsi di `Prefs.excludedApps` dan diterapkan lewat `excludeApplications()` pada

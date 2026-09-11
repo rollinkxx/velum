@@ -45,6 +45,15 @@ android {
         }
     }
 
+    // Laporan teks dibutuhkan CI: laporan HTML tidak bisa dibaca dari log,
+    // dan artifact tidak bisa diunduh dari sandbox agen (lihat AGENTS.md §5).
+    lint {
+        textReport = true
+        textOutput = file("build/reports/lint-results-debug.txt")
+        abortOnError = true
+        warningsAsErrors = false
+    }
+
     buildFeatures {
         buildConfig = false
         viewBinding = false
