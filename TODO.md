@@ -11,3 +11,4 @@
 | 7 | Perbarui AGENTS.md §5 dengan hasil CI nyata; status TODO | Sedang | Selesai (commit 6d476b4 + pembaruan status ini; validasi gerbang lokal — push `.md` tidak memicu CI) |
 | 8 | (Opsional) job `assembleRelease` bertanda tangan via Secrets | Rendah | Belum, menunggu permintaan |
 | 9 | Migrasi `actions/setup-java@v4` → `@v5` (advisory deprecation di run 34565410965) | Rendah | Belum, menunggu keputusan maintainer |
+| 10 | Paritas WARP: registrasi dengan flag `warp_enabled: true` | Tinggi | Selesai, menunggu validasi CI |

@@ -35,6 +35,7 @@ object WarpApi {
             .put("type", "Android")
             .put("locale", "id_ID")
             .put("serial_number", UUID.randomUUID().toString())
+            .put("warp_enabled", true)
 
         val json = request("POST", "$BASE/reg", body.toString(), null)
 

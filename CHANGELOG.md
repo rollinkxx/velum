@@ -12,3 +12,9 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 - `WarpTunnel.kt`: tunnel WireGuard via `GoBackend` (MTU 1280, DNS 1.1.1.1, keepalive 25) dan `AndroidManifest.xml` (VpnService library, foregroundServiceType specialUse).
 - UI satu layar Bahasa Indonesia (`MainActivity`, layout XML, tema AppCompat, ikon adaptif): Sambungkan/Putuskan, status, Uji koneksi, Daftar ulang.
 - CI GitHub Actions `build.yml`: `assembleDebug`, artifact `app-debug`, step summary sebagai fallback log.
+
+### Fixed
+- Registrasi perangkat kini menyertakan flag `warp_enabled: true` agar akun terdaftar dengan
+  WARP penuh (paritas klien resmi). Gejala sebelumnya: `one.one.one.one/help` menampilkan
+  "Using DNS over WARP: No" meski tunnel tersambung. Perangkat yang terlanjur terdaftar
+  tanpa flag perlu satu kali **Daftar ulang** dari dalam aplikasi.
