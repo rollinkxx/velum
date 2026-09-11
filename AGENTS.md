@@ -1,4 +1,4 @@
-# AGENTS.md — Panduan Wajib Sesi Agen (repo `rollinkxx/warp`)
+# AGENTS.md — Panduan Wajib Sesi Agen (repo `rollinkxx/velum`)
 
 Dokumen ini mengikat setiap agen coding yang bekerja di repo ini. Isinya diturunkan dari
 keadaan repo yang nyata dan dari kesepakatan dengan maintainer. Bagian yang bertanda
@@ -176,7 +176,7 @@ sebelum push.
   Durasi normal ≈ 3–4 menit (cache dingin). Artifact debug ≈ 9,1 MB (4 ABI native WireGuard,
   kini ≈ 9,6 MB setelah security-crypto/Tink (+≈0,8 MB dari batch 1);
   belum minify; release memakai minify+shrink).
-- Remote: `https://github.com/rollinkxx/warp.git`, default branch `main`.
+- Remote: `https://github.com/rollinkxx/velum.git` (di-rename dari `warp` 2026-09-11), default branch `main`.
 - Sandbox: tanpa JDK/Gradle/Android SDK; `gh` terautentikasi.
 - Dokumen: `README.md` (pointer), `CONTRIBUTING.md` (pointer ke dokumen ini), `CHANGELOG.md`,
   `TODO.md`, `docs/adr/` (001 superseded, 002 identitas Velum) + indeks,
