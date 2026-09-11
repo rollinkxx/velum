@@ -174,7 +174,7 @@ sebelum push.
   decode keystore dari Secrets → `assembleRelease` → artifact `app-release`.
   Yang harus diset maintainer: Secrets `SIGNING_KEYSTORE_BASE64`, `KEYSTORE_PASSWORD`,
   `KEY_ALIAS`, `KEY_PASSWORD` + variable `ENABLE_RELEASE_SIGNING=true`.
-  Run hijau: 34562586434 (3m38s, `26104f6`) & 34565410965 (3m27s, `9f0adb9`). Sesi ini: 34580968135 (`5781180`, rename) & 34581202095 (2m26s, `a813b2b`, fitur ketahanan).
+  Run hijau: 34562586434 (3m38s, `26104f6`) & 34565410965 (3m27s, `9f0adb9`). Sesi ini: 34580968135 (`5781180`, rename) & 34581202095 (2m26s, `a813b2b`, fitur ketahanan) & 34586619601 (2m30s, `7e6b9b3`, optimasi kecepatan).
   Durasi normal ≈ 3–4 menit (cache dingin). Artifact debug ≈ 9,1 MB (4 ABI native WireGuard,
   kini ≈ 9,6 MB setelah security-crypto/Tink (+≈0,8 MB dari batch 1);
   belum minify; release memakai minify+shrink).
