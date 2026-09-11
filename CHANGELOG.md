@@ -40,9 +40,18 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
   `sans-serif-light/medium`, status bar selaras tema; warna ikon adaptif disamakan dengan
   aksen. Seluruhnya murni resource XML bawaan — tanpa dependensi/font eksternal, tanpa
   memengaruhi performa maupun ukuran APK secara berarti.
+- Identitas aplikasi diganti dari WARP Lite menjadi **Velum**: `applicationId`/
+  namespace/package `com.rollinkxx.velum`, nama tampil, tema, string status
+  ("Velum aktif…"), nama sesi VPN, file preferensi, dan class internal (`VelumApi`,
+  `VelumTunnel`). Alasan: WARP® adalah merek terdaftar Cloudflare untuk kategori
+  software VPN dan panduan mereknya melarang pemakaian di nama aplikasi pihak ketiga
+  (lihat ADR 002). Penyebutan WARP yang tersisa hanya referensial (endpoint/protokol).
 
 ### Fixed
 - Registrasi perangkat kini menyertakan flag `warp_enabled: true` agar akun terdaftar dengan
   WARP penuh (paritas klien resmi). Gejala sebelumnya: `one.one.one.one/help` menampilkan
   "Using DNS over WARP: No" meski tunnel tersambung. Perangkat yang terlanjur terdaftar
   tanpa flag perlu satu kali **Daftar ulang** dari dalam aplikasi.
+- `Prefs.clear()` tidak lagi menghapus memo `wasUp`, sehingga penyembuhan akun otomatis
+  tidak mematikan niat sambung-ulang saat boot; aksi Daftar ulang manual kini eksplisit
+  menandai `wasUp=false` seperti Putuskan.

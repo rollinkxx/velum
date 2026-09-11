@@ -1,6 +1,6 @@
 # ADR 001 — Identitas aplikasi: applicationId & nama
 
-- **Status**: Accepted
+- **Status**: Superseded by 002
 - **Tanggal**: 2026-09-11
 
 ## Konteks

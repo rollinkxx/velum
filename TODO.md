@@ -18,3 +18,9 @@
 | 14 | (Opsional) pintasan ke pengaturan Always-on VPN + blokir koneksi tanpa VPN (killswitch bawaan sistem) | Rendah | Selesai, tervalidasi (PR #1) |
 | 15 | (Opsional) sambung otomatis saat boot (RECEIVE_BOOT_COMPLETED) | Rendah | Selesai, tervalidasi (PR #1) |
 | 16 | (Opsional) notifikasi status koneksi (izin POST_NOTIFICATIONS Android 13+) | Rendah | Selesai, tervalidasi (PR #1) |
+| 17 | Rename identitas WARP Lite → Velum (ADR 002) | Tinggi | Selesai, menunggu validasi CI |
+| 18 | Sambung ulang otomatis saat jaringan berganti (NetworkCallback + backoff) | Tinggi | Berencana |
+| 19 | Fix `Prefs.clear()`: pertahankan memo `wasUp` | Sedang | Selesai, menunggu validasi CI |
+| 20 | Enkripsi SharedPreferences (EncryptedSharedPreferences + migrasi) | Tinggi | Berencana |
+| 21 | Statistik trafik + deteksi tunnel basi | Sedang | Berencana |
+| 22 | Uji `assembleRelease` bertanda tangan end-to-end (butuh Secrets maintainer) | Sedang | Menunggu Secrets maintainer |
