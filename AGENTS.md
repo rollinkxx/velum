@@ -230,6 +230,17 @@ sebelum push.
   lama cukup satu kali **Daftar ulang**.
 - `gh run watch` berfungsi dari sandbox — gunakan untuk memantau CI; yang EOF hanya
   `gh run view --log` / `gh run download`.
+- (2026-09-11) **Log CI sama sekali tidak bisa dibaca dari sandbox**: `gh run view --log`,
+  `gh run view --log-failed`, dan `gh run download` semuanya EOF. Satu-satunya jalan untuk
+  mendiagnosis run (terutama job lint) adalah **anotasi check-run**:
+  `gh api repos/<owner>/<repo>/commits/<sha>/check-runs --jq '.check_runs[] | select(.name|test("lint")) | .id'`
+  lalu `gh api repos/<owner>/<repo>/check-runs/<id>/annotations`. Konsekuensi praktis:
+  job yang hasilnya hanya ada di log wajib menuliskan temuannya ke `$GITHUB_STEP_SUMMARY`
+  **dan** mencetaknya ke log; untuk lint, aktifkan `lint { textReport = true }`.
+- (2026-09-11) `gh pr edit --title/--body` **gagal diam-diam** (kode keluar 1, hanya
+  peringatan "Projects (classic) is being deprecated") dan perubahannya tidak diterapkan.
+  Pakai REST API: `gh api -X PATCH repos/<owner>/<repo>/pulls/<n> -f title="..."` dan
+  `-F body=@/tmp/berkas.md`. Selalu verifikasi dengan `gh pr view <n> --json title,body`.
 - (2026-09-11, PR #3) **`gh pr edit --title/--body` GAGAL dari sandbox** (keluar dengan
   kode 1, hanya mencetak peringatan "Projects (classic) is being deprecated"), dan
   perubahannya **tidak diterapkan walau tanpa pesan error**. Pakai REST API sebagai
