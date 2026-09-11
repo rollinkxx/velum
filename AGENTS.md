@@ -35,12 +35,24 @@ Bila fakta di §5 berubah, perbarui dokumen ini dalam **1 commit khusus** berjud
 **Urutan 5 langkah per sesi**
 1. Pahami tugas; cek branch & tree bersih.
 2. Implementasi perubahan terkecil yang logis; jalankan gerbang §3.
-3. Commit (pesan §4) + push segera ke branch sesi. Tanpa PR. Dilarang menumpuk commit lokal.
+3. Commit (pesan §4) + push segera ke branch sesi. Tanpa PR. Dilarang menumpuk commit lokal
+   (pengecualian: model paket di bawah).
 4. Semua tugas selesai + konfirmasi maintainer → `gh pr create` dengan ringkasan, daftar
    verifikasi lokal, rujukan commit/TODO.
 5. `gh pr checks --watch` sampai hijau. Merah → diagnosis dulu (lihat di bawah), 1 push
    perbaikan per tahap. Hijau → laporan + STOP. Rekap di body PR: commit, diagnosis run merah
    (bila ada), sisa pekerjaan (handoff).
+
+**Model paket (amandemen 2026-09-11, atas perintah maintainer)**
+- Bila maintainer memerintahkan beberapa tugas berkaitan sebagai satu paket: implementasikan
+  semuanya → gerbang lokal menyeluruh → 1–N commit (tetap 1 per perubahan logis) dalam
+  **1 push gabungan** di akhir paket → 1 run CI di tree ujung (hemat kuota). Workflow memakai
+  `concurrency: cancel-in-progress` per-ref sehingga push beruntun aman.
+- Batas keras: **dilarang mengakhiri giliran kerja dengan commit/perubahan yang belum
+  terpush** — jendela sandbox ephemeral (insiden 2026-09-11) berlaku penuh.
+- Uji lokal semua yang bisa diuji tetap wajib; bagian yang tidak bisa diuji lokal
+  (toolchain absen) divalidasi oleh run CI ujung-paket — CI adalah validasi final,
+  BUKAN alat coba-coba.
 
 **Kedisiplinan push & CI**
 - Push itu mahal (kuota CI). Dilarang trial-and-error lewat CI.
