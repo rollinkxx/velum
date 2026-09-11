@@ -142,24 +142,36 @@ sebelum push.
 - **Identitas (ADR 001):** `applicationId` = `com.rollinkxx.warp` (debug: suffix `.debug`),
   package Kotlin `com.rollinkxx.warp`, nama aplikasi **WARP Lite**, versi awal `0.1.0`/code 1.
 - **Struktur modul `app/`** (`app/src/main/java/com/rollinkxx/warp/`):
-  - `MainActivity.kt` — UI satu layar (View XML), satu executor latar.
-  - `WarpApi.kt` — registrasi/hapus registrasi ke `api.cloudflareclient.com/v0a2158`,
-    uji `cdn-cgi/trace` (`warp=on|plus`). HttpURLConnection + org.json.
+  - `MainActivity.kt` — UI satu layar (View XML), satu executor latar; panel info interaktif
+    (durasi/endpoint/hasil uji+DC), izin notifikasi Android 13+, pintasan pengaturan VPN.
+  - `WarpApi.kt` — registrasi/hapus registrasi ke `api.cloudflareclient.com/v0a2158`
+    (flag `warp_enabled: true`), auto-heal akun lama via GET+daftar ulang (fail-safe),
+    parse `cdn-cgi/trace` (warp/colo/ip). HttpURLConnection + org.json.
   - `WarpTunnel.kt` — singleton `Tunnel` untuk `GoBackend` (MTU 1280, DNS 1.1.1.1/1.0.0.1,
     AllowedIPs 0.0.0.0/0 + ::/0, keepalive 25).
-  - `Prefs.kt` — SharedPreferences `warp`.
+  - `Prefs.kt` — SharedPreferences `warp` (+ memo `warpEnabled`, `wasUp`).
+  - `BootReceiver.kt` — sambung ulang setelah boot bila terakhir UP & izin VPN berlaku.
+  - `StatusNotifier.kt` — notifikasi persisten status (kanal `status`, IMPORTANCE_LOW).
   - `AndroidManifest.xml` — VpnService milik library (`GoBackend$VpnService`) di-merge
     (`tools:node="merge"`) untuk menambah `foregroundServiceType="specialUse"` + property
-    subtype `vpn`.
-  - Ikon adaptif vektor + PNG polos untuk API 24–25.
+    subtype `vpn`; receiver boot exported; izin RECEIVE_BOOT_COMPLETED & POST_NOTIFICATIONS.
+  - Tema gelap murni resource (drawable shape/ripple/selector; tanpa font eksternal);
+    ikon adaptif vektor + PNG polos untuk API 24–25.
+  - Rilis: `signingConfigs.release` membaca env (`KEYSTORE_FILE/PASSWORD/ALIAS/KEY_PASSWORD`);
+    minify+R8 aktif; `proguard-rules.pro` keep `com.wireguard.**`.
 - **CI (`.github/workflows/build.yml`):** trigger `push` semua branch (paths-ignore `**.md`,
-  `docs/**`) + `workflow_dispatch`. Job tunggal `assembleDebug` (pemblokir): checkout →
-  setup-java 17 temurin → android-actions/setup-android@v3 → gradle/actions/setup-gradle@v4 →
+  `docs/**`) + `workflow_dispatch`; `concurrency: cancel-in-progress` per-ref.
+  Job `assembleDebug` (pemblokir): checkout → setup-java 17 temurin (**v5**) →
+  android-actions/setup-android@v3 → gradle/actions/setup-gradle@v4 →
   `./gradlew --no-daemon --stacktrace assembleDebug` → step summary → artifact `app-debug`.
   Step advisory: "Ringkasan (fallback log)" (`if: always()`), tidak memblokir.
+  Job opsional `release` (needs: build; `if: vars.ENABLE_RELEASE_SIGNING == 'true'`):
+  decode keystore dari Secrets → `assembleRelease` → artifact `app-release`.
+  Yang harus diset maintainer: Secrets `SIGNING_KEYSTORE_BASE64`, `KEYSTORE_PASSWORD`,
+  `KEY_ALIAS`, `KEY_PASSWORD` + variable `ENABLE_RELEASE_SIGNING=true`.
   Run hijau: 34562586434 (3m38s, `26104f6`) & 34565410965 (3m27s, `9f0adb9`).
   Durasi normal ≈ 3–4 menit (cache dingin). Artifact debug ≈ 9,1 MB (4 ABI native WireGuard,
-  belum minify; release nantinya memakai minify+shrink).
+  belum minify; release memakai minify+shrink).
 - Remote: `https://github.com/rollinkxx/warp.git`, default branch `main`.
 - Sandbox: tanpa JDK/Gradle/Android SDK; `gh` terautentikasi.
 - Dokumen: `README.md` (pointer), `CONTRIBUTING.md` (pointer ke dokumen ini), `CHANGELOG.md`,
