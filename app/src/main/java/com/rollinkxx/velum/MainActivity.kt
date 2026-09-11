@@ -15,9 +15,6 @@ import android.widget.Button
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import com.wireguard.android.backend.Tunnel
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 
@@ -72,7 +69,7 @@ class MainActivity : AppCompatActivity() {
 
     private val ticker = object : Runnable {
         override fun run() {
-            infoDuration.text = formatDuration(SystemClock.elapsedRealtime() - connectedSinceMs)
+            infoDuration.text = VelumFormat.formatDuration(SystemClock.elapsedRealtime() - connectedSinceMs)
             tickCount++
             if (tickCount % 5 == 0) pollStats()
             main.postDelayed(this, 1000)
@@ -256,7 +253,7 @@ class MainActivity : AppCompatActivity() {
         if (fromButton) showMessage(getString(R.string.test_running))
         testWorker.execute {
             val ready = awaitHandshake(HANDSHAKE_WAIT_MS)
-            var trace: VelumApi.TraceInfo? = null
+            var trace: VelumFormat.TraceInfo? = null
             var error: String? = null
             if (ready) {
                 try {
@@ -290,14 +287,14 @@ class MainActivity : AppCompatActivity() {
     /** Menampilkan hasil uji; hasil dari uji yang sudah usang/turun tidak pernah ditulis. */
     private fun publishTestResult(
         job: Int,
-        trace: VelumApi.TraceInfo?,
+        trace: VelumFormat.TraceInfo?,
         error: String?,
         fromButton: Boolean,
         attempt: Int
     ) {
         if (job != testJobId) return // uji ini sudah dibatalkan/diganti uji baru
         val up = VelumTunnel.state == Tunnel.State.UP
-        val active = trace != null && (trace.warp == "on" || trace.warp == "plus")
+        val active = trace != null && VelumFormat.isWarpActive(trace)
         if (!active && error == null && up && attempt + 1 < MAX_TEST_ATTEMPTS) {
             // Bisa jadi permintaannya masih memakai soket dari sebelum tunnel aktif
             // (keep-alive sudah dimatikan, jadi ulangan ini pasti memakai soket baru).
@@ -312,7 +309,7 @@ class MainActivity : AppCompatActivity() {
             if (fromButton) showMessage("")
             return
         }
-        val time = SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date())
+        val time = VelumFormat.formatClock(System.currentTimeMillis())
         infoTest.text = when {
             active && trace != null -> getString(R.string.test_on_dc, trace.colo.ifEmpty { "?" }, time)
             trace != null -> getString(R.string.test_off_time, time)
@@ -509,7 +506,7 @@ class MainActivity : AppCompatActivity() {
                 val rxRate = ((t.rxBytes - lastRxBytes).coerceAtLeast(0) / dtSec).toLong()
                 val txRate = ((t.txBytes - lastTxBytes).coerceAtLeast(0) / dtSec).toLong()
                 lastPollMs = nowMs
-                infoData.text = getString(R.string.data_format, formatBytes(rxRate), formatBytes(txRate))
+                infoData.text = getString(R.string.data_format, VelumFormat.formatBytes(rxRate), VelumFormat.formatBytes(txRate))
                 if (t.rxBytes != lastRxBytes || t.txBytes != lastTxBytes) {
                     lastRxBytes = t.rxBytes
                     lastTxBytes = t.txBytes
@@ -529,26 +526,6 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun formatBytes(bytes: Long): String {
-        if (bytes < 1024) return "$bytes B"
-        val kb = bytes / 1024.0
-        if (kb < 1024) return String.format(Locale.US, "%.1f KB", kb)
-        val mb = kb / 1024.0
-        if (mb < 1024) return String.format(Locale.US, "%.1f MB", mb)
-        return String.format(Locale.US, "%.2f GB", mb / 1024.0)
-    }
-
-    private fun formatDuration(ms: Long): String {
-        val totalSec = ms / 1000
-        val h = totalSec / 3600
-        val m = (totalSec % 3600) / 60
-        val s = totalSec % 60
-        return if (h > 0) {
-            String.format(Locale.US, "%d:%02d:%02d", h, m, s)
-        } else {
-            String.format(Locale.US, "%02d:%02d", m, s)
-        }
-    }
 
     private companion object {
         const val REQ_VPN = 1

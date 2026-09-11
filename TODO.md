@@ -29,3 +29,4 @@
 | 25 | Proba endpoint tercepat saat menyambung | Tinggi | Selesai tervalidasi (CI run 34586619601) |
 | 26 | Fix false negative "Belum lewat Velum" di Uji terakhir: tunggu handshake, keep-alive off, ulang sekali | Tinggi | Selesai tervalidasi (PR #3, CI run 34592495242) |
 | 27 | Optimasi: tiker berhenti di latar belakang, Prefs sekali buka, izin notifikasi hanya bila perlu | Sedang | Selesai tervalidasi (PR #3, CI run 34592495242) |
+| 28 | Pengujian unit JVM (VelumFormat) + job CI pemblokir unitTest | Tinggi | Selesai, menunggu validasi CI |

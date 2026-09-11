@@ -67,4 +67,7 @@ dependencies {
     implementation(libs.androidx.appcompat)
     implementation(libs.wireguard.tunnel)
     implementation(libs.androidx.security.crypto)
+
+    // Pengujian unit murni JVM: logika VelumFormat & keputusan uji (tidak ikut ke APK).
+    testImplementation(libs.junit)
 }

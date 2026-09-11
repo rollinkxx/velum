@@ -45,9 +45,17 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 - Proba endpoint tercepat saat menyambung (`EndpointProbe`): mengukur RTT paralel ke
   endpoint registrasi + kandidat anycast (batas ±6 detik), memakai pemenang selama
   1 jam; selalu fail-safe ke endpoint registrasi.
+- Pengujian unit murni JVM untuk logika yang rawan salah (`VelumFormat`: parse
+  `cdn-cgi/trace`, pemformatan byte/durasi/jam, pemisahan host:port, deteksi IPv4) beserta
+  job CI `unitTest` (`./gradlew testDebugUnitTest`) sebagai **pemblokir** — regresi logika
+  kini tertahan sebelum merge, bukan hanya kegagalan kompilasi.
 
 ### Changed
 - AGENTS.md §3/§5 disinkronkan dengan stack, CI, dan temuan run pertama.
+- Pembantu murni (`formatBytes`, `formatDuration`, parse `cdn-cgi/trace`, `hostPart`,
+  `isIpLiteral`) dipindahkan dari `MainActivity`/`VelumApi`/`EndpointProbe` ke `VelumFormat`
+  agar dapat diuji unit tanpa Android framework; `VelumApi.fetchTrace()` kini mengembalikan
+  `VelumFormat.TraceInfo` dan deteksi WARP memakai `VelumFormat.isWarpActive()`.
 - Tampilan dipoles menjadi tema gelap elegan: latar gradasi charcoal, kartu status rounded
   dengan titik indikator, tombol utama amber ber-ripple + tombol sekunder outline, tipografi
   `sans-serif-light/medium`, status bar selaras tema; warna ikon adaptif disamakan dengan

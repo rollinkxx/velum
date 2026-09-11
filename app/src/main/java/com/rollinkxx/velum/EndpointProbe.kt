@@ -48,9 +48,9 @@ object EndpointProbe {
             val ranked = measure(prefs.endpoint)
             if (ranked.isEmpty()) return // gagal total: jangan sentuh apa pun
             val best = ranked.first()
-            val regHost = prefs.endpoint?.let(::hostPart)
+            val regHost = prefs.endpoint?.let(VelumFormat::hostPart)
             prefs.speedEndpoint =
-                if (best == regHost || !isIpLiteral(best)) null else "$best:$WG_PORT"
+                if (best == regHost || !VelumFormat.isIpLiteral(best)) null else "$best:$WG_PORT"
             prefs.speedEndpointAt = System.currentTimeMillis()
             Log.i(TAG, "endpoint tercepat: ${prefs.effectiveEndpoint} (${ranked.size} terukur)")
         } catch (e: Exception) {
@@ -76,7 +76,7 @@ object EndpointProbe {
     /** Host terurut dari tercepat; kosong bila semua gagal. Blocking ≤ ~6 detik. */
     private fun measure(registered: String?): List<String> {
         val hosts = LinkedHashSet<String>()
-        registered?.let(::hostPart)?.takeIf { it.isNotEmpty() }?.let { hosts.add(it) }
+        registered?.let(VelumFormat::hostPart)?.takeIf { it.isNotEmpty() }?.let { hosts.add(it) }
         hosts.addAll(CANDIDATES)
         if (hosts.isEmpty()) return emptyList()
         val tasks = hosts.map { host -> Callable { host to tcpRttMs(host) } }
@@ -108,12 +108,4 @@ object EndpointProbe {
         }
     }
 
-    /** Memisahkan host dari "host:port" (aman untuk literal IPv6). */
-    private fun hostPart(endpoint: String): String {
-        if (endpoint.startsWith("[")) return endpoint.substringBefore("]").removePrefix("[")
-        return if (endpoint.count { it == ':' } == 1) endpoint.substringBeforeLast(":") else endpoint
-    }
-
-    private fun isIpLiteral(host: String): Boolean =
-        host.all { it.isDigit() || it == '.' } && host.count { it == '.' } == 3
 }

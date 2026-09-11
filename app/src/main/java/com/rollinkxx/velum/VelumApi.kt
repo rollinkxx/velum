@@ -116,12 +116,9 @@ object VelumApi {
         prefs.clear()
     }
 
-    /** Hasil parse baris kunci dari cdn-cgi/trace. */
-    class TraceInfo(val warp: String, val colo: String, val ip: String)
-
     /** Mengambil dan mem-parse cdn-cgi/trace (mengikuti jalur koneksi saat ini). Blocking. */
     @Throws(IOException::class)
-    fun fetchTrace(): TraceInfo {
+    fun fetchTrace(): VelumFormat.TraceInfo {
         val conn = (URL("https://www.cloudflare.com/cdn-cgi/trace").openConnection() as HttpURLConnection)
         try {
             conn.connectTimeout = 8000
@@ -131,17 +128,7 @@ object VelumApi {
             conn.setRequestProperty("Connection", "close")
             conn.useCaches = false
             val text = conn.inputStream.bufferedReader().use { it.readText() }
-            var warp = ""
-            var colo = ""
-            var ip = ""
-            for (line in text.lineSequence()) {
-                when {
-                    line.startsWith("warp=") -> warp = line.removePrefix("warp=")
-                    line.startsWith("colo=") -> colo = line.removePrefix("colo=")
-                    line.startsWith("ip=") -> ip = line.removePrefix("ip=")
-                }
-            }
-            return TraceInfo(warp, colo, ip)
+            return VelumFormat.parseTrace(text)
         } finally {
             conn.disconnect()
         }
