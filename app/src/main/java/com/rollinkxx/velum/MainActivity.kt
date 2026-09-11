@@ -227,6 +227,7 @@ class MainActivity : AppCompatActivity() {
     private fun onReset() {
         if (busy) return
         setBusy(true)
+        prefs.wasUp = false // daftar ulang manual = putus permanen: jangan sambung saat boot
         worker.execute {
             runCatching { VelumTunnel.down(this) }
             VelumApi.unregister(prefs)

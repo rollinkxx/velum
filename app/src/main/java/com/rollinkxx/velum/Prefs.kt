@@ -51,7 +51,12 @@ class Prefs(context: Context) {
         get() = !privateKey.isNullOrEmpty() && !addressV4.isNullOrEmpty() &&
             !peerPublicKey.isNullOrEmpty() && !endpoint.isNullOrEmpty()
 
-    fun clear() = sp.edit().clear().apply()
+    /** Membersihkan data registrasi; memo wasUp dipertahankan (niat sambung boot). */
+    fun clear() {
+        val keepUp = wasUp
+        sp.edit().clear().apply()
+        if (keepUp) wasUp = true
+    }
 
     private companion object {
         const val K_PRIV = "private_key"
