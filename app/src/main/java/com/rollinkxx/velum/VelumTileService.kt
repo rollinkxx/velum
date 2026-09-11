@@ -1,6 +1,5 @@
 package com.rollinkxx.velum
 
-import android.annotation.SuppressLint
 import android.app.PendingIntent
 import android.content.Intent
 import android.os.Build
@@ -75,15 +74,16 @@ class VelumTileService : TileService() {
      * `startActivityAndCollapse(Intent)` usang sejak API 34 dan diganti varian
      * PendingIntent — keduanya dipakai sesuai versi karena minSdk masih 24.
      */
-    @SuppressLint("Deprecated") // varian Intent memang untuk API <34; penggantinya baru ada di API 34
     private fun openApp() {
         val intent = Intent(this, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         if (Build.VERSION.SDK_INT >= 34) {
             val flags = PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
             startActivityAndCollapse(PendingIntent.getActivity(this, 0, intent, flags))
         } else {
-            @Suppress("DEPRECATION")
-            startActivityAndCollapse(intent)
+            // startActivityAndCollapse(Intent) sudah usang sejak API 34 dan penggantinya
+            // baru ada di versi itu. Pakai startActivity biasa: fungsinya sama, hanya
+            // panel cepat yang tidak ikut menutup — urusan kosmetik.
+            startActivity(intent)
         }
     }
 
