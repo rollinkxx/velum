@@ -40,3 +40,5 @@
 | 36 | Anotasi CI: error kompilasi & kegagalan tes terkirim ke GitHub (log tak terbaca dari sandbox) | Tinggi | Selesai tervalidasi (PR #3, CI run 34602359157) |
 | 37 | Seluruh teks UI mengikuti nama aplikasi (tanpa sebutan pihak ketiga) + judul aplikasi elegan di bagian atas | Tinggi | Selesai tervalidasi (PR #3, CI run 34608952744) |
 | 38 | Portabilitas AGENTS.md §1: identitas branch sesi & SHA pangkal jadi temuan runtime (ritual pra-tugas), bukan teks hardcode | Sedang | Selesai (gerbang lokal §3; push `.md` tidak memicu CI) |
+| 39 | Sinkronisasi AGENTS.md §5 dengan keadaan pasca-merge PR #3 (18 berkas Kotlin, CI 4 job, skrip anotasi, Dependabot, run hijau, clone dangkal) | Sedang | Selesai (gerbang lokal §3; push `.md` tidak memicu CI) |
+| 40 | Tinjau 9 PR Dependabot terbuka (#4, #6–#12 hijau; #5 AGP 9.4.0 merah) — keputusan bump wewenang maintainer | Sedang | Menunggu keputusan maintainer |

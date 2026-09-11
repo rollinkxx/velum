@@ -9,6 +9,11 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 - AGENTS.md §1 kini **portabel**: nama branch sesi dan SHA pangkal tidak lagi ditulis di
   dalam aturan, melainkan ditemukan saat runtime lewat ritual pra-tugas 5 langkah; kronologi
   insiden dipindah ke §5. Ditambah larangan menyentuh branch sesi lama & `dependabot/*`.
+- AGENTS.md §5 disinkronkan dengan keadaan repo setelah PR #3 ter-merge: 18 berkas Kotlin
+  (termasuk `VelumController`, `VelumUpstream`, `VelumError`, `VelumRegistration`,
+  `VelumMigration`, `VelumDiagnostics`, `VelumTileService`, `AppExclusionActivity`),
+  CI 4 job (`assembleDebug`, `unitTest`, `lint` advisori, `release`), skrip anotasi,
+  Dependabot, daftar run hijau, ukuran artifact, dan 9 PR Dependabot terbuka.
 - Identitas visual & teks: seluruh teks yang terlihat pengguna kini mengikuti nama
   aplikasi. `notif_connected` dan `test_on` tidak lagi menyebut pihak ketiga, dan
   `desc_footer` menjadi "Hanya tunnel Velum. Tanpa iklan, tanpa pelacakan.".

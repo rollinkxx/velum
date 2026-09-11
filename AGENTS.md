@@ -166,23 +166,34 @@ sebelum push.
 
 ## §5 Fakta Proyek
 
-**Keadaan repo (fakta per 2026-09-11, gabungan audit dua sesi):**
+**Keadaan repo (fakta per 2026-09-12, audit ulang setelah PR #3 ter-merge):**
 - Aplikasi Android ringan fungsi **WARP saja** (tunnel WireGuard ke Cloudflare), tanpa mode
   DNS, tanpa iklan/analitik/akun. UI Bahasa Indonesia.
 - **Stack aktual** (dari `gradle/libs.versions.toml`, satu-satunya sumber versi): Gradle 8.9
   (wrapper ter-commit, termasuk `gradle-wrapper.jar`), AGP 8.7.3, Kotlin 2.0.21, JDK 17,
-  compileSdk/targetSdk 35, minSdk 24. Dependensi runtime hanya `androidx.appcompat`, `com.wireguard.android:tunnel` (GoBackend),
+  compileSdk/targetSdk 35, minSdk 24. Dependensi runtime hanya `androidx.appcompat`,
+  `androidx.activity` (Activity Result API), `com.wireguard.android:tunnel` (GoBackend),
   dan `androidx.security:security-crypto` (Tink, ±1 MB) — tanpa Compose/OkHttp/coroutine demi ukuran
-  APK & RAM kecil. `gradle.properties`: configuration-cache & build-cache aktif,
+  APK & RAM kecil. Khusus pengujian (tidak ikut ke APK): `junit` 4.13.2 dan `org.json:json`
+  (bawaan `android.jar` berupa rintisan di unit test JVM). `gradle.properties`:
+  configuration-cache & build-cache aktif,
   `nonTransitiveRClass`. Resource hanya Bahasa Indonesia (`resourceConfigurations += "in"`).
+  `android.lint`: `textReport = true` + `textOutput` ke `build/reports/lint-results-debug.txt`
+  (laporan HTML tidak terbaca dari sandbox), `abortOnError = true`.
 - **Identitas (ADR 002):** `applicationId` = `com.rollinkxx.velum` (debug: suffix `.debug`),
   package Kotlin `com.rollinkxx.velum`, nama aplikasi **Velum**, versi awal `0.1.0`/code 1.
-- **Struktur modul `app/`** (`app/src/main/java/com/rollinkxx/velum/`):
-  - `MainActivity.kt` — UI satu layar (View XML), satu executor latar; panel info interaktif
-    (durasi/endpoint/hasil uji+DC/laju+deteksi basi), izin notifikasi Android 13+, pintasan pengaturan VPN.
-  - `VelumApi.kt` — registrasi/hapus registrasi ke `api.cloudflareclient.com/v0a2158`
+- **Struktur modul `app/`** (`app/src/main/java/com/rollinkxx/velum/`, 18 berkas Kotlin):
+  - `MainActivity.kt` — **hanya render**: UI satu layar (View XML), panel info interaktif
+    (durasi/endpoint/hasil uji+DC/laju+deteksi basi), izin notifikasi Android 13+ (diminta
+    hanya bila perlu, lewat Activity Result API), pintasan pengaturan VPN/Always-on,
+    konfirmasi Daftar ulang, salin diagnostik, judul bergradien (`polishAppTitle()`).
+  - `VelumController.kt` — **orkestrasi** koneksi & uji, terpisah dari Activity agar tidak
+    ikut mati saat Activity dibuat ulang (rotasi/proses lahir ulang).
+  - `VelumApi.kt` — registrasi/hapus registrasi ke API upstream
     (flag `warp_enabled: true`), auto-heal akun lama via GET+daftar ulang (fail-safe),
-    parse `cdn-cgi/trace` (warp/colo/ip). HttpURLConnection + org.json.
+    retry registrasi sekali, parse `cdn-cgi/trace` (warp/colo/ip). HttpURLConnection + org.json.
+  - `VelumUpstream.kt` — konstanta upstream terpusat (`BASE` `v0a2158`, `CLIENT_VERSION`,
+    User-Agent, rentang anycast) + `isClientRejected` — satu tempat bila upstream berubah.
   - `VelumTunnel.kt` — singleton `Tunnel` untuk `GoBackend` (MTU 1280, DNS 1.1.1.1/1.0.0.1,
     AllowedIPs 0.0.0.0/0 + ::/0, keepalive 25) + `traffic()` (rx/tx/handshake), endpoint efektif hasil proba.
   - `Prefs.kt` — penyimpanan terenkripsi (`EncryptedSharedPreferences`, migrasi sekali
@@ -190,32 +201,69 @@ sebelum push.
   - `BootReceiver.kt` — sambung ulang setelah boot bila terakhir UP & izin VPN berlaku.
   - `ReconnectMonitor.kt` — pantulan tunnel saat jaringan berganti (backoff+debounce),
     lingkup aplikasi; start/stop dari UI & boot, pulihkan sesi proses lahir ulang.
-  - `EndpointProbe.kt` — proba RTT paralel kandidat anycast saat connect (±6 dtk,
-    cache 1 jam, fail-safe ke endpoint registrasi).
+  - `EndpointProbe.kt` — proba RTT paralel kandidat anycast saat connect & saat pantulan
+    (±6 dtk, cache 1 jam, fail-safe ke endpoint registrasi).
   - `StatusNotifier.kt` — notifikasi persisten status (kanal `status`, IMPORTANCE_LOW).
+  - `VelumTileService.kt` — ubin pengaturan cepat (sambung/putus tanpa membuka aplikasi;
+    varian `startActivityAndCollapse(PendingIntent)` di API 34+ agar bebas API usang).
+  - `AppExclusionActivity.kt` — split tunneling: pilih aplikasi yang **dikecualikan** dari
+    tunnel; daftar dibatasi `<queries>` peluncur (tanpa `QUERY_ALL_PACKAGES`).
+  - **Berkas murni (tanpa Android framework) — semuanya teruji unit JVM:**
+    `VelumFormat.kt` (parse trace, pemformatan, pemilihan endpoint),
+    `VelumTestDecision.kt` (RETRY/PUBLISH/DROP — mencegah false negative "Belum lewat Velum"),
+    `VelumError.kt` (klasifikasi NETWORK vs penolakan klien → pesan spesifik),
+    `VelumRegistration.kt` (validasi respons `POST /reg`, port WG 2408),
+    `VelumMigration.kt` (rencana migrasi data era polos, konservatif),
+    `VelumDiagnostics.kt` (ringkasan gangguan **ramah privasi**: tanpa kunci/IP/token).
+    Uji padanannya di `app/src/test/java/com/rollinkxx/velum/*Test.kt` (6 berkas).
   - `AndroidManifest.xml` — VpnService milik library (`GoBackend$VpnService`) di-merge
     (`tools:node="merge"`) untuk menambah `foregroundServiceType="specialUse"` + property
-    subtype `vpn`; receiver boot exported; izin RECEIVE_BOOT_COMPLETED & POST_NOTIFICATIONS.
+    subtype `vpn`; receiver boot exported; service ubin QS (`BIND_QUICK_SETTINGS_TILE`);
+    `AppExclusionActivity` (not exported); blok `<queries>` peluncur; izin
+    RECEIVE_BOOT_COMPLETED & POST_NOTIFICATIONS.
   - Tema gelap murni resource (drawable shape/ripple/selector; tanpa font eksternal);
     ikon adaptif vektor + PNG polos untuk API 24–25.
   - Rilis: `signingConfigs.release` membaca env (`KEYSTORE_FILE/PASSWORD/ALIAS/KEY_PASSWORD`);
     minify+R8 aktif; `proguard-rules.pro` keep `com.wireguard.**`.
-- **CI (`.github/workflows/build.yml`):** trigger `push` semua branch (paths-ignore `**.md`,
-  `docs/**`) + `workflow_dispatch`; `concurrency: cancel-in-progress` per-ref.
-  Job `assembleDebug` (pemblokir): checkout → setup-java 17 temurin (**v5**) →
-  android-actions/setup-android@v3 → gradle/actions/setup-gradle@v4 →
-  `./gradlew --no-daemon --stacktrace assembleDebug` → step summary → artifact `app-debug`.
-  Step advisory: "Ringkasan (fallback log)" (`if: always()`), tidak memblokir.
-  Job opsional `release` (needs: build; `if: vars.ENABLE_RELEASE_SIGNING == 'true'`):
-  decode keystore dari Secrets → `assembleRelease` → artifact `app-release`.
-  Yang harus diset maintainer: Secrets `SIGNING_KEYSTORE_BASE64`, `KEYSTORE_PASSWORD`,
-  `KEY_ALIAS`, `KEY_PASSWORD` + variable `ENABLE_RELEASE_SIGNING=true`.
-  Run hijau: 34562586434 (3m38s, `26104f6`) & 34565410965 (3m27s, `9f0adb9`). Sesi ini: 34580968135 (`5781180`, rename) & 34581202095 (2m26s, `a813b2b`, fitur ketahanan) & 34586619601 (2m30s, `7e6b9b3`, optimasi kecepatan).
-  Durasi normal ≈ 3–4 menit (cache dingin). Artifact debug ≈ 9,1 MB (4 ABI native WireGuard,
-  kini ≈ 9,6 MB setelah security-crypto/Tink (+≈0,8 MB dari batch 1);
-  belum minify; release memakai minify+shrink).
-- Remote: `https://github.com/rollinkxx/velum.git` (di-rename dari `warp` 2026-09-11), default branch `main`.
-- Sandbox: tanpa JDK/Gradle/Android SDK; `gh` terautentikasi.
+- **CI (`.github/workflows/build.yml`) — 4 job:** trigger `push` semua branch (paths-ignore
+  `**.md`, `docs/**`) + `workflow_dispatch`; `concurrency: cancel-in-progress` per-ref;
+  `permissions: contents: read`. Semua job memakai setup-java **v5** (17 temurin) →
+  android-actions/setup-android@v3 → gradle/actions/setup-gradle@v4.
+  1. `assembleDebug` (**pemblokir**): `./gradlew --no-daemon --stacktrace assembleDebug`
+     dengan `set -o pipefail` + `tee` → `anotasikan-log.py` (`if: always()`) → step summary
+     → artifact `app-debug`.
+  2. `unitTest` (**pemblokir**): `testDebugUnitTest` → `anotasikan-tes.py` +
+     `anotasikan-log.py` (`if: always()`) → artifact `unit-test-report`.
+  3. `lint (advisori)`: `lintDebug` dengan `continue-on-error: true`; temuan dicetak ke log
+     **dan** `$GITHUB_STEP_SUMMARY` → artifact `lint-report`. Tidak memblokir, tetap dijaga hijau.
+  4. `release` (opsional; `needs: [build, unitTest]`, `if: vars.ENABLE_RELEASE_SIGNING == 'true'`):
+     decode keystore dari Secrets → `assembleRelease` → artifact `app-release`.
+     Yang harus diset maintainer: Secrets `SIGNING_KEYSTORE_BASE64`, `KEYSTORE_PASSWORD`,
+     `KEY_ALIAS`, `KEY_PASSWORD` + variable `ENABLE_RELEASE_SIGNING=true`.
+  - Skrip anotasi di `.github/scripts/`: `anotasikan-log.py` (baris `e: Berkas.kt: (baris,
+    kolom): pesan` → anotasi error berlokasi) dan `anotasikan-tes.py` (JUnit XML → anotasi
+    per failure/error). Ada karena log CI tidak terbaca dari sandbox (lihat catatan teknis).
+  - `.github/dependabot.yml`: ekosistem `gradle` (mingguan) & `github-actions` (bulanan),
+    maks. 5 PR, prefix commit `build`/`ci`. Dependabot hanya membuka PR — **manusia yang
+    memutuskan**, dan `gradle/libs.versions.toml` tetap satu-satunya sumber versi.
+  - **Run hijau bersejarah:** 34562586434 (`26104f6`) · 34565410965 (`9f0adb9`) ·
+    34580968135 (`5781180`, rename) · 34581202095 (`a813b2b`) · 34586619601 (`7e6b9b3`) ·
+    34592495242 (`9864b9f`) · 34594076246 (`dcbe0ce`, unitTest pertama) ·
+    34597848316 (`7c441f8`) · 34602359157 (`c31710e`, anotasi CI) ·
+    34608952744 (`d7469c3`, identitas UI — 2m39s, terakhir sebelum PR #3 di-merge).
+  - Durasi normal ≈ 2,5–4 menit. Artifact `app-debug` ≈ **10,07 MB** (4 ABI native WireGuard,
+    belum minify; release memakai minify+shrink), `unit-test-report` ≈ 11 KB,
+    `lint-report` ≈ 18 KB.
+- Remote: `https://github.com/rollinkxx/velum.git` (di-rename dari `warp` 2026-09-11),
+  default branch `main`. PR #1–#3 sudah **merged**; `main` = hasil merge PR #3.
+- **PR Dependabot terbuka (per 2026-09-12), belum ditinjau maintainer:** #4 wireguard-tunnel
+  1.0.20260102, #5 AGP 9.4.0 (**CI merah** — satu-satunya PR yang gagal: ketiga job gugur,
+  lonjakan mayor), #6 gradle/actions v6, #7 actions/checkout v7, #8 gradle-wrapper 9.7.1,
+  #9 org.json 20260814, #10 setup-android v4, #11 upload-artifact v7, #12 appcompat 1.8.0.
+  Semua selain #5 hijau. Keputusan bump = wewenang maintainer (§4); agen tidak menyentuh
+  branch `dependabot/*` (§1).
+- Sandbox: tanpa JDK/Gradle/Android SDK; `gh` terautentikasi; clone **dangkal**
+  (`git log` hanya memuat 1 commit) dengan refspec fetch terbatas.
 - Dokumen: `README.md` (pointer), `CONTRIBUTING.md` (pointer ke dokumen ini), `CHANGELOG.md`,
   `TODO.md`, `docs/adr/` (001 superseded, 002 identitas Velum) + indeks,
   `docs/rilis-github.md` (runbook APK rilis GitHub).
@@ -282,6 +330,23 @@ sebelum push.
   `gh pr view <n> --json title,body`.
 - (2026-09-11) Lampiran gambar yang dikirim pengguna TIDAK bisa dibaca dari sandbox:
   path `/home/user/uploads/` tidak ada. Minta pengguna menceritakan isinya.
+- (2026-09-12) **Clone sandbox itu dangkal** (`git rev-parse --is-shallow-repository` →
+  `true`): `git log` hanya memperlihatkan **1 commit** dan `git branch -r` hanya `origin/main`.
+  Jangan menyimpulkan "riwayat hilang". Riwayat penuh dibaca lewat
+  `gh api "repos/rollinkxx/velum/commits?sha=<branch-atau-sha>"`, isi commit lewat
+  `gh api repos/rollinkxx/velum/commits/<sha> --jq '.files[].filename'`.
+- (2026-09-11, run merah 34601913928 — commit `901e090` `docs: sinkronisasi AGENTS.md`)
+  **Satu-satunya run merah yang bukan Dependabot.** Job `unitTest` gugur di langkah
+  "Pengujian unit" sementara `assembleDebug` & `lint` hijau; akar masalah: `org.json` di
+  `android.jar` berupa rintisan (`Stub!`) sehingga parse respons registrasi gagal saat unit
+  test JVM. Diperbaiki di `c31710e` dengan `testImplementation(libs.json)`. Pelajaran ganda:
+  (a) commit dokumen pun bisa memicu CI bila ter-push bersamaan dengan perubahan kode;
+  (b) anotasi check-run hanya memuat "Process completed with exit code 1" — karena itulah
+  `anotasikan-tes.py` dibuat.
+- (2026-09-12) Anotasi advisory tetap muncul di setiap run: **Node.js 20 deprecated** —
+  `actions/checkout@v4`, `actions/upload-artifact@v4`, `android-actions/setup-android@v3`,
+  `gradle/actions/setup-gradle@v4` dipaksa berjalan di Node 24. Non-pemblokir; menunggu
+  keputusan maintainer atas PR Dependabot #6/#7/#10/#11 (TODO No. 23).
 - (2026-09-11) **Jebakan deteksi WARP**: `Tunnel.State.UP` dari `GoBackend` hanya berarti
   antarmuka TUN selesai dibuat, BUKAN handshake selesai; dan `HttpURLConnection` memakai
   ulang soket keep-alive yang dibuat sebelum VPN aktif (Android tidak memindahkan soket
