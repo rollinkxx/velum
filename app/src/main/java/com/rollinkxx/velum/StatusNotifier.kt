@@ -47,6 +47,7 @@ object StatusNotifier {
             .setContentText(detail)
             .setContentIntent(tap)
             .setOngoing(true)
+            .setOnlyAlertOnce(true) // pembaruan teks tidak perlu mengganggu lagi
             .build()
         try {
             mgr.notify(NOTIF_ID, notif)

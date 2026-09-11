@@ -50,6 +50,9 @@ class MainActivity : AppCompatActivity() {
     @Volatile
     private var busy = false
 
+    /** Apakah UI sedang terlihat; tiker durasi/trafik hanya hidup bila true (hemat baterai). */
+    private var resumed = false
+
     private var prevState: Tunnel.State = Tunnel.State.DOWN
     private var connectedSinceMs = 0L
     private var testedSinceUp = false
@@ -60,6 +63,8 @@ class MainActivity : AppCompatActivity() {
     private var staleTicks = 0
     private var staleWarned = false
     private var lastPollMs = 0L
+    /** Polling pertama setelah UP belum punya dasar pembanding → jangan dihitung sebagai laju. */
+    private var statsBaseline = false
 
     /** Penanda uji berjalan: hasil uji lama dibuang bila nilainya sudah berganti. */
     private var testJobId = 0
@@ -77,7 +82,7 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
-        prefs = Prefs(this)
+        prefs = Prefs.of(this) // satu instance per proses: membuka prefs terenkripsi itu mahal
 
         statusView = findViewById(R.id.status)
         statusDot = findViewById(R.id.statusDot)
@@ -104,7 +109,11 @@ class MainActivity : AppCompatActivity() {
 
     override fun onStart() {
         super.onStart()
+        resumed = true
         render(VelumTunnel.state)
+        // Pulihkan tiker & denyut bila tunnel masih UP dari sesi sebelumnya.
+        startTicker()
+        if (VelumTunnel.state == Tunnel.State.UP) startPulse()
         worker.execute {
             val s = runCatching { VelumTunnel.refreshState(this) }.getOrDefault(VelumTunnel.state)
             main.post {
@@ -112,6 +121,19 @@ class MainActivity : AppCompatActivity() {
                 resumeIfNeeded()
             }
         }
+    }
+
+    /**
+     * Tiker durasi + pemantau trafik dimatikan selama UI tak terlihat. Proses aplikasi
+     * ditahan hidup oleh VpnService library selama tunnel UP, jadi tanpa ini tiker 1 Hz
+     * akan terus membangunkan CPU di latar belakang. Durasi tetap benar saat tiker
+     * dinyalakan lagi karena dihitung mundur dari [connectedSinceMs].
+     */
+    override fun onStop() {
+        resumed = false
+        stopTicker()
+        stopPulse() // animasi per-frame tak perlu berjalan saat UI tak terlihat
+        super.onStop()
     }
 
     /**
@@ -130,7 +152,7 @@ class MainActivity : AppCompatActivity() {
     override fun onDestroy() {
         VelumTunnel.listener = null
         cancelPendingTest()
-        main.removeCallbacks(ticker)
+        stopTicker()
         pulse?.cancel()
         worker.shutdownNow()
         testWorker.shutdownNow()
@@ -314,9 +336,15 @@ class MainActivity : AppCompatActivity() {
         pendingTest = null
     }
 
-    /** Android 13+: minta izin notifikasi sekali; versi lama auto-granted. */
+    /**
+     * Android 13+: minta izin notifikasi hanya bila belum diberikan; versi lama
+     * auto-granted. Menghindari permintaan berulang setiap kali layar dibuat.
+     */
     private fun requestNotificationPermissionIfNeeded() {
-        if (Build.VERSION.SDK_INT >= 33) {
+        if (Build.VERSION.SDK_INT < 33) return
+        val granted = checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) ==
+            android.content.pm.PackageManager.PERMISSION_GRANTED
+        if (!granted) {
             @Suppress("DEPRECATION")
             requestPermissions(arrayOf(android.Manifest.permission.POST_NOTIFICATIONS), REQ_NOTIF)
         }
@@ -379,11 +407,12 @@ class MainActivity : AppCompatActivity() {
         lastRxBytes = 0L
         lastTxBytes = 0L
         lastPollMs = SystemClock.elapsedRealtime()
+        tickCount = 0
+        statsBaseline = true // polling pertama hanya jadi dasar hitungan laju
         staleTicks = 0
         staleWarned = false
         infoData.setText(R.string.value_none)
-        main.removeCallbacks(ticker)
-        main.post(ticker)
+        startTicker()
         startPulse()
         refreshStaticInfo()
         StatusNotifier.show(this, getString(R.string.notif_connected))
@@ -396,11 +425,22 @@ class MainActivity : AppCompatActivity() {
     private fun onDisconnectedVisual() {
         testedSinceUp = false
         cancelPendingTest()
-        main.removeCallbacks(ticker)
+        stopTicker()
         stopPulse()
         StatusNotifier.hide(this)
         infoDuration.setText(R.string.value_none)
         infoData.setText(R.string.value_none)
+    }
+
+    /** Menjalankan tiker hanya bila UI terlihat dan tunnel UP; aman dipanggil berulang. */
+    private fun startTicker() {
+        if (!resumed || VelumTunnel.state != Tunnel.State.UP) return
+        main.removeCallbacks(ticker)
+        main.post(ticker)
+    }
+
+    private fun stopTicker() {
+        main.removeCallbacks(ticker)
     }
 
     private fun startPulse() {
@@ -421,11 +461,13 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun render(state: Tunnel.State) {
-        if (busy) return
+        // Efek samping (tiker, notifikasi, reset uji) selalu dijalankan walau sedang sibuk,
+        // supaya tak ada status yang tertinggal bila tunnel berubah di tengah aksi.
         if (state != prevState) {
             prevState = state
             if (state == Tunnel.State.UP) onConnectedVisual() else onDisconnectedVisual()
         }
+        if (busy) return // jangan timpa teks status sementara: "Menyambung…", "Memutus…", dst.
         when (state) {
             Tunnel.State.UP -> {
                 statusView.setText(R.string.status_connected)
@@ -453,6 +495,16 @@ class MainActivity : AppCompatActivity() {
                     return@post
                 }
                 val nowMs = SystemClock.elapsedRealtime()
+                if (statsBaseline) {
+                    // Sampel pertama: hitungan laju belum bermakna (selisihnya bisa
+                    // memakai statistik sisa sesi sebelumnya) → jadikan dasar saja.
+                    statsBaseline = false
+                    lastRxBytes = t.rxBytes
+                    lastTxBytes = t.txBytes
+                    lastPollMs = nowMs
+                    infoData.setText(R.string.value_none)
+                    return@post
+                }
                 val dtSec = ((nowMs - lastPollMs).coerceAtLeast(1)) / 1000.0
                 val rxRate = ((t.rxBytes - lastRxBytes).coerceAtLeast(0) / dtSec).toLong()
                 val txRate = ((t.txBytes - lastTxBytes).coerceAtLeast(0) / dtSec).toLong()

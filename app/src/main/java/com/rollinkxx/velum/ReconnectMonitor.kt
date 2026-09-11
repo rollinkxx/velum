@@ -75,7 +75,7 @@ object ReconnectMonitor {
         bouncing = true
         worker.execute {
             try {
-                val prefs = Prefs(app)
+                val prefs = Prefs.of(app)
                 if (!prefs.wasUp || !prefs.isRegistered) return@execute
                 if (VelumTunnel.state != Tunnel.State.UP) {
                     tryUpOnce(app, prefs)
@@ -91,7 +91,7 @@ object ReconnectMonitor {
 
     /** Menyalakan tunnel yang mati padahal diniatkan UP (mis. proses lahir ulang). */
     private fun tryUpOnce(app: Context, prefs: Prefs) {
-        if (!Prefs(app).wasUp) return // pengguna memutus di tengah jalan
+        if (!Prefs.of(app).wasUp) return // pengguna memutus di tengah jalan
         try {
             VelumTunnel.refreshState(app)
             if (VelumTunnel.state == Tunnel.State.UP) return
@@ -112,7 +112,7 @@ object ReconnectMonitor {
             } catch (_: InterruptedException) {
                 return
             }
-            if (!Prefs(app).wasUp) return // pengguna memutus di tengah pantulan
+            if (!Prefs.of(app).wasUp) return // pengguna memutus di tengah pantulan
             try {
                 VelumTunnel.refreshState(app)
                 if (VelumTunnel.state == Tunnel.State.UP) return

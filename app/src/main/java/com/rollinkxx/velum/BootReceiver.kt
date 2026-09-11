@@ -17,7 +17,7 @@ class BootReceiver : BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.action != Intent.ACTION_BOOT_COMPLETED) return
-        val prefs = Prefs(context)
+        val prefs = Prefs.of(context)
         if (!prefs.isRegistered || !prefs.wasUp) return
         if (VpnService.prepare(context) != null) {
             Log.w(TAG, "boot: persetujuan VPN tidak ada, sambung ulang dibatalkan")

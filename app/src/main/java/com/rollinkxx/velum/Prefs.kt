@@ -5,6 +5,7 @@ import android.content.SharedPreferences
 import android.util.Log
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
+import java.io.File
 
 /**
  * Penyimpanan data registrasi. Terenkripsi (AndroidX Security + Tink) dengan
@@ -77,7 +78,20 @@ class Prefs(context: Context) {
         if (keepUp) wasUp = true
     }
 
-    private companion object {
+    companion object {
+        @Volatile
+        private var instance: Prefs? = null
+
+        /**
+         * Satu instance per proses. Membuka prefs terenkripsi itu mahal (baca + dekripsi
+         * seluruh nilai untuk pengecekan migrasi), sehingga dipakai bersama oleh UI,
+         * [ReconnectMonitor], dan [BootReceiver].
+         */
+        fun of(context: Context): Prefs =
+            instance ?: synchronized(this) {
+                instance ?: Prefs(context.applicationContext).also { instance = it }
+            }
+
         const val TAG = "Velum"
         const val FILE = "velum"
         const val LEGACY_FILE = "warp"
@@ -114,8 +128,18 @@ class Prefs(context: Context) {
             return encrypted
         }
 
+        /** Keberadaan berkas era lama, tanpa membuka/dekripsi isinya. */
+        private fun legacyFileExists(ctx: Context): Boolean = try {
+            File(File(ctx.applicationInfo.dataDir, "shared_prefs"), "$LEGACY_FILE.xml").exists()
+        } catch (_: Exception) {
+            false
+        }
+
         /** Menyalin sekali data era polos (file "warp") ke penyimpanan terenkripsi. */
         private fun migrateLegacy(ctx: Context, dst: SharedPreferences) {
+            // Cek murah dulu: bila berkas era lama tak pernah ada, tak ada yang dimigrasi
+            // dan kita terhindar dari pembacaan + dekripsi seluruh nilai (`dst.all`).
+            if (!legacyFileExists(ctx)) return
             if (dst.all.isNotEmpty()) return
             val legacy = ctx.getSharedPreferences(LEGACY_FILE, Context.MODE_PRIVATE)
             if (legacy.all.isEmpty()) return

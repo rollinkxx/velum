@@ -53,6 +53,21 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
   `sans-serif-light/medium`, status bar selaras tema; warna ikon adaptif disamakan dengan
   aksen. Seluruhnya murni resource XML bawaan — tanpa dependensi/font eksternal, tanpa
   memengaruhi performa maupun ukuran APK secara berarti.
+- Optimasi hemat daya & startup (tanpa mengubah perilaku yang terlihat, kecuali laju trafik
+  yang kini baru tampil pada sampel kedua):
+  - Tiker durasi 1 Hz, pemantau trafik 5 detik, dan animasi denyut titik status kini
+    **berhenti saat UI tak terlihat**. Sebelumnya ketiganya terus berjalan di latar
+    belakang karena proses ditahan hidup oleh VpnService selama tunnel UP.
+  - `Prefs` dibuka sekali per proses (`Prefs.of()`) dan pengecekan migrasi data era lama
+    memakai cek keberadaan berkas, bukan membaca + mendekripsi seluruh nilai. Mengurangi
+    kerja I/O di main thread saat aplikasi dibuka dan saat pemantulan tunnel.
+  - Izin `POST_NOTIFICATIONS` hanya diminta bila belum diberikan.
+  - `EndpointProbe` memakai pool thread daemon bersama (menganggur → mati sendiri)
+    daripada membuat dan membuang sampai 8 thread setiap kali menyambung.
+  - Uji trace berjalan di executor sendiri agar tidak menahan Sambungkan/Putuskan.
+  - Efek samping status (tiker, notifikasi, pembatalan uji) kini tetap dijalankan saat
+    ada aksi berlangsung, sehingga tak ada status yang tertinggal bila tunnel berubah
+    di tengah aksi.
 - Identitas aplikasi diganti dari WARP Lite menjadi **Velum**: `applicationId`/
   namespace/package `com.rollinkxx.velum`, nama tampil, tema, string status
   ("Velum aktif…"), nama sesi VPN, file preferensi, dan class internal (`VelumApi`,
