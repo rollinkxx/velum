@@ -61,6 +61,31 @@ object VelumTunnel : Tunnel {
         backend(context).setState(this, Tunnel.State.DOWN, null)
     }
 
+    /** Hasil baca statistik transfer dari backend; null bila gagal. */
+    class TrafficStats(val rxBytes: Long, val txBytes: Long, val latestHandshakeMs: Long)
+
+    /**
+     * Membaca statistik transfer (jumlah semua peer). Blocking ringan;
+     * null bila backend gagal. Panggil dari thread latar.
+     */
+    fun traffic(context: Context): TrafficStats? {
+        return try {
+            val stats = backend(context).getStatistics(this)
+            var rx = 0L
+            var tx = 0L
+            var hs = 0L
+            for (key in stats.peers()) {
+                val p = stats.peer(key) ?: continue
+                rx += p.rxBytes
+                tx += p.txBytes
+                if (p.latestHandshakeEpochMillis > hs) hs = p.latestHandshakeEpochMillis
+            }
+            TrafficStats(rx, tx, hs)
+        } catch (_: Exception) {
+            null
+        }
+    }
+
     private fun buildConfig(prefs: Prefs): Config {
         val addresses = buildString {
             append(prefs.addressV4).append("/32")

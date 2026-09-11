@@ -23,7 +23,7 @@ import java.util.concurrent.Executors
 
 /**
  * Satu layar: status + tombol Sambungkan/Putuskan + Uji koneksi + panel info interaktif
- * (durasi, endpoint, hasil uji terakhir). Pekerjaan jaringan/tunnel berjalan di satu
+ * (durasi, endpoint, hasil uji terakhir, trafik data). Pekerjaan jaringan/tunnel berjalan di satu
  * thread latar tunggal (tanpa coroutine library) agar footprint tetap kecil; tiker durasi
  * & animasi denyut hanya hidup selama tunnel UP.
  */
@@ -40,6 +40,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var infoDuration: TextView
     private lateinit var infoEndpoint: TextView
     private lateinit var infoTest: TextView
+    private lateinit var infoData: TextView
 
     private val main = Handler(Looper.getMainLooper())
     private val worker: ExecutorService = Executors.newSingleThreadExecutor()
@@ -51,10 +52,17 @@ class MainActivity : AppCompatActivity() {
     private var connectedSinceMs = 0L
     private var testedSinceUp = false
     private var pulse: ValueAnimator? = null
+    private var tickCount = 0
+    private var lastRxBytes = -1L
+    private var lastTxBytes = -1L
+    private var staleTicks = 0
+    private var staleWarned = false
 
     private val ticker = object : Runnable {
         override fun run() {
             infoDuration.text = formatDuration(SystemClock.elapsedRealtime() - connectedSinceMs)
+            tickCount++
+            if (tickCount % 5 == 0) pollStats()
             main.postDelayed(this, 1000)
         }
     }
@@ -74,6 +82,7 @@ class MainActivity : AppCompatActivity() {
         infoDuration = findViewById(R.id.infoDuration)
         infoEndpoint = findViewById(R.id.infoEndpoint)
         infoTest = findViewById(R.id.infoTest)
+        infoData = findViewById(R.id.infoData)
 
         toggleButton.setOnClickListener { onToggle() }
         testButton.setOnClickListener { onTest() }
@@ -286,6 +295,11 @@ class MainActivity : AppCompatActivity() {
 
     private fun onConnectedVisual() {
         connectedSinceMs = SystemClock.elapsedRealtime()
+        lastRxBytes = -1L
+        lastTxBytes = -1L
+        staleTicks = 0
+        staleWarned = false
+        infoData.setText(R.string.value_none)
         main.removeCallbacks(ticker)
         main.post(ticker)
         startPulse()
@@ -303,6 +317,7 @@ class MainActivity : AppCompatActivity() {
         stopPulse()
         StatusNotifier.hide(this)
         infoDuration.setText(R.string.value_none)
+        infoData.setText(R.string.value_none)
     }
 
     private fun startPulse() {
@@ -342,6 +357,45 @@ class MainActivity : AppCompatActivity() {
                 toggleButton.setText(R.string.btn_connect)
             }
         }
+    }
+
+    /** Membaca statistik trafik tiap 5 detik selama UP; mendeteksi tunnel basi. */
+    private fun pollStats() {
+        worker.execute {
+            val t = VelumTunnel.traffic(this)
+            main.post {
+                if (VelumTunnel.state != Tunnel.State.UP) return@post
+                if (t == null) {
+                    infoData.setText(R.string.value_none)
+                    return@post
+                }
+                infoData.text = getString(R.string.data_format, formatBytes(t.rxBytes), formatBytes(t.txBytes))
+                if (t.rxBytes != lastRxBytes || t.txBytes != lastTxBytes) {
+                    lastRxBytes = t.rxBytes
+                    lastTxBytes = t.txBytes
+                    staleTicks = 0
+                    staleWarned = false
+                    return@post
+                }
+                staleTicks++
+                val hsAge = System.currentTimeMillis() - t.latestHandshakeMs
+                if (!staleWarned && staleTicks >= 6 &&
+                    (t.latestHandshakeMs == 0L || hsAge > 180_000)
+                ) {
+                    staleWarned = true
+                    showMessage(getString(R.string.stale_warn))
+                }
+            }
+        }
+    }
+
+    private fun formatBytes(bytes: Long): String {
+        if (bytes < 1024) return "$bytes B"
+        val kb = bytes / 1024.0
+        if (kb < 1024) return String.format(Locale.US, "%.1f KB", kb)
+        val mb = kb / 1024.0
+        if (mb < 1024) return String.format(Locale.US, "%.1f MB", mb)
+        return String.format(Locale.US, "%.2f GB", mb / 1024.0)
     }
 
     private fun formatDuration(ms: Long): String {
