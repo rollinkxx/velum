@@ -38,4 +38,4 @@
 | 34 | Fix lint: startActivityAndCollapse usang (varian PendingIntent di API 34+) + laporan teks lint | Rendah | Selesai tervalidasi (PR #3, CI run 34597848316) |
 | 35 | Validasi respons registrasi (VelumRegistration) + rencana migrasi (VelumMigration) teruji unit | Tinggi | Selesai tervalidasi (PR #3, CI run 34602359157) |
 | 36 | Anotasi CI: error kompilasi & kegagalan tes terkirim ke GitHub (log tak terbaca dari sandbox) | Tinggi | Selesai tervalidasi (PR #3, CI run 34602359157) |
-| 37 | Seluruh teks UI mengikuti nama aplikasi (tanpa sebutan pihak ketiga) + judul aplikasi elegan di bagian atas | Tinggi | Selesai, menunggu validasi CI |
+| 37 | Seluruh teks UI mengikuti nama aplikasi (tanpa sebutan pihak ketiga) + judul aplikasi elegan di bagian atas | Tinggi | Selesai tervalidasi (PR #3, CI run 34608952744) |
