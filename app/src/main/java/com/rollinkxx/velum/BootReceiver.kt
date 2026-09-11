@@ -30,6 +30,8 @@ class BootReceiver : BroadcastReceiver() {
             } catch (e: Exception) {
                 Log.w(TAG, "boot: sambung ulang gagal", e)
             } finally {
+                // Jaga sesi: bila boot tanpa jaringan, callback Available memulihkan.
+                ReconnectMonitor.ensure(context)
                 pending.finish()
             }
         }.start()

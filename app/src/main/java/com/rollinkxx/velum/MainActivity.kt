@@ -91,7 +91,23 @@ class MainActivity : AppCompatActivity() {
         render(VelumTunnel.state)
         worker.execute {
             val s = runCatching { VelumTunnel.refreshState(this) }.getOrDefault(VelumTunnel.state)
-            main.post { render(s) }
+            main.post {
+                render(s)
+                resumeIfNeeded()
+            }
+        }
+    }
+
+    /**
+     * Memulihkan sesi bila proses lahir ulang: diniatkan UP tapi tunnel DOWN dan
+     * persetujuan VPN masih berlaku → sambung otomatis; monitor selalu dipastikan
+     * aktif selama diniatkan UP.
+     */
+    private fun resumeIfNeeded() {
+        if (!prefs.wasUp || !prefs.isRegistered) return
+        ReconnectMonitor.ensure(this)
+        if (!busy && VelumTunnel.state != Tunnel.State.UP && VpnService.prepare(this) == null) {
+            connect()
         }
     }
 
@@ -155,6 +171,7 @@ class MainActivity : AppCompatActivity() {
                 main.post { statusView.setText(R.string.status_connecting) }
                 VelumTunnel.up(this, prefs)
                 prefs.wasUp = true // memo untuk sambung ulang saat boot
+                ReconnectMonitor.ensure(this)
                 main.post { setBusy(false); render(VelumTunnel.state) }
             } catch (e: Exception) {
                 fail(getString(R.string.err_connect, e.message ?: e.javaClass.simpleName))
@@ -166,6 +183,7 @@ class MainActivity : AppCompatActivity() {
         setBusy(true)
         statusView.setText(R.string.status_disconnecting)
         prefs.wasUp = false // putus manual: jangan sambung lagi saat boot
+        ReconnectMonitor.stop(this)
         worker.execute {
             runCatching { VelumTunnel.down(this) }
             main.post { setBusy(false); render(VelumTunnel.state) }
@@ -228,6 +246,7 @@ class MainActivity : AppCompatActivity() {
         if (busy) return
         setBusy(true)
         prefs.wasUp = false // daftar ulang manual = putus permanen: jangan sambung saat boot
+        ReconnectMonitor.stop(this)
         worker.execute {
             runCatching { VelumTunnel.down(this) }
             VelumApi.unregister(prefs)
