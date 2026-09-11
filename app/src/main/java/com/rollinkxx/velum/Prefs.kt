@@ -1,5 +1,6 @@
 package com.rollinkxx.velum
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.content.SharedPreferences
 import android.util.Log
@@ -141,7 +142,12 @@ class Prefs(context: Context) {
             false
         }
 
-        /** Menyalin sekali data era polos (file "warp") ke penyimpanan terenkripsi. */
+        /**
+         * Menyalin sekali data era polos (file "warp") ke penyimpanan terenkripsi.
+         * `commit()` dipakai sengaja: kita harus tahu pasti data sudah menetap sebelum
+         * berkas lama dikosongkan.
+         */
+        @SuppressLint("ApplySharedPref")
         private fun migrateLegacy(ctx: Context, dst: SharedPreferences) {
             // Cek murah dulu: bila berkas era lama tak pernah ada, tak ada yang dimigrasi
             // dan kita terhindar dari pembacaan + dekripsi seluruh nilai (`dst.all`).
