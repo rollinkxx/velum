@@ -11,6 +11,11 @@
     <string name="btn_disconnect">Putuskan</string>
     <string name="btn_test">Uji koneksi</string>
     <string name="btn_reset">Daftar ulang</string>
+    <string name="btn_cancel">Batal</string>
+    <string name="reset_confirm_title">Daftar ulang perangkat?</string>
+    <string name="reset_confirm_body">Registrasi perangkat ini dihapus dari server lalu didaftarkan ulang. Sambungan diputus dan Velum tidak akan tersambung otomatis saat boot sampai Anda menekan Sambungkan lagi.</string>
+    <string name="cd_status_up">Status: tersambung</string>
+    <string name="cd_status_down">Status: terputus</string>
     <string name="btn_vpn_settings">Selalu aktif (pengaturan sistem)</string>
     <string name="err_no_settings">Pengaturan VPN tidak tersedia di perangkat ini</string>
     <string name="notif_channel">Status koneksi</string>

@@ -65,6 +65,8 @@ android {
 
 dependencies {
     implementation(libs.androidx.appcompat)
+    // Dipakai langsung untuk Activity Result API (izin VPN & notifikasi).
+    implementation(libs.androidx.activity)
     implementation(libs.wireguard.tunnel)
     implementation(libs.androidx.security.crypto)
 

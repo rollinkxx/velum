@@ -64,6 +64,18 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
   `isIpLiteral`) dipindahkan dari `MainActivity`/`VelumApi`/`EndpointProbe` ke `VelumFormat`
   agar dapat diuji unit tanpa Android framework; `VelumApi.fetchTrace()` kini mengembalikan
   `VelumFormat.TraceInfo` dan deteksi WARP memakai `VelumFormat.isWarpActive()`.
+- **Daftar ulang kini meminta konfirmasi** lewat dialog (aksi ini menghapus registrasi
+  perangkat di server dan memutus niat sambung-ulang saat boot).
+- Proba endpoint dijalankan juga saat `ReconnectMonitor` memantulkan tunnel, bukan hanya
+  saat pengguna menekan Sambungkan — berpindah jaringan jauh kini bisa memperbaiki
+  endpoint terpilih (`refresh()` tetap mengabaikan hasil yang berumur kurang dari 1 jam).
+- Aksesibilitas: baris nilai (durasi/endpoint/uji/data) tidak lagi dipotong menjadi satu
+  baris (`maxLines="2"`), tombol memakai `minHeight` sehingga teks tetap terbaca saat
+  ukuran font sistem diperbesar, dan titik status punya `contentDescription` yang berubah
+  mengikuti status.
+- Izin VPN dan notifikasi diminta lewat Activity Result API — `startActivityForResult`
+  dan `requestPermissions` yang sudah usang dihapus.
+
 - Orkestrasi koneksi & uji dipisahkan dari `MainActivity` ke `VelumController`: Activity
   kini hanya merender (`VelumController.Ui`), sementara keputusan — termasuk kapan hasil
   uji boleh dipercaya — hidup di controller dan tidak ikut mati saat Activity dibuat ulang.

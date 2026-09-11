@@ -11,6 +11,8 @@ import android.os.SystemClock
 import android.view.View
 import android.widget.Button
 import android.widget.TextView
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import com.wireguard.android.backend.Tunnel
 
@@ -37,6 +39,18 @@ class MainActivity : AppCompatActivity(), VelumController.Ui {
     private lateinit var infoData: TextView
 
     private val main = Handler(Looper.getMainLooper())
+
+    /** Persetujuan VPN sistem; hasilnya diteruskan ke controller. */
+    private val vpnLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK) controller.connect() else setMessageRes(R.string.err_vpn_denied)
+    }
+
+    /** Izin notifikasi Android 13+; hasilnya tidak kritis — aplikasi tetap jalan. */
+    private val notifLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { /* ditolak pun tidak apa-apa: hanya status bar yang hilang */ }
 
     /** Apakah UI sedang terlihat; tiker & denyut hanya hidup bila true (hemat baterai). */
     private var resumed = false
@@ -126,28 +140,18 @@ class MainActivity : AppCompatActivity(), VelumController.Ui {
             return
         }
         val intent = controller.vpnIntent()
-        if (intent != null) {
-            @Suppress("DEPRECATION")
-            startActivityForResult(intent, REQ_VPN)
-        } else {
-            controller.connect()
-        }
+        if (intent != null) vpnLauncher.launch(intent) else controller.connect()
     }
 
-    @Deprecated("Deprecated in Java")
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        super.onActivityResult(requestCode, resultCode, data)
-        if (requestCode == REQ_VPN) {
-            if (resultCode == Activity.RESULT_OK) {
-                controller.connect()
-            } else {
-                messageView.setText(R.string.err_vpn_denied)
-            }
-        }
-    }
-
+    /** Daftar ulang menghapus registrasi: minta konfirmasi dulu. */
     private fun onReset() {
-        controller.reset()
+        if (controller.busy) return
+        AlertDialog.Builder(this)
+            .setTitle(R.string.reset_confirm_title)
+            .setMessage(R.string.reset_confirm_body)
+            .setNegativeButton(R.string.btn_cancel, null)
+            .setPositiveButton(R.string.btn_reset) { _, _ -> controller.reset() }
+            .show()
     }
 
     /**
@@ -158,10 +162,7 @@ class MainActivity : AppCompatActivity(), VelumController.Ui {
         if (Build.VERSION.SDK_INT < 33) return
         val granted = checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) ==
             android.content.pm.PackageManager.PERMISSION_GRANTED
-        if (!granted) {
-            @Suppress("DEPRECATION")
-            requestPermissions(arrayOf(android.Manifest.permission.POST_NOTIFICATIONS), REQ_NOTIF)
-        }
+        if (!granted) notifLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
     }
 
     /** Membuka pengaturan VPN sistem (always-on & blokir tanpa VPN dikelola Android). */
@@ -237,12 +238,14 @@ class MainActivity : AppCompatActivity(), VelumController.Ui {
                 statusView.setText(R.string.status_connected)
                 statusView.setTextColor(getColor(R.color.ok))
                 statusDot.setBackgroundResource(R.drawable.dot_ok)
+                statusDot.contentDescription = getString(R.string.cd_status_up)
                 toggleButton.setText(R.string.btn_disconnect)
             }
             else -> {
                 statusView.setText(R.string.status_disconnected)
                 statusView.setTextColor(getColor(R.color.fg))
                 statusDot.setBackgroundResource(R.drawable.dot_off)
+                statusDot.contentDescription = getString(R.string.cd_status_down)
                 toggleButton.setText(R.string.btn_connect)
             }
         }
@@ -322,10 +325,5 @@ class MainActivity : AppCompatActivity(), VelumController.Ui {
                 setMessage(getString(R.string.stale_warn))
             }
         }
-    }
-
-    private companion object {
-        const val REQ_VPN = 1
-        const val REQ_NOTIF = 2
     }
 }

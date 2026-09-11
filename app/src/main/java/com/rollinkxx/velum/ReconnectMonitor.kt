@@ -96,6 +96,9 @@ object ReconnectMonitor {
             VelumTunnel.refreshState(app)
             if (VelumTunnel.state == Tunnel.State.UP) return
             if (VpnService.prepare(app) == null) {
+                // Jaringan baru: endpoint terbaik bisa berubah (refresh() mengabaikan
+                // hasil yang masih segar <1 jam, jadi murah di jalur cepat ini).
+                EndpointProbe.refresh(prefs)
                 VelumTunnel.up(app, prefs)
                 Log.i(TAG, "sambung ulang latar berhasil")
             }
@@ -116,6 +119,7 @@ object ReconnectMonitor {
             try {
                 VelumTunnel.refreshState(app)
                 if (VelumTunnel.state == Tunnel.State.UP) return
+                EndpointProbe.refresh(prefs)
                 VelumTunnel.up(app, prefs)
                 VelumTunnel.refreshState(app)
                 if (VelumTunnel.state == Tunnel.State.UP) {

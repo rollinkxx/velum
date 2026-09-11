@@ -34,7 +34,8 @@
                 android:id="@+id/statusDot"
                 android:layout_width="12dp"
                 android:layout_height="12dp"
-                android:background="@drawable/dot_off" />
+                android:background="@drawable/dot_off"
+                android:contentDescription="@string/cd_status_down" />
 
             <TextView
                 android:id="@+id/status"
@@ -84,7 +85,7 @@
                         android:layout_weight="1.5"
                         android:ellipsize="end"
                         android:gravity="end"
-                        android:singleLine="true"
+                        android:maxLines="2"
                         android:text="@string/value_none"
                         android:textColor="@color/fg"
                         android:textSize="13sp" />
@@ -112,7 +113,7 @@
                         android:layout_weight="1.5"
                         android:ellipsize="end"
                         android:gravity="end"
-                        android:singleLine="true"
+                        android:maxLines="2"
                         android:text="@string/value_none"
                         android:textColor="@color/fg"
                         android:textSize="13sp" />
@@ -140,7 +141,7 @@
                         android:layout_weight="1.5"
                         android:ellipsize="end"
                         android:gravity="end"
-                        android:singleLine="true"
+                        android:maxLines="2"
                         android:text="@string/value_none"
                         android:textColor="@color/fg"
                         android:textSize="13sp" />
@@ -168,7 +169,7 @@
                         android:layout_weight="1.5"
                         android:ellipsize="end"
                         android:gravity="end"
-                        android:singleLine="true"
+                        android:maxLines="2"
                         android:text="@string/value_none"
                         android:textColor="@color/fg"
                         android:textSize="13sp" />
@@ -179,7 +180,8 @@
         <Button
             android:id="@+id/toggle"
             android:layout_width="match_parent"
-            android:layout_height="52dp"
+            android:layout_height="wrap_content"
+            android:minHeight="52dp"
             android:layout_marginTop="28dp"
             android:background="@drawable/btn_primary"
             android:fontFamily="sans-serif-medium"
@@ -192,7 +194,8 @@
         <Button
             android:id="@+id/test"
             android:layout_width="match_parent"
-            android:layout_height="52dp"
+            android:layout_height="wrap_content"
+            android:minHeight="52dp"
             android:layout_marginTop="12dp"
             android:background="@drawable/btn_outline"
             android:text="@string/btn_test"
