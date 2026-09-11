@@ -53,6 +53,14 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 - Registrasi perangkat kini diulang **satu kali** setelah jeda 1,5 detik khusus untuk
   kegagalan jaringan (jaringan yang baru bangun sering gagal di percobaan pertama);
   penolakan dari server tidak pernah diulang karena percuma.
+- **Kegagalan CI kini terbaca dari mana pun**: dua skrip baru
+  (`.github/scripts/anotasikan-log.py` & `anotasikan-tes.py`) mengubah error kompilasi dan
+  kegagalan pengujian menjadi anotasi GitHub. Sebelumnya run yang merah praktis tidak bisa
+  didiagnosis dari sandbox karena log dan artifact tidak bisa diunduh (EOF).
+- Dependensi `org.json` ditambahkan **khusus pengujian**: `org.json` bawaan `android.jar`
+  bisa berupa rintisan di unit test JVM, sehingga parse JSON butuh implementasi nyata —
+  tetap tidak ikut ke APK.
+
 - **Validasi respons registrasi & rencana migrasi kini teruji**: `VelumRegistration`
   mem-parse sekaligus memvalidasi balasan `POST /reg` (field wajib hilang/kosong →
   `BadResponse` berpesan jelas, endpoint tanpa port dilengkapi `:2408`, host kosong →

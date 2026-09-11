@@ -81,4 +81,5 @@ dependencies {
 
     // Pengujian unit murni JVM: logika VelumFormat & keputusan uji (tidak ikut ke APK).
     testImplementation(libs.junit)
+    testImplementation(libs.json)
 }

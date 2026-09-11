@@ -36,7 +36,14 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
 
       - name: Build debug APK
-        run: ./gradlew --no-daemon --stacktrace assembleDebug
+        run: |
+          set -o pipefail
+          ./gradlew --no-daemon --stacktrace assembleDebug 2>&1 | tee "$RUNNER_TEMP/build.log"
+
+      # Log tidak bisa dibaca dari sandbox agen (EOF): teruskan error ke anotasi.
+      - name: Laporkan error kompilasi sebagai anotasi
+        if: always()
+        run: python3 .github/scripts/anotasikan-log.py "$RUNNER_TEMP/build.log"
 
       - name: Ringkasan (fallback log)
         if: always()
@@ -79,7 +86,16 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
 
       - name: Pengujian unit
-        run: ./gradlew --no-daemon --stacktrace testDebugUnitTest
+        run: |
+          set -o pipefail
+          ./gradlew --no-daemon --stacktrace testDebugUnitTest 2>&1 | tee "$RUNNER_TEMP/test.log"
+
+      # Kegagalan tes hanya ada di laporan JUnit; tanpa ini job merah tanpa informasi.
+      - name: Laporkan kegagalan tes sebagai anotasi
+        if: always()
+        run: |
+          python3 .github/scripts/anotasikan-tes.py
+          python3 .github/scripts/anotasikan-log.py "$RUNNER_TEMP/test.log"
 
       - name: Unggah laporan pengujian
         if: always()
