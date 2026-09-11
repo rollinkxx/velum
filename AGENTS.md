@@ -184,3 +184,11 @@ sebelum push.
 - (2026-09-11, run 34565410965) Warning advisory: `actions/setup-java@v4` deprecated,
   disarankan migrasi ke `@v5`. Tidak memblokir build → dicatat sebagai TODO (No. 9),
   bukan perbaikan darurat.
+- (2026-09-11) **Indikator WARP berlapis — rawan salah diagnosis.** Kolom "Using DNS over
+  WARP" di `one.one.one.one/help` bernilai dari **flag akun** (`warp_enabled` pada
+  registrasi `/reg`), BUKAN dari ketersambungan tunnel; sedangkan `warp=on` di
+  `www.cloudflare.com/cdn-cgi/trace` membuktikan jalur ingress WARP. Akun tanpa flag:
+  tunnel jalan + trace `warp=on` + DoWARP "No". Kolom DoH/DoT di halaman yang sama juga
+  terbalik antara klien resmi (proxy DNS lokal → "No") dan tunnel transparan (→ "Yes").
+  Paritas dicapai dengan `warp_enabled: true` saat registrasi (commit `5d427a3`); akun
+  lama cukup satu kali **Daftar ulang**.
