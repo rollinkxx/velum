@@ -56,6 +56,10 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
   `isIpLiteral`) dipindahkan dari `MainActivity`/`VelumApi`/`EndpointProbe` ke `VelumFormat`
   agar dapat diuji unit tanpa Android framework; `VelumApi.fetchTrace()` kini mengembalikan
   `VelumFormat.TraceInfo` dan deteksi WARP memakai `VelumFormat.isWarpActive()`.
+- Orkestrasi koneksi & uji dipisahkan dari `MainActivity` ke `VelumController`: Activity
+  kini hanya merender (`VelumController.Ui`), sementara keputusan — termasuk kapan hasil
+  uji boleh dipercaya — hidup di controller dan tidak ikut mati saat Activity dibuat ulang.
+  Aturan keputusan uji diekstrak ke `VelumTestDecision` (murni, teruji unit).
 - Tampilan dipoles menjadi tema gelap elegan: latar gradasi charcoal, kartu status rounded
   dengan titik indikator, tombol utama amber ber-ripple + tombol sekunder outline, tipografi
   `sans-serif-light/medium`, status bar selaras tema; warna ikon adaptif disamakan dengan
