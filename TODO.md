@@ -36,4 +36,5 @@
 | 32 | Salin diagnostik (ramah privasi) + Dependabot + job lint advisori | Sedang | Selesai tervalidasi (PR #3, CI run 34597848316) |
 | 33 | Pengecualian aplikasi (split tunneling) + ubin pengaturan cepat | Sedang | Selesai tervalidasi (PR #3, CI run 34597848316) |
 | 34 | Fix lint: startActivityAndCollapse usang (varian PendingIntent di API 34+) + laporan teks lint | Rendah | Selesai tervalidasi (PR #3, CI run 34597848316) |
-| 35 | Validasi respons registrasi (VelumRegistration) + rencana migrasi (VelumMigration) teruji unit | Tinggi | Selesai, menunggu validasi CI |
+| 35 | Validasi respons registrasi (VelumRegistration) + rencana migrasi (VelumMigration) teruji unit | Tinggi | Selesai tervalidasi (PR #3, CI run 34602359157) |
+| 36 | Anotasi CI: error kompilasi & kegagalan tes terkirim ke GitHub (log tak terbaca dari sandbox) | Tinggi | Selesai tervalidasi (PR #3, CI run 34602359157) |
