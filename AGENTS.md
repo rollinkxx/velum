@@ -8,29 +8,46 @@ Bila fakta di §5 berubah, perbarui dokumen ini dalam **1 commit khusus** berjud
 
 ## §1 Model Sesi & Branch
 
+**Aturan portabilitas (berlaku atas seluruh §1).** §1 hanya memuat aturan yang benar untuk
+**setiap** sesi. Nama branch sesi, SHA pangkal, nomor run CI, dan kronologi insiden
+**dilarang ditulis di sini** — tempatnya §5 (fakta bertanggal). Identitas sesi tidak dibaca
+dari dokumen, melainkan **ditemukan saat runtime** lewat ritual di bawah. Bila dokumen dan
+hasil perintah berbeda, **hasil perintah yang benar**.
+
 - Sandbox agen bersifat **ephemeral**. Satu-satunya state yang awet adalah yang sudah
   **ter-push ke GitHub**. Prinsip: **"belum push = belum kerja"**.
-- Setiap sesi Arena terikat pada satu branch berpola `arena/<id>-<suffix>`
-  (sesi ini: `arena/01a08f8f-warp`, bercabang dari `main` @ `fcae56c`).
-  - Catatan pemulihan (2026-09-11): seluruh pekerjaan awal proyek berasal dari sesi
-    `arena/01a08e90-warp` dan dipulihkan ke branch ini lewat dua merge (`26104f6`, lalu
-    `4e0c75a`). Branch itu sempat dikira terhapus dari remote — ternyata hanya tidak
-    terlihat karena refspec fetch sandbox yang terbatas (lihat Catatan teknis di §5).
+- Setiap sesi Arena terikat pada **satu branch sesi** berpola `arena/<id>-<suffix>`,
+  bercabang dari `main`. Nilainya berbeda tiap sesi dan tidak pernah dihafal dokumen ini.
+- **Ritual pra-tugas (wajib, urut, sebelum menyentuh berkas apa pun):**
+  1. `B="$(git branch --show-current)"` — inilah branch sesi, satu-satunya tujuan push.
+     Bila `B` tidak cocok pola `arena/*`: **berhenti** dan lapor ke maintainer.
+  2. `git status --short` — bersih, selain perubahan yang memang sedang dikerjakan.
+  3. `git ls-remote origin "refs/heads/$B"` — ground truth ujung remote. Jangan percaya
+     `git branch -r`: refspec fetch sandbox terbatas (§5). Keluaran **kosong itu normal**
+     bila branch sesi belum pernah di-push; push pertama yang akan membuatnya.
+  4. Bila ref-nya ada: `git fetch origin "+refs/heads/$B:refs/remotes/origin/$B"` lalu
+     `git log --oneline -3 HEAD "origin/$B"`. HEAD wajib berada **di ujung remote atau
+     tepat di atasnya** (fast-forward). Bila HEAD tertinggal/menyimpang — gejala khas:
+     commit mendadak berisi puluhan `create mode` — jalankan prosedur pemulihan §5
+     (fetch eksplisit → `git reset --mixed origin/$B` → commit ulang) sebelum commit apa pun.
+  5. Commit pangkal, bila perlu dirujuk di laporan: `git merge-base HEAD origin/main`.
+     Riwayat lengkap tidak bisa dibaca dari `git log` (clone sandbox dangkal, §5) —
+     pakai `gh api "repos/<owner>/<repo>/commits?sha=<ref>"`.
 - Semua kerja HANYA di branch sesi. Dilarang `checkout`/`switch`/membuat branch lain,
   dilarang push ke branch lain.
-- Sebelum mulai tugas apa pun: `git branch --show-current`, `git status` — tree harus
-  bersih — **dan bandingkan `git log` HEAD dengan `git ls-remote origin`** (alasan di §5).
 - Branch default repo: `main`. Agen **tidak pernah** merge ke `main` (merge mengakhiri sesi).
+- Branch sesi lama milik sesi terdahulu (dan branch `dependabot/*`) **tidak boleh disentuh**:
+  bukan milik sesi berjalan. Pekerjaan sesi lama yang sudah ter-merge ke `main` sudah ikut
+  terbawa lewat commit pangkal — tidak perlu di-cherry-pick.
 - Aturan khusus maintainer repo ini: **agen tidak mengeksekusi perubahan apa pun sebelum
   diperintahkan secara eksplisit.** Sajikan rencana dulu, tunggu perintah, baru kerjakan.
-  **Penegasan 2026-09-11 (lihat §6):** aturan ini berlaku PENUH walau §6 menuntut
-  kecepatan. Sebelum ada perintah, agen hanya boleh membaca/menganalisis dan menyajikan
-  rencana — **tidak menyentuh berkas apa pun, termasuk berkas dokumen**. Yang diatur §6
-  hanyalah *cara* bekerja setelah perintah turun: rencana disajikan lengkap sekali jadi
-  dengan asumsi & default, tanpa pertanyaan yang bisa disimpulkan, dan tanpa
-  trial-and-error di CI. Yang selalu wajib izin tertulis walau sudah ada perintah lain:
-  merge ke `main`, push paksa, hapus registrasi/data, ganti `applicationId`/identitas,
-  bump `versionName`/`versionCode` (§4).
+  Aturan ini berlaku PENUH walau §6 menuntut kecepatan: sebelum ada perintah, agen hanya
+  boleh membaca/menganalisis dan menyajikan rencana — **tidak menyentuh berkas apa pun,
+  termasuk berkas dokumen**. Yang diatur §6 hanyalah *cara* bekerja setelah perintah turun:
+  rencana disajikan lengkap sekali jadi dengan asumsi & default, tanpa pertanyaan yang bisa
+  disimpulkan, dan tanpa trial-and-error di CI. Yang selalu wajib izin tertulis walau sudah
+  ada perintah lain: merge ke `main`, push paksa, hapus registrasi/data, ganti
+  `applicationId`/identitas, bump `versionName`/`versionCode` (§4).
 
 ## §2 Aturan Emas: Push ≠ PR ≠ Merge
 
@@ -58,7 +75,7 @@ Bila fakta di §5 berubah, perbarui dokumen ini dalam **1 commit khusus** berjud
   `concurrency: cancel-in-progress` per-ref sehingga push beruntun aman.
 - Batas keras: **dilarang mengakhiri giliran kerja dengan commit/perubahan yang belum
   terpush** — jendela sandbox ephemeral (insiden 2026-09-11) berlaku penuh.
-- Pola overlap (2026-09-11, sesi arena/01a08f8f-warp): setelah push batch N, boleh mengerjakan
+- Pola overlap (riwayat 2026-09-11): setelah push batch N, boleh mengerjakan
   batch N+1 sambil memantau CI batch N; push berikutnya hanya setelah run sebelumnya hijau;
   pantau via `gh run watch <id> --exit-status --interval 15` (ambil `<id>` dari
   `gh run list --branch <branch> -L 1 --json databaseId`). Hasil sesi itu: 6 push, 3 run hijau,

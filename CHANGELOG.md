@@ -6,6 +6,9 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 ## [Unreleased]
 
 ### Changed
+- AGENTS.md §1 kini **portabel**: nama branch sesi dan SHA pangkal tidak lagi ditulis di
+  dalam aturan, melainkan ditemukan saat runtime lewat ritual pra-tugas 5 langkah; kronologi
+  insiden dipindah ke §5. Ditambah larangan menyentuh branch sesi lama & `dependabot/*`.
 - Identitas visual & teks: seluruh teks yang terlihat pengguna kini mengikuti nama
   aplikasi. `notif_connected` dan `test_on` tidak lagi menyebut pihak ketiga, dan
   `desc_footer` menjadi "Hanya tunnel Velum. Tanpa iklan, tanpa pelacakan.".
