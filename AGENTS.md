@@ -23,6 +23,10 @@ Bila fakta di §5 berubah, perbarui dokumen ini dalam **1 commit khusus** berjud
 - Branch default repo: `main`. Agen **tidak pernah** merge ke `main` (merge mengakhiri sesi).
 - Aturan khusus maintainer repo ini: **agen tidak mengeksekusi perubahan apa pun sebelum
   diperintahkan secara eksplisit.** Sajikan rencana dulu, tunggu perintah, baru kerjakan.
+  **Amandemen 2026-09-11 (lihat §6):** yang wajib menunggu perintah kini hanya tindakan
+  yang merusak atau tidak bisa dibatalkan — merge ke `main`, push paksa, hapus
+  registrasi/data, ganti `applicationId`/identitas. Pekerjaan biasa langsung
+  dikerjakan dengan asumsi bawaan yang disebutkan di awal (§6).
 
 ## §2 Aturan Emas: Push ≠ PR ≠ Merge
 
@@ -257,3 +261,75 @@ sebelum push.
   yang sudah terbuka ke tunnel). Dampaknya: uji `cdn-cgi/trace` bisa mengembalikan
   `warp=off` meski tunnel benar-benar UP. Wajib: `Connection: close` +
   `http.keepAlive=false`, tunggu `traffic().latestHandshakeMs > 0` sebelum uji.
+
+## §6 Protokol Android: Presisi & Efisiensi Waktu (aktif 2026-09-11)
+
+Setiap detik pipeline CI mahal dan setiap iterasi yang gagal membuang waktu. §6 melengkapi
+§1–§5 dan mengubah kebiasaan lama yang memperlambat kerja (lihat amandemen di §1).
+
+### Prinsip efisiensi waktu
+
+1. **Batch pertanyaan** — bila butuh informasi, tanyakan SEMUA sekaligus dalam satu pesan.
+   Maksimal satu kali bertanya; tidak ada pertanyaan bertahap.
+2. **Smart defaults** — info yang tidak diberikan → pakai default stabil dan sebutkan di
+   awal respons. **Isi repo selalu menang atas default protokol**: `gradle/libs.versions.toml`
+   adalah satu-satunya sumber kebenaran versi (§4). Default protokol (AGP 8.5.2, Gradle 8.7,
+   Kotlin 2.0.0, compileSdk/targetSdk 34, minSdk 24, JDK 17, Kotlin DSL, version catalog)
+   hanya dipakai bila katalog belum menetapkannya. Keadaan nyata repo: AGP 8.7.3,
+   Gradle 8.9, Kotlin 2.0.21, JDK 17, compileSdk/targetSdk 35, minSdk 24.
+3. **Tanpa pertanyaan yang bisa disimpulkan** — jangan tanya hal yang sudah terjawab oleh
+   log error, kode yang ada, atau §5.
+4. **Solusi sekali jalan** — berikan solusi lengkap; jangan menyuruh pengguna "lanjut ke
+   langkah berikutnya".
+5. **Antisipasi masalah turunan** — sertakan pencegahannya di respons/kode yang sama.
+6. **Sadari cache** — jangan merusak cache Gradle & dependensi di CI (lihat §3 langkah 7).
+7. **Kerja paralel** — bila beberapa berkas harus berubah, kerjakan semuanya dalam satu
+   batch. Ini persis *model paket* di §2: N commit per perubahan logis, 1 push, 1 run CI.
+
+### Fase eksekusi
+
+- **Fase 0 — Intake cepat:** ekstrak semua informasi dari teks, log, dan kode. Info
+  non-kritis hilang → pakai default. Info kritis hilang → batch pertanyaan maksimal 1x.
+- **Fase 1 — Analisis singkat:** tujuan 1 kalimat, asumsi/default yang dipakai, versi yang
+  relevan, dan daftar berkas terdampak.
+- **Fase 2 — Eksekusi:** semua berkas sekaligus. Bila kode dibagikan di percakapan →
+  **berkas utuh** (path di header, impor lengkap, tanpa placeholder). Bila dikirim sebagai
+  pekerjaan repo → wujudkan sebagai commit per perubahan logis (§2, §4).
+- **Fase 3 — Optimasi CI:** pastikan JDK/Gradle/AGP selaras; `gradle/actions/setup-gradle@v4`
+  sudah menangani cache Gradle & dependensi; `org.gradle.caching=true` dan
+  configuration-cache aktif di `gradle.properties`. Jangan menambahkan `--parallel` tanpa
+  alasan (modul tunggal: manfaatnya nihil, risiko konfigurasi-cache justru naik).
+- **Fase 4 — Perbaikan dini:** sebutkan potensi masalah turunan berikut solusinya.
+
+### Larangan mutlak
+
+- ❌ "coba ganti…", "kalau masih error coba…" — diagnosis dulu, baru perbaiki.
+- ❌ Memberi banyak opsi — berikan satu solusi terbaik, kecuali keputusan produk yang
+  memang wewenang maintainer (mis. identitas aplikasi, bump versi).
+- ❌ Kode parsial/placeholder saat berkas dibagikan di percakapan.
+- ❌ Pertanyaan bertahap atau pertanyaan trivial yang bisa pakai default.
+- ❌ API usang atau versi yang tidak ada — job `lint (advisori)` akan menandainya dan
+  wajib dijaga hijau walau tidak memblokir.
+- ❌ Mengubah berkas yang tidak perlu; mengulang kode yang sudah benar.
+
+### Format respons (permintaan kode)
+
+🎯 Tujuan (1 kalimat) · 📌 Asumsi/default · 🔍 Akar masalah (bila perbaikan bug) ·
+📂 Berkas terdampak · 💻 Implementasi (berkas utuh, path di header) · ⚙️ CI/CD (bila
+workflow tersentuh) · ⚠️ Heads-up (masalah turunan + solusi) · ✅ Siap dibangun.
+
+Bila pekerjaan dikirim sebagai commit/PR (bukan dibagikan di percakapan), susunan di
+atas tetap dipakai sebagai isi laporan dan body PR.
+
+### Pohon keputusan
+
+```
+Permintaan masuk
+├─ Info cukup?      → YA  → langsung eksekusi + sebutkan asumsi
+└─ Info kurang?
+   ├─ Bisa default? → YA  → pakai default, eksekusi
+   └─ Tidak bisa?   → tanya SEKALI (batch), lalu langsung eksekusi
+```
+
+Protokol ini aktif sejak 2026-09-11 sampai maintainer menulis "stop protocol" atau
+memulai sesi baru. Bila ada aturan lain yang bertentangan dengan §6, §6 yang menang.
