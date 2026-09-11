@@ -135,22 +135,25 @@ sebelum push.
   DNS, tanpa iklan/analitik/akun. UI Bahasa Indonesia.
 - **Stack aktual** (dari `gradle/libs.versions.toml`, satu-satunya sumber versi): Gradle 8.9
   (wrapper ter-commit, termasuk `gradle-wrapper.jar`), AGP 8.7.3, Kotlin 2.0.21, JDK 17,
-  compileSdk/targetSdk 35, minSdk 24. Dependensi runtime hanya `androidx.appcompat` dan
-  `com.wireguard.android:tunnel` (GoBackend) — tanpa Compose/OkHttp/coroutine demi ukuran
+  compileSdk/targetSdk 35, minSdk 24. Dependensi runtime hanya `androidx.appcompat`, `com.wireguard.android:tunnel` (GoBackend),
+  dan `androidx.security:security-crypto` (Tink, ±1 MB) — tanpa Compose/OkHttp/coroutine demi ukuran
   APK & RAM kecil. `gradle.properties`: configuration-cache & build-cache aktif,
   `nonTransitiveRClass`. Resource hanya Bahasa Indonesia (`resourceConfigurations += "in"`).
 - **Identitas (ADR 002):** `applicationId` = `com.rollinkxx.velum` (debug: suffix `.debug`),
   package Kotlin `com.rollinkxx.velum`, nama aplikasi **Velum**, versi awal `0.1.0`/code 1.
 - **Struktur modul `app/`** (`app/src/main/java/com/rollinkxx/velum/`):
   - `MainActivity.kt` — UI satu layar (View XML), satu executor latar; panel info interaktif
-    (durasi/endpoint/hasil uji+DC), izin notifikasi Android 13+, pintasan pengaturan VPN.
+    (durasi/endpoint/hasil uji+DC/trafik+deteksi basi), izin notifikasi Android 13+, pintasan pengaturan VPN.
   - `VelumApi.kt` — registrasi/hapus registrasi ke `api.cloudflareclient.com/v0a2158`
     (flag `warp_enabled: true`), auto-heal akun lama via GET+daftar ulang (fail-safe),
     parse `cdn-cgi/trace` (warp/colo/ip). HttpURLConnection + org.json.
   - `VelumTunnel.kt` — singleton `Tunnel` untuk `GoBackend` (MTU 1280, DNS 1.1.1.1/1.0.0.1,
-    AllowedIPs 0.0.0.0/0 + ::/0, keepalive 25).
-  - `Prefs.kt` — SharedPreferences `velum` (+ memo `warpEnabled`, `wasUp`).
+    AllowedIPs 0.0.0.0/0 + ::/0, keepalive 25) + `traffic()` (rx/tx/handshake).
+  - `Prefs.kt` — penyimpanan terenkripsi (`EncryptedSharedPreferences`, migrasi sekali
+    dari file polos `warp`) + memo `warpEnabled`, `wasUp`.
   - `BootReceiver.kt` — sambung ulang setelah boot bila terakhir UP & izin VPN berlaku.
+  - `ReconnectMonitor.kt` — pantulan tunnel saat jaringan berganti (backoff+debounce),
+    lingkup aplikasi; start/stop dari UI & boot, pulihkan sesi proses lahir ulang.
   - `StatusNotifier.kt` — notifikasi persisten status (kanal `status`, IMPORTANCE_LOW).
   - `AndroidManifest.xml` — VpnService milik library (`GoBackend$VpnService`) di-merge
     (`tools:node="merge"`) untuk menambah `foregroundServiceType="specialUse"` + property
