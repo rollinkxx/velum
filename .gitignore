@@ -1,0 +1,19 @@
+# Gradle / build
+.gradle/
+build/
+*/build/
+.kotlin/
+# Android Studio / IDE
+.idea/
+*.iml
+local.properties
+captures/
+.externalNativeBuild/
+.cxx/
+# Rahasia
+*.jks
+*.keystore
+*.pem
+.env
+# OS
+.DS_Store
