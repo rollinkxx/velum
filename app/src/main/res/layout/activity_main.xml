@@ -230,6 +230,19 @@
             android:textColor="@color/off"
             android:textSize="12sp" />
 
+        <Button
+            android:id="@+id/copyDiag"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="?attr/selectableItemBackground"
+            android:minHeight="48dp"
+            android:paddingStart="24dp"
+            android:paddingEnd="24dp"
+            android:text="@string/btn_copy_diag"
+            android:textAllCaps="false"
+            android:textColor="@color/muted"
+            android:textSize="13sp" />
+
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"

@@ -17,6 +17,8 @@
     <string name="cd_status_up">Status: tersambung</string>
     <string name="cd_status_down">Status: terputus</string>
     <string name="btn_vpn_settings">Selalu aktif (pengaturan sistem)</string>
+    <string name="btn_copy_diag">Salin diagnostik</string>
+    <string name="diag_copied">Ringkasan disalin (tanpa kunci &amp; alamat IP)</string>
     <string name="err_no_settings">Pengaturan VPN tidak tersedia di perangkat ini</string>
     <string name="notif_channel">Status koneksi</string>
     <string name="notif_connected">Tersambung — lalu lintas lewat Cloudflare</string>

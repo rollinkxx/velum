@@ -33,3 +33,4 @@
 | 29 | Pemisahan orkestrasi ke VelumController + VelumTestDecision teruji unit | Tinggi | Selesai, menunggu validasi CI |
 | 30 | VelumUpstream + klasifikasi error (VelumError) + retry registrasi sekali | Tinggi | Selesai, menunggu validasi CI |
 | 31 | UX: konfirmasi Daftar ulang, aksesibilitas, Activity Result API, proba endpoint saat pantulan | Sedang | Selesai, menunggu validasi CI |
+| 32 | Salin diagnostik (ramah privasi) + Dependabot + job lint advisori | Sedang | Selesai, menunggu validasi CI |

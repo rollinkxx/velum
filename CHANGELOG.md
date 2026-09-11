@@ -64,6 +64,15 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
   `isIpLiteral`) dipindahkan dari `MainActivity`/`VelumApi`/`EndpointProbe` ke `VelumFormat`
   agar dapat diuji unit tanpa Android framework; `VelumApi.fetchTrace()` kini mengembalikan
   `VelumFormat.TraceInfo` dan deteksi WARP memakai `VelumFormat.isWarpActive()`.
+- Tombol **Salin diagnostik**: menyalin ringkasan keadaan (versi, status, endpoint, umur
+  handshake, durasi, trafik) ke clipboard untuk dilampirkan pada laporan gangguan. Isinya
+  sengaja ramah privasi — tanpa kunci privat, identitas perangkat, token, atau alamat IP —
+  dan aturan itu dijaga oleh pengujian unit.
+- `.github/dependabot.yml`: pembaruan versi katalog Gradle (mingguan) dan GitHub Actions
+  (bulanan) kini diajukan otomatis sebagai PR berlabel `dependencies`.
+- Job CI `lint (advisori)` menjalankan `lintDebug` dengan `continue-on-error` — memberi
+  sinyal tanpa memblokir merge, laporannya tersedia sebagai artifact.
+
 - **Daftar ulang kini meminta konfirmasi** lewat dialog (aksi ini menghapus registrasi
   perangkat di server dan memutus niat sambung-ulang saat boot).
 - Proba endpoint dijalankan juga saat `ReconnectMonitor` memantulkan tunnel, bukan hanya

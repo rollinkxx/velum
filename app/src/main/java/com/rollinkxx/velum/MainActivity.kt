@@ -11,6 +11,7 @@ import android.os.SystemClock
 import android.view.View
 import android.widget.Button
 import android.widget.TextView
+import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
@@ -33,6 +34,7 @@ class MainActivity : AppCompatActivity(), VelumController.Ui {
     private lateinit var testButton: Button
     private lateinit var resetButton: Button
     private lateinit var vpnSettingsButton: Button
+    private lateinit var copyDiagButton: Button
     private lateinit var infoDuration: TextView
     private lateinit var infoEndpoint: TextView
     private lateinit var infoTest: TextView
@@ -85,6 +87,7 @@ class MainActivity : AppCompatActivity(), VelumController.Ui {
         testButton = findViewById(R.id.test)
         resetButton = findViewById(R.id.reset)
         vpnSettingsButton = findViewById(R.id.vpnSettings)
+        copyDiagButton = findViewById(R.id.copyDiag)
         infoDuration = findViewById(R.id.infoDuration)
         infoEndpoint = findViewById(R.id.infoEndpoint)
         infoTest = findViewById(R.id.infoTest)
@@ -94,6 +97,7 @@ class MainActivity : AppCompatActivity(), VelumController.Ui {
         testButton.setOnClickListener { controller.runTest() }
         resetButton.setOnClickListener { onReset() }
         vpnSettingsButton.setOnClickListener { onOpenVpnSettings() }
+        copyDiagButton.setOnClickListener { copyDiagnostics() }
 
         controller = VelumController(this, this)
 
@@ -163,6 +167,40 @@ class MainActivity : AppCompatActivity(), VelumController.Ui {
         val granted = checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) ==
             android.content.pm.PackageManager.PERMISSION_GRANTED
         if (!granted) notifLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+    }
+
+    /**
+     * Salin ringkasan keadaan ke clipboard untuk dilampirkan ke laporan gangguan.
+     * Isinya sengaja ramah privasi: tanpa kunci privat, identitas perangkat, atau
+     * alamat IP (lihat `VelumDiagnostics`).
+     */
+    private fun copyDiagnostics() {
+        controller.runStats { stats ->
+            val up = controller.state == Tunnel.State.UP
+            val snapshot = VelumDiagnostics.Snapshot(
+                appVersion = appVersionName(),
+                state = getString(if (up) R.string.status_connected else R.string.status_disconnected),
+                endpoint = Prefs.of(this).effectiveEndpoint,
+                handshakeAgeSec = stats?.latestHandshakeMs
+                    ?.takeIf { it > 0L }
+                    ?.let { (System.currentTimeMillis() - it) / 1000 },
+                rxBytes = stats?.rxBytes ?: 0L,
+                txBytes = stats?.txBytes ?: 0L,
+                connectedSec = if (up) (SystemClock.elapsedRealtime() - connectedSinceMs) / 1000 else 0L
+            )
+            val clipboard = getSystemService(android.content.ClipboardManager::class.java)
+            clipboard?.setPrimaryClip(
+                android.content.ClipData.newPlainText("diagnostik velum", VelumDiagnostics.render(snapshot))
+            )
+            Toast.makeText(this, R.string.diag_copied, Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    @Suppress("DEPRECATION")
+    private fun appVersionName(): String = try {
+        packageManager.getPackageInfo(packageName, 0).versionName ?: "?"
+    } catch (_: Exception) {
+        "?"
     }
 
     /** Membuka pengaturan VPN sistem (always-on & blokir tanpa VPN dikelola Android). */
