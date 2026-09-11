@@ -230,3 +230,19 @@ sebelum push.
   lama cukup satu kali **Daftar ulang**.
 - `gh run watch` berfungsi dari sandbox — gunakan untuk memantau CI; yang EOF hanya
   `gh run view --log` / `gh run download`.
+- (2026-09-11, PR #3) **`gh pr edit --title/--body` GAGAL dari sandbox** (keluar dengan
+  kode 1, hanya mencetak peringatan "Projects (classic) is being deprecated"), dan
+  perubahannya **tidak diterapkan walau tanpa pesan error**. Pakai REST API sebagai
+  gantinya:
+  `gh api -X PATCH repos/rollinkxx/velum/pulls/<n> -f title="<judul>"` dan
+  `gh api -X PATCH repos/rollinkxx/velum/pulls/<n> -F body=@/tmp/body.md` (isi panjang
+  lewat berkas sementara di luar repo). Selalu verifikasi dengan
+  `gh pr view <n> --json title,body`.
+- (2026-09-11) Lampiran gambar yang dikirim pengguna TIDAK bisa dibaca dari sandbox:
+  path `/home/user/uploads/` tidak ada. Minta pengguna menceritakan isinya.
+- (2026-09-11) **Jebakan deteksi WARP**: `Tunnel.State.UP` dari `GoBackend` hanya berarti
+  antarmuka TUN selesai dibuat, BUKAN handshake selesai; dan `HttpURLConnection` memakai
+  ulang soket keep-alive yang dibuat sebelum VPN aktif (Android tidak memindahkan soket
+  yang sudah terbuka ke tunnel). Dampaknya: uji `cdn-cgi/trace` bisa mengembalikan
+  `warp=off` meski tunnel benar-benar UP. Wajib: `Connection: close` +
+  `http.keepAlive=false`, tunggu `traffic().latestHandshakeMs > 0` sebelum uji.
