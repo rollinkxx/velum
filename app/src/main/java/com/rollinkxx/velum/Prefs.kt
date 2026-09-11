@@ -154,10 +154,11 @@ class Prefs(context: Context) {
             if (!legacyFileExists(ctx)) return
             if (dst.all.isNotEmpty()) return
             val legacy = ctx.getSharedPreferences(LEGACY_FILE, Context.MODE_PRIVATE)
-            if (legacy.all.isEmpty()) return
+            val rencana = VelumMigration.plan(legacy.all)
+            if (rencana.isEmpty()) return
             try {
                 val ed = dst.edit()
-                for ((k, v) in legacy.all) {
+                for ((k, v) in rencana) {
                     when (v) {
                         is String -> ed.putString(k, v)
                         is Boolean -> ed.putBoolean(k, v)
@@ -166,10 +167,8 @@ class Prefs(context: Context) {
                         is Float -> ed.putFloat(k, v)
                         is Set<*> -> {
                             @Suppress("UNCHECKED_CAST")
-                            val strings = v as Set<String>
-                            ed.putStringSet(k, strings)
+                            ed.putStringSet(k, v as Set<String>)
                         }
-                        else -> Unit
                     }
                 }
                 if (!ed.commit()) return

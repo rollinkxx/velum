@@ -49,23 +49,15 @@ object VelumApi {
             .put("serial_number", UUID.randomUUID().toString())
             .put("warp_enabled", true)
 
-        val json = request("POST", "$BASE/reg", body.toString(), null)
-
-        val id = json.getString("id")
-        val token = json.getString("token")
-        val config = json.getJSONObject("config")
-        val addresses = config.getJSONObject("interface").getJSONObject("addresses")
-        val peer = config.getJSONArray("peers").getJSONObject(0)
-        val endpointObj = peer.getJSONObject("endpoint")
-        val host = endpointObj.optString("host", DEFAULT_ENDPOINT)
+        val hasil = VelumRegistration.parse(request("POST", "$BASE/reg", body.toString(), null))
 
         prefs.privateKey = keyPair.privateKey.toBase64()
-        prefs.deviceId = id
-        prefs.token = token
-        prefs.addressV4 = addresses.getString("v4")
-        prefs.addressV6 = addresses.optString("v6", null)
-        prefs.peerPublicKey = peer.getString("public_key")
-        prefs.endpoint = if (host.isNotEmpty()) host else DEFAULT_ENDPOINT
+        prefs.deviceId = hasil.id
+        prefs.token = hasil.token
+        prefs.addressV4 = hasil.addressV4
+        prefs.addressV6 = hasil.addressV6
+        prefs.peerPublicKey = hasil.peerPublicKey
+        prefs.endpoint = hasil.endpoint
         prefs.warpEnabled = true // body registrasi memang meminta warp_enabled
     }
 
@@ -80,7 +72,7 @@ object VelumApi {
         val id = prefs.deviceId ?: return
         val token = prefs.token ?: return
         val enabled: Boolean? = try {
-            val json = request("GET", "$BASE/reg/$id", null, token)
+            val json = JSONObject(request("GET", "$BASE/reg/$id", null, token))
             val account = json.optJSONObject("account")
             if (account != null && account.has("warp_enabled")) {
                 account.optBoolean("warp_enabled")
@@ -138,7 +130,7 @@ object VelumApi {
     }
 
     @Throws(IOException::class)
-    private fun request(method: String, url: String, body: String?, bearer: String?): JSONObject {
+    private fun request(method: String, url: String, body: String?, bearer: String?): String {
         val conn = URL(url).openConnection() as HttpURLConnection
         try {
             conn.requestMethod = method
@@ -165,7 +157,7 @@ object VelumApi {
                     IOException("HTTP $code: ${text.take(120)}")
                 }
             }
-            return if (text.isBlank()) JSONObject() else JSONObject(text)
+            return text
         } finally {
             conn.disconnect()
         }

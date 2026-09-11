@@ -53,6 +53,14 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 - Registrasi perangkat kini diulang **satu kali** setelah jeda 1,5 detik khusus untuk
   kegagalan jaringan (jaringan yang baru bangun sering gagal di percobaan pertama);
   penolakan dari server tidak pernah diulang karena percuma.
+- **Validasi respons registrasi & rencana migrasi kini teruji**: `VelumRegistration`
+  mem-parse sekaligus memvalidasi balasan `POST /reg` (field wajib hilang/kosong →
+  `BadResponse` berpesan jelas, endpoint tanpa port dilengkapi `:2408`, host kosong →
+  endpoint cadangan), dan `VelumMigration` memindahkan data era polos berdasar tipe
+  dengan tipe tak dikenal yang diabaikan. Keduanya murni & teruji unit — sebelumnya
+  kedua lapisan ini bisa gagal diam-diam dan berujung pada aplikasi yang tidak bisa
+  menyambung tanpa sebab yang terlihat.
+
 - Pengujian unit murni JVM untuk logika yang rawan salah (`VelumFormat`: parse
   `cdn-cgi/trace`, pemformatan byte/durasi/jam, pemisahan host:port, deteksi IPv4) beserta
   job CI `unitTest` (`./gradlew testDebugUnitTest`) sebagai **pemblokir** — regresi logika
