@@ -2,7 +2,7 @@
 
 Dokumen ini mengikat setiap agen coding yang bekerja di repo ini. Isinya diturunkan dari
 keadaan repo yang nyata pada saat ditulis (2026-09-11) dan dari kesepakatan dengan maintainer.
-Bagian yang bertanda **[direncanakan]** belum ada di repo dan baru berlaku setelah dibuat.
+Terakhir disinkronkan: 2026-09-11 setelah CI run pertama hijau.
 
 ---
 
@@ -70,10 +70,8 @@ Bagian yang bertanda **[direncanakan]** belum ada di repo dan baru berlaku setel
 5. **Katalog vs build-file**: setiap dependensi/plugin di `*.gradle.kts` harus merujuk
    `libs.*` dari `gradle/libs.versions.toml`; tidak ada string versi hardcode.
 6. **Security grep** (sama seperti checklist §2) atas seluruh diff.
-7. Perintah persis dari CI **[direncanakan]** — salin ke sini saat workflow dibuat, dan
-   jalankan lokal bila toolchain tersedia:
-   - `./gradlew --no-daemon assembleDebug`
-   - (opsional lanjutan) `./gradlew --no-daemon lintDebug`
+7. Perintah persis dari CI (`.github/workflows/build.yml`), jalankan lokal bila toolchain tersedia:
+   - `./gradlew --no-daemon --stacktrace assembleDebug`
 
 Bila di kemudian hari sandbox memiliki JDK + Android SDK, langkah 7 menjadi WAJIB lokal
 sebelum push.
@@ -95,7 +93,7 @@ sebelum push.
   gunakan status `Superseded by NNN`.
 - **Versi** (`versionName`/`versionCode`): bump HANYA atas permintaan eksplisit maintainer,
   tidak otomatis per PR.
-- **Sumber kebenaran dependensi**: `gradle/libs.versions.toml` **[direncanakan]**. Dilarang
+- **Sumber kebenaran dependensi**: `gradle/libs.versions.toml`. Dilarang
   hardcode versi di `build.gradle.kts` mana pun. Versi Gradle wrapper hanya di
   `gradle/wrapper/gradle-wrapper.properties`.
 - **Dilarang commit** kredensial, keystore (`*.jks`, `*.keystore`), `.env`, `local.properties`.
@@ -108,31 +106,46 @@ sebelum push.
 
 ## §5 Fakta Proyek
 
-**Keadaan repo saat dokumen ini dibuat (fakta):**
-- Isi: `README.md` (1 baris: `# warp`) + dokumen ini. Belum ada kode, CI, docs, catalog.
-- Remote: `https://github.com/rollinkxx/warp.git`, default branch `main`.
-- Sandbox: tanpa JDK/Gradle/Android SDK; `gh` terautentikasi sebagai `arena-ai-coding-agent[bot]`.
+**Stack aktual (dari `gradle/libs.versions.toml`, satu-satunya sumber versi):**
+- Gradle 8.9 (wrapper di-commit, termasuk `gradle-wrapper.jar`), AGP 8.7.3, Kotlin 2.0.21, JDK 17.
+- compileSdk/targetSdk 35, minSdk 24. Dependensi runtime hanya `androidx.appcompat` dan
+  `com.wireguard.android:tunnel` (GoBackend). Tidak ada Compose, OkHttp, coroutine library.
+- `gradle.properties`: configuration-cache & build-cache aktif, `nonTransitiveRClass`.
 
-**Rencana proyek yang disepakati dengan maintainer [direncanakan]:**
-- Tujuan: aplikasi Android ringan fungsi **WARP saja** (tunnel WireGuard ke Cloudflare),
-  tanpa mode DNS, tanpa iklan/analitik/akun. UI Bahasa Indonesia.
-- Stack: Kotlin, Android Gradle Plugin, minSdk 24, UI XML/AppCompat (tanpa Jetpack Compose
-  demi RAM & ukuran APK kecil). Dependensi inti: `com.wireguard.android:tunnel` (GoBackend).
-- Struktur modul: modul tunggal `app/`, package `id.warp.lite` (**keputusan final
-  applicationId harus dicatat di ADR 001 sebelum publish**):
-  - `MainActivity.kt` — UI (tombol sambung/putus, status, uji koneksi)
-  - `WarpApi.kt` — registrasi & pengambilan konfigurasi WARP (`api.cloudflareclient.com`)
-  - `WarpTunnelService.kt` — foreground service tunnel WireGuard
-  - `Prefs.kt` — penyimpanan akun (SharedPreferences)
-- CI: `.github/workflows/build.yml` — trigger `push` + `workflow_dispatch`; job tunggal
-  `build`: checkout → JDK 17 → Android SDK → `./gradlew --no-daemon assembleDebug` →
-  upload artifact `app-debug.apk`. Step pemblokir: build. Step advisory: (belum ada).
-  Durasi normal: belum terukur (isi setelah run pertama hijau).
-- Path referensi terlarang-ubah: belum ada.
+**Identitas (ADR 001):** `applicationId` = `com.rollinkxx.warp` (debug: suffix `.debug`),
+package Kotlin `com.rollinkxx.warp`, nama aplikasi **WARP Lite**. Versi awal `0.1.0` / code 1.
+
+**Struktur modul `app/` (`app/src/main/java/com/rollinkxx/warp/`):**
+- `MainActivity.kt` — UI satu layar (View XML), satu executor latar.
+- `WarpApi.kt` — registrasi/hapus registrasi ke `api.cloudflareclient.com/v0a2158`,
+  uji `cdn-cgi/trace` (`warp=on|plus`). HttpURLConnection + org.json.
+- `WarpTunnel.kt` — singleton `Tunnel` untuk `GoBackend` (MTU 1280, DNS 1.1.1.1/1.0.0.1,
+  AllowedIPs 0.0.0.0/0 + ::/0, keepalive 25).
+- `Prefs.kt` — SharedPreferences `warp`.
+- `AndroidManifest.xml` — VpnService milik library (`GoBackend$VpnService`) di-merge
+  (`tools:node="merge"`) untuk menambah `foregroundServiceType="specialUse"` + property subtype `vpn`.
+- Resource hanya bahasa Indonesia (`resourceConfigurations += "in"`), ikon adaptif vektor +
+  PNG polos untuk API 24–25.
+
+**CI (`.github/workflows/build.yml`):**
+- Trigger: `push` semua branch (paths-ignore `**.md`, `docs/**`) dan `workflow_dispatch`.
+- Job tunggal `assembleDebug` (pemblokir): checkout → setup-java 17 temurin →
+  android-actions/setup-android@v3 → gradle/actions/setup-gradle@v4 →
+  `./gradlew --no-daemon --stacktrace assembleDebug` → step summary → artifact `app-debug`.
+- Step advisory: "Ringkasan (fallback log)" (`if: always()`), tidak memblokir.
+- Durasi normal (run pertama, cache dingin, 2026-09-11): job ≈ 3,5 menit, step build ≈ 3 menit.
+  Artifact debug ≈ 9,1 MB (4 ABI native WireGuard, belum minify; release memakai minify+shrink).
+- Path referensi terlarang-ubah: belum ada (tidak ada snapshot test).
 
 **Catatan teknis penting (jebakan CI) — diperbarui setiap kali ada temuan:**
-- Belum ada run CI. Tambahkan entri di sini setiap kali run merah didiagnosis
-  (format: tanggal — gejala — akar masalah — perbaikan — commit).
-- Pra-antisipasi: `gradle-wrapper.jar` biner harus ikut ter-commit atau workflow memakai
-  `gradle/actions/setup-gradle` untuk menyediakan wrapper; `local.properties` tidak boleh
-  di-commit (di-ignore), SDK path disediakan oleh runner.
+- 2026-09-11 — Run pertama (34562586434) **hijau** tanpa perbaikan. Belum ada run merah.
+- Dari sandbox agen, `gh run download` dan `gh run view --log` gagal dengan **EOF ke blob
+  storage Azure** (jaringan sandbox hanya mengizinkan api.github.com). Gunakan
+  `gh api repos/<owner>/<repo>/actions/runs/<id>/jobs` (status & waktu per step),
+  `.../artifacts` (ukuran), dan step summary sebagai sumber diagnosis.
+- Sandbox juga tidak bisa mengunduh dari raw.githubusercontent.com/Maven/Gradle; ambil file
+  referensi upstream via `gh api repos/.../contents/<path> -H "Accept: application/vnd.github.raw"`.
+- `paths-ignore` pada workflow: commit yang hanya menyentuh `*.md`/`docs/**` **tidak**
+  memicu CI — jangan tunggu run untuk commit dokumen.
+- Gradle wrapper diambil dari tag `v8.9.0` upstream; `distributionUrl` diarahkan manual ke
+  `gradle-8.9-bin.zip` (file upstream di tag itu masih menunjuk rc-2).
