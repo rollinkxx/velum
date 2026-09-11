@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">WARP Lite</string>
+    <string name="status_disconnected">Terputus</string>
+    <string name="status_connecting">Menyambung…</string>
+    <string name="status_connected">Tersambung</string>
+    <string name="status_disconnecting">Memutus…</string>
+    <string name="status_registering">Mendaftarkan perangkat…</string>
+    <string name="btn_connect">Sambungkan</string>
+    <string name="btn_disconnect">Putuskan</string>
+    <string name="btn_test">Uji koneksi</string>
+    <string name="btn_reset">Daftar ulang</string>
+    <string name="btn_vpn_settings">Selalu aktif (pengaturan sistem)</string>
+    <string name="err_no_settings">Pengaturan VPN tidak tersedia di perangkat ini</string>
+    <string name="notif_channel">Status koneksi</string>
+    <string name="notif_connected">Tersambung — lalu lintas lewat Cloudflare</string>
+    <string name="test_running">Menguji…</string>
+    <string name="test_on">WARP aktif: lalu lintas lewat Cloudflare</string>
+    <string name="test_off">WARP tidak aktif</string>
+    <string name="test_on_dc">WARP aktif · DC %1$s · %2$s</string>
+    <string name="test_off_time">Belum lewat WARP · %1$s</string>
+    <string name="test_failed">Gagal menguji</string>
+    <string name="info_duration">Durasi</string>
+    <string name="info_endpoint">Endpoint</string>
+    <string name="info_last_test">Uji terakhir</string>
+    <string name="value_none">—</string>
+    <string name="err_vpn_denied">Izin VPN ditolak</string>
+    <string name="err_register">Registrasi gagal: %1$s</string>
+    <string name="err_connect">Gagal menyambung: %1$s</string>
+    <string name="err_network">Kesalahan jaringan: %1$s</string>
+    <string name="reset_done">Registrasi dihapus. Tekan Sambungkan untuk mendaftar ulang.</string>
+    <string name="desc_footer">Hanya tunnel WARP. Tanpa iklan, tanpa pelacakan.</string>
+</resources>
