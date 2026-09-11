@@ -1,182 +1,142 @@
-# AGENTS.md — Aturan Operasional Sesi Agen
+# AGENTS.md — Panduan Wajib Sesi Agen (repo `rollinkxx/warp`)
 
-Dokumen ini **WAJIB** dibaca dan dipatuhi sebelum pekerjaan apa pun di repo ini.
-Jika fakta di §5 berubah (stack dipilih, CI dibuat, dsb.), perbarui dokumen ini
-dalam **1 commit khusus** berjudul `docs: sinkronisasi AGENTS.md` — jangan
-menumpuk perubahan aturan bersama perubahan kode.
-
----
+Dokumen ini mengikat setiap agen coding yang bekerja di repo ini. Isinya diturunkan dari
+keadaan repo yang nyata dan dari kesepakatan dengan maintainer. Bagian yang bertanda
+**[direncanakan]** belum ada di repo dan baru berlaku setelah dibuat.
+Bila fakta di §5 berubah, perbarui dokumen ini dalam **1 commit khusus** berjudul
+`docs: sinkronisasi AGENTS.md` — jangan menumpuk perubahan aturan bersama perubahan kode.
 
 ## §1 Model Sesi & Branch
 
-- **Sandbox ephemeral**: filesystem lokal tidak awet. State yang bertahan
-  SATU-SATUNYA adalah yang sudah terpush ke remote.
-  Prinsip kerja: **"belum push = belum kerja"**.
-- **Branch terikat sesi** (pola `arena/<id>-<suffix>`). Sesi ini:
-  **`arena/01a08ecf-warp`**.
-  - Semua pekerjaan HANYA di branch ini. Dilarang switch ke branch lain,
-    membuat cabang lain, atau push ke branch lain.
-- **Awal sesi (wajib, urut):**
-  1. `git branch --show-current` → pastikan `arena/01a08ecf-warp`.
-  2. `git status` → working tree harus bersih sebelum mulai.
-  3. Audit repo: struktur & stack (bahasa, framework, versi toolchain),
-     build system, CI workflow (`.github/workflows/*` — catat step yang
-     **memblokir** vs **advisory**), perintah build/test persis dari CI,
-     konvensi commit (`git log --oneline -20`), konfigurasi gaya
-     (editorconfig/lint/katalog dependensi), dan dokumen yang sudah ada
-     (README, CONTRIBUTING, CHANGELOG, TODO, docs/).
+- Sandbox agen bersifat **ephemeral**. Satu-satunya state yang awet adalah yang sudah
+  **ter-push ke GitHub**. Prinsip: **"belum push = belum kerja"**.
+- Setiap sesi Arena terikat pada satu branch berpola `arena/<id>-<suffix>`
+  (sesi ini: `arena/01a08ecf-warp`, bercabang dari `main` @ `76b33c9`).
+  - Catatan pemulihan (2026-09-11): sesi sebelumnya `arena/01a08e90-warp` berisi seluruh
+    pekerjaan awal proyek; branch-nya terhapus di remote. Commit HEAD-nya (`26104f6`,
+    CI hijau) dipulihkan lewat pengambilan SHA dangling dari workflow run, lalu di-merge
+    ke branch sesi ini.
+- Semua kerja HANYA di branch sesi. Dilarang `checkout`/`switch`/membuat branch lain,
+  dilarang push ke branch lain.
+- Sebelum mulai tugas apa pun: `git branch --show-current` dan `git status` — tree harus bersih.
+- Branch default repo: `main`. Agen **tidak pernah** merge ke `main` (merge mengakhiri sesi).
+- Aturan khusus maintainer repo ini: **agen tidak mengeksekusi perubahan apa pun sebelum
+  diperintahkan secara eksplisit.** Sajikan rencana dulu, tunggu perintah, baru kerjakan.
 
 ## §2 Aturan Emas: Push ≠ PR ≠ Merge
 
 | Aksi | Kapan | Siapa |
 |---|---|---|
-| Commit + push | **1 tugas = 1 perubahan logis = 1 commit**, push segera setelah gerbang §3 lulus. Dilarang menumpuk commit lokal | Agen |
-| Buka PR (`gh pr create`) | Hanya setelah SEMUA tugas selesai **dan** ada konfirmasi eksplisit maintainer. Dilarang PR di tengah pengerjaan | Agen |
-| Merge ke branch default | Setelah CI hijau, dari UI GitHub oleh maintainer. **Merge mengakhiri sesi** | Maintainer (manusia) |
+| Commit + push ke branch sesi | Setiap 1 perubahan logis selesai & lolos gerbang §3 | Agen |
+| Buka PR (`gh pr create`) | Hanya setelah SEMUA tugas sesi selesai **dan** maintainer konfirmasi eksplisit | Agen |
+| Merge PR | Dari UI GitHub, setelah CI hijau | Maintainer (bukan agen) |
 
-- **Agen DILARANG merge ke branch default**, dalam kondisi apa pun.
-- **Push itu mahal (kuota CI)** — dilarang trial-and-error via CI.
-  - Uji lokal SEMUA yang bisa diuji, dengan perintah persis dari workflow CI (§3).
-  - Yang tidak bisa diuji lokal (toolchain tidak ada di sandbox) →
-    **review diff dua lapis** (sekali sebagai reviewer, sekali sebagai
-    compiler/runtime) + catatan eksplisit bahwa CI adalah validasi final.
-- **CI merah → JANGAN langsung push lagi.**
-  1. Baca log penuh: `gh run view --log-failed`. Bila kena error EOF blob
-     storage, gunakan PR comment / step summary yang ditulis workflow.
-  2. Tulis diagnosis akar-masalah.
-  3. Kumpulkan SEMUA fix → 1 commit → 1 push.
-  4. Tidak boleh ada run merah yang tak terjelaskan.
-
-### Urutan 5 langkah per sesi
-
-1. Pahami tugas + cek branch & tree bersih.
+**Urutan 5 langkah per sesi**
+1. Pahami tugas; cek branch & tree bersih.
 2. Implementasi perubahan terkecil yang logis; jalankan gerbang §3.
-3. Commit (konvensi §4) + push ke branch sesi. **Tanpa PR.**
-4. Semua tugas selesai + konfirmasi maintainer → `gh pr create`
-   (ringkasan, daftar verifikasi lokal, rujukan commit/TODO).
-5. `gh pr checks --watch` sampai hijau; merah → diagnosis dulu, 1 push
-   perbaikan per tahap; hijau → laporan + **STOP** (maintainer yang merge).
-   Akhiri sesi dengan rekap di body PR: daftar commit, diagnosis run merah
-   (bila ada), dan sisa pekerjaan (handoff).
+3. Commit (pesan §4) + push segera ke branch sesi. Tanpa PR. Dilarang menumpuk commit lokal.
+4. Semua tugas selesai + konfirmasi maintainer → `gh pr create` dengan ringkasan, daftar
+   verifikasi lokal, rujukan commit/TODO.
+5. `gh pr checks --watch` sampai hijau. Merah → diagnosis dulu (lihat di bawah), 1 push
+   perbaikan per tahap. Hijau → laporan + STOP. Rekap di body PR: commit, diagnosis run merah
+   (bila ada), sisa pekerjaan (handoff).
 
-### Checklist pra-push permanen
+**Kedisiplinan push & CI**
+- Push itu mahal (kuota CI). Dilarang trial-and-error lewat CI.
+- CI merah: JANGAN langsung push lagi. Baca log penuh: `gh run view <id> --log-failed`.
+  Jika gagal dengan EOF/blob storage, fallback ke step summary yang ditulis workflow
+  (`$GITHUB_STEP_SUMMARY`) atau komentar PR. Tulis diagnosis, kumpulkan SEMUA fix →
+  1 commit → 1 push. Tidak boleh ada run merah tanpa penjelasan.
 
-- [ ] Di branch sesi (`arena/01a08ecf-warp`) dan `git status` bersih.
-- [ ] Tepat 1 perubahan logis dalam commit ini; pesan sesuai §4.
-- [ ] Grep rahasia (§3) nihil: tak ada kredensial/keystore/`.env`/private key.
-- [ ] File konfigurasi yang disentuh ter-parse valid (JSON/YAML/TOML/XML).
-- [ ] Keseimbangan kurung/struktur untuk file yang diedit (delimiter,
-      tag pembuka/penutup, fence markdown).
-- [ ] Namespace/package konsisten dengan lokasi file.
-- [ ] Katalog/lockfile sinkron dengan file build (bila dependensi disentuh).
-- [ ] Lint/build/test lokal hijau — perintah persis dari CI, bila toolchain
-      tersedia di sandbox.
-- [ ] `CHANGELOG.md` `[Unreleased]` diperbarui bila perubahan terlihat
-      pengguna; `TODO.md` diperbarui bila menyentuh itemnya.
+**Checklist pra-push permanen**
+- [ ] `git status` bersih selain perubahan yang dimaksud; tidak ada file build/artefak.
+- [ ] Tepat 1 perubahan logis dalam commit ini; pesan commit sesuai §4.
+- [ ] Gerbang §3 dijalankan dan lolos untuk semua yang bisa diuji lokal.
+- [ ] Tidak ada kredensial/keystore/.env/token di diff (`git diff --cached | grep -inE
+      "password|secret|token|BEGIN (RSA|EC|OPENSSH) PRIVATE|keystore"` → harus kosong).
+- [ ] Keseimbangan kurung/delimiter untuk file yang disunting (termasuk fence markdown).
+- [ ] CHANGELOG.md `[Unreleased]` dan TODO.md diperbarui bila relevan.
 
 ## §3 Gerbang Kualitas Pra-Commit
 
-**Fakta repo ini (audit 2026-09-11, commit `76b33c9`): BELUM ada CI** —
-tidak ada `.github/workflows/`. Begitu workflow pertama ditambahkan, SALIN
-perintah build/test/lint-nya ke seksi ini (dan tandai step pemblokir vs
-advisory) lewat commit `docs: sinkronisasi AGENTS.md`.
+**Kondisi sandbox saat ini (fakta, diverifikasi 2026-09-11):** tidak ada `java`, `gradle`,
+Android SDK (`ANDROID_HOME` kosong). Artinya **build/lint/test Android TIDAK bisa dijalankan
+lokal**; **CI GitHub Actions adalah validasi final** untuk kompilasi. Mitigasi wajib sebelum push:
 
-Gerbang lokal yang berlaku **sekarang** untuk setiap commit:
+1. **Review diff dua lapis**: (a) baca ulang tiap file yang diubah secara utuh; (b) baca
+   `git diff --cached` baris per baris.
+2. **Parse file konfigurasi yang disentuh**:
+   - YAML workflow: `python3 -c "import yaml,sys;yaml.safe_load(open(sys.argv[1]))" <file>`
+   - XML (manifest/layout/strings): `python3 -c "import xml.dom.minidom,sys;xml.dom.minidom.parse(sys.argv[1])" <file>`
+   - TOML (catalog): `python3 -c "import tomllib,sys;tomllib.load(open(sys.argv[1],'rb'))" <file>`
+3. **Keseimbangan kurung** untuk `.kt`/`.kts`: hitung `{`/`}` dan `(`/`)` per file
+   (skrip python3 sederhana) — harus seimbang.
+4. **Konsistensi package-vs-lokasi**: deklarasi `package` di setiap `.kt` harus sama dengan
+   path direktori di bawah `src/main/java/`.
+5. **Katalog vs build-file**: setiap dependensi/plugin di `*.gradle.kts` harus merujuk
+   `libs.*` dari `gradle/libs.versions.toml`; tidak ada string versi hardcode.
+6. **Security grep** (sama seperti checklist §2) atas seluruh diff.
+7. **Perintah persis dari CI** (`.github/workflows/build.yml`, step pemblokir "Build debug APK"):
+   `./gradlew --no-daemon --stacktrace assembleDebug` — jalankan lokal bila toolchain
+   tersedia; saat ini hanya berjalan di runner CI. (Opsional lanjutan: `./gradlew --no-daemon lintDebug`.)
 
-```bash
-# 1. Tree & whitespace bersih
-git status
-git diff --check
-
-# 2. Grep rahasia — hasil wajib nihil
-git grep -nI -E '(BEGIN [A-Z ]*PRIVATE KEY|api[_-]?key|secret|password|token)[ =:]' \
-  -- . ':!AGENTS.md'
-
-# 3. Parse konfigurasi yang disentuh (bila ada)
-python3 -m json.tool <file.json> > /dev/null
-python3 -c 'import tomllib,sys; tomllib.load(open(sys.argv[1],"rb"))' <file.toml>
-
-# 4. Keseimbangan fence markdown untuk dokumen yang disentuh
-grep -c '^```' <file.md>   # wajib genap
-```
-
-- **Lint/build/test proyek**: BELUM ADA (stack belum ada).
-  Mitigasi: review diff dua lapis + nyatakan di body commit/PR bahwa CI
-  kelak adalah validasi final.
+Bila di kemudian hari sandbox memiliki JDK + Android SDK, langkah 7 menjadi WAJIB lokal
+sebelum push.
 
 ## §4 Konvensi Repo
 
-- **Bahasa**: commit, PR, dan dokumen memakai **Bahasa Indonesia ringkas**
-  (repo baru, belum ada konvensi lain dari sejarah). Judul commit berbentuk
-  `<tipe>: <deskripsi>` — tipe: `docs`, `feat`, `fix`, `chore`, `refactor`,
-  `test`, `ci`, `build`. **Body menjelaskan APA & MENGAPA.**
-- **Footer commit**: mengikuti ketentuan platform sesi Arena saat ini —
-  tidak ada footer wajib dari platform; tanpa footer atribusi model/agen
-  kecuali maintainer memintanya.
-- **CHANGELOG.md**: kanonis format [Keep a Changelog](https://keepachangelog.com/en/1.1.0/);
-  entri aktif di bagian `[Unreleased]` (kelompok Added/Changed/Fixed/Removed).
-  README hanya pointer — tidak menulis riwayat perubahan di README.
-- **TODO.md**: tabel `No. | Item | Prioritas | Status`.
-  - Status `Selesai, menunggu validasi CI` → diubah menjadi
-    `Selesai tervalidasi (PR #N)` setelah CI hijau.
-  - Riwayat tidak dihapus; item baru = baris baru.
-- **ADR (keputusan arsitektur)**: `docs/adr/NNN-judul.md` dengan seksi
-  Status / Tanggal / Konteks / Keputusan / Konsekuensi, plus indeks
-  `docs/adr/README.md`. ADR lama tidak ditulis ulang — status diubah
-  menjadi `Superseded by NNN`.
-- **Versi** (`versionName`/`versionCode` atau semver di file rilis): bump
-  HANYA atas permintaan eksplisit maintainer; jangan otomatis per PR.
-- **Dependensi & versi**: HANYA lewat satu sumber kebenaran repo
-  (katalog/lock — mis. `gradle/libs.versions.toml`, `package.json`+lockfile,
-  `pyproject.toml`). Dilarang hardcode versi di file build lain.
-  Saat ini belum ada satu pun; sumber kebenaran ditetapkan saat stack
-  dipilih (lewat ADR bila berdampak arsitektur).
-- **Kredensial**: dilarang commit kredensial/keystore/`.env`. Bila CI kelak
-  punya security scan, jalankan grep yang sama di lokal sebelum push.
-- **Identitas permanen** (Android `applicationId`, nama paket
-  Play/npm/PyPI): putuskan SEKALI di awal sebelum publish; perubahan setelah
-  publish = aplikasi/paket baru. Cek tabrakan nama di toko/registry
-  eksternal sebelum menetapkan — catat hasilnya di ADR.
-- **Artefak referensi** (mis. screenshot golden/snapshot test): daftar path
-  "tidak boleh berubah tanpa prosedur re-record eksplisit" dikelola di
-  §5.3 beserta prosedurnya.
+- **Bahasa**: seluruh commit/PR/dokumen memakai **Bahasa Indonesia ringkas**.
+  Subjek commit: `<tipe>: <ringkasan>` dengan tipe `feat|fix|docs|ci|build|refactor|chore`.
+  Body menjelaskan **APA** dan **MENGAPA**. Footer commit mengikuti ketentuan platform Arena
+  yang berlaku pada sesi (jika platform menambahkan trailer otomatis, jangan dihapus).
+- **CHANGELOG.md** (kanonis, format Keep a Changelog): entri aktif di `[Unreleased]` dengan
+  sub-bagian `Added/Changed/Fixed/Removed`. README hanya pointer, tidak memuat changelog.
+- **TODO.md**: tabel `No. | Item | Prioritas | Status`. Status `Selesai, menunggu validasi CI`
+  → `Selesai tervalidasi (PR #N)` setelah CI hijau. Riwayat tidak dihapus; item baru =
+  baris baru.
+- **ADR**: keputusan arsitektur ditulis di `docs/adr/NNN-judul.md` (Status/Tanggal/Konteks/
+  Keputusan/Konsekuensi) + indeks `docs/adr/README.md`. ADR lama tidak ditulis ulang;
+  gunakan status `Superseded by NNN`.
+- **Versi** (`versionName`/`versionCode`): bump HANYA atas permintaan eksplisit maintainer,
+  tidak otomatis per PR.
+- **Sumber kebenaran dependensi**: `gradle/libs.versions.toml`. Dilarang hardcode versi di
+  `build.gradle.kts` mana pun. Versi Gradle wrapper hanya di
+  `gradle/wrapper/gradle-wrapper.properties`.
+- **Dilarang commit** kredensial, keystore (`*.jks`, `*.keystore`), `.env`, `local.properties`.
+  Signing rilis (bila ada) hanya lewat GitHub Secrets.
+- **Identitas permanen**: `applicationId` Android diputuskan SEKALI sebelum publish dan dicatat
+  di ADR (termasuk hasil cek tabrakan nama di Play Store). Perubahan setelah publish = aplikasi
+  baru.
+- **Artefak referensi terlarang-ubah**: saat ini tidak ada (belum ada snapshot/golden test).
+  Jika nanti ditambahkan (mis. Roborazzi), daftar path dan prosedur re-record wajib ditulis di §5.
 
 ## §5 Fakta Proyek
 
-Hasil audit **2026-09-11** (commit dasar `76b33c9` "Initial commit",
-branch `main`).
+**Keadaan repo (fakta per 2026-09-11):**
+- Aplikasi Android ringan fungsi **WARP saja** (tunnel WireGuard ke Cloudflare), tanpa mode
+  DNS, tanpa iklan/analitik/akun. UI Bahasa Indonesia.
+- Stack: Kotlin, Android Gradle Plugin, minSdk 24, UI XML/AppCompat (tanpa Jetpack Compose
+  demi RAM & ukuran APK kecil). Dependensi inti: `com.wireguard.android:tunnel` (GoBackend).
+  Versi terpusat di `gradle/libs.versions.toml` (lihat CHANGELOG `[Unreleased]`).
+- Modul tunggal `app/`, `applicationId`/package = **`com.rollinkxx.warp`** (ADR 001);
+  nama tampilan **WARP Lite**. Sumber: `MainActivity.kt` (UI), `WarpApi.kt` (registrasi WARP
+  via `api.cloudflareclient.com`), `WarpTunnel.kt` (tunnel GoBackend), `Prefs.kt` (akun).
+- CI: `.github/workflows/build.yml` — trigger `push` (mengabaikan `**.md` & `docs/**`,
+  lihat §5.5) + `workflow_dispatch`; job tunggal `assembleDebug`: checkout → JDK 17 temurin →
+  `android-actions/setup-android` → `gradle/actions/setup-gradle` →
+  `./gradlew --no-daemon --stacktrace assembleDebug` → ringkasan step → artifact `app-debug`.
+  Step pemblokir: build. Step advisory: belum ada.
+- Remote: `https://github.com/rollinkxx/warp.git`, default branch `main`.
+- Sandbox: tanpa JDK/Gradle/Android SDK; `gh` terautentikasi.
+- Dokumen: `README.md` (pointer), `CONTRIBUTING.md` (pointer ke dokumen ini), `CHANGELOG.md`,
+  `TODO.md`, `docs/adr/001-identitas-aplikasi.md` + indeks.
+- Path referensi terlarang-ubah: belum ada.
 
-### 5.1 Stack & struktur
-
-- Stack/bahasa/framework/toolchain: **BELUM ADA**.
-- Isi repo hanya: `README.md` (isi: `# warp`) dan `AGENTS.md`.
-- Tidak ada build system, lockfile, konfigurasi lint/editorconfig,
-  maupun kode sumber.
-- Remote `origin`: `https://github.com/rollinkxx/warp.git`;
-  branch default: `main`.
-
-### 5.2 CI
-
-- Workflow CI: **BELUM ADA**. Step pemblokir vs advisory dan durasi normal
-  job akan dicatat di sini saat workflow pertama dibuat.
-- Konsekuensi: push saat ini **tidak memicu validasi otomatis** — gerbang
-  lokal §3 adalah satu-satunya pertahanan kualitas.
-
-### 5.3 Path artefak referensi terlarang-ubah
-
-- **BELUM ADA**. Ketika snapshot/golden pertama hadir, daftarkan path-nya
-  di sini bersama prosedur re-record eksplisitnya.
-
-### 5.4 Dokumen & identitas
-
-- Dokumen lain (`CHANGELOG.md`, `TODO.md`, `CONTRIBUTING.md`, `docs/`):
-  **BELUM ADA** — dibuat saat pertama kali dibutuhkan, mengikuti §4.
-- `applicationId` / nama paket registry: **BELUM ditetapkan** — wajib ADR +
-  cek tabrakan eksternal sebelum publish pertama.
-
-### 5.5 Catatan teknis penting (jebakan terbukti)
-
-- Repo ini hampir kosong sejak awal sesi — jangan pernah mengasumsikan
-  stack, perintah build, atau CI "standar"; selalu audit dulu (§1).
-- Karena CI belum ada, "CI hijau" belum bisa dijadikan bukti kualitas —
-  seluruh beban validasi ada di gerbang lokal §3 sampai workflow pertama ada.
+**Catatan teknis penting (jebakan) — diperbarui setiap kali ada temuan:**
+- (2026-09-11) Branch sesi `arena/01a08e90-warp` terhapus di remote setelah sesi berakhir,
+  lalu kontennya **tidak tampak** di `git fetch` biasa walaupun commit-nya masih ada.
+  Pemulihan berhasil lewat `headSha` workflow run (`gh run view <id> --json headSha`) +
+  `git fetch origin <sha>` — pelajaran: selalu catat SHA penting; "belum push = belum kerja"
+  berlaku ganda.
+- Pra-antisipasi: `gradle-wrapper.jar` biner harus ikut ter-commit (sudah); `local.properties`
+  tidak boleh di-commit (di-ignore); SDK path disediakan runner.
