@@ -50,6 +50,11 @@ Bila fakta di §5 berubah, perbarui dokumen ini dalam **1 commit khusus** berjud
   `concurrency: cancel-in-progress` per-ref sehingga push beruntun aman.
 - Batas keras: **dilarang mengakhiri giliran kerja dengan commit/perubahan yang belum
   terpush** — jendela sandbox ephemeral (insiden 2026-09-11) berlaku penuh.
+- Pola overlap (2026-09-11, sesi arena/01a08f8f-warp): setelah push batch N, boleh mengerjakan
+  batch N+1 sambil memantau CI batch N; push berikutnya hanya setelah run sebelumnya hijau;
+  pantau via `gh run watch <id> --exit-status --interval 15` (ambil `<id>` dari
+  `gh run list --branch <branch> -L 1 --json databaseId`). Hasil sesi itu: 6 push, 3 run hijau,
+  0 merah.
 - Uji lokal semua yang bisa diuji tetap wajib; bagian yang tidak bisa diuji lokal
   (toolchain absen) divalidasi oleh run CI ujung-paket — CI adalah validasi final,
   BUKAN alat coba-coba.
@@ -223,3 +228,5 @@ sebelum push.
   terbalik antara klien resmi (proxy DNS lokal → "No") dan tunnel transparan (→ "Yes").
   Paritas dicapai dengan `warp_enabled: true` saat registrasi (commit `5d427a3`); akun
   lama cukup satu kali **Daftar ulang**.
+- `gh run watch` berfungsi dari sandbox — gunakan untuk memantau CI; yang EOF hanya
+  `gh run view --log` / `gh run download`.
