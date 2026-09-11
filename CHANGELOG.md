@@ -21,6 +21,17 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
   `ENABLE_RELEASE_SIGNING=true` dan Secrets keystore (`SIGNING_KEYSTORE_BASE64`,
   `KEYSTORE_PASSWORD`, `KEY_ALIAS`, `KEY_PASSWORD`) disiapkan maintainer; penandatanganan
   dibaca dari environment — tidak ada materi rahasia di repo.
+- Penyembuhan otomatis (auto-heal) akun era lama tanpa flag WARP: saat menyambung, aplikasi
+  memeriksa `GET /reg/{id}` sekali (memo `warpEnabled`); bila akun terbukti tanpa flag,
+  registrasi lama dihapus dan perangkat didaftarkan ulang secara transparan. Bersifat
+  fail-safe — keraguan/kegagalan jaringan tidak menyentuh akun dan tidak menghalangi
+  penyambungan.
+- Pintasan "Selalu aktif (pengaturan sistem)" menuju pengaturan VPN bawaan Android
+  (always-on + blokir koneksi tanpa VPN dikelola sistem).
+- Sambung ulang otomatis setelah boot (`BootReceiver` + izin `RECEIVE_BOOT_COMPLETED`)
+  bila terakhir kali tunnel memang tersambung dan persetujuan VPN masih berlaku.
+- Notifikasi persisten status koneksi (kanal `status`, IMPORTANCE_LOW, ketuk untuk membuka
+  aplikasi) dengan permintaan izin `POST_NOTIFICATIONS` pada Android 13+.
 
 ### Changed
 - AGENTS.md §3/§5 disinkronkan dengan stack, CI, dan temuan run pertama.

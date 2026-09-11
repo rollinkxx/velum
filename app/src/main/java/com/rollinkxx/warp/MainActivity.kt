@@ -8,6 +8,7 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
+import android.util.Log
 import android.view.View
 import android.widget.Button
 import android.widget.TextView
@@ -127,6 +128,16 @@ class MainActivity : AppCompatActivity() {
         showMessage("")
         worker.execute {
             try {
+                if (prefs.isRegistered && !prefs.warpEnabled) {
+                    // Akun era lama tanpa flag WARP: coba sembuhkan otomatis (fail-safe,
+                    // kegagalan tidak boleh menghalangi penyambungan).
+                    try {
+                        WarpApi.ensureWarpEnabled(prefs)
+                        main.post { refreshStaticInfo() }
+                    } catch (e: Exception) {
+                        Log.w(TAG, "auto-heal akun gagal, lanjut tanpa heal", e)
+                    }
+                }
                 if (!prefs.isRegistered) {
                     main.post { statusView.setText(R.string.status_registering) }
                     try {
@@ -301,5 +312,7 @@ class MainActivity : AppCompatActivity() {
 
     private companion object {
         const val REQ_VPN = 1
+        const val REQ_NOTIF = 2
+        const val TAG = "WarpLite"
     }
 }

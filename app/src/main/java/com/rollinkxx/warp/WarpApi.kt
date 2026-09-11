@@ -54,6 +54,43 @@ object WarpApi {
         prefs.addressV6 = addresses.optString("v6", null)
         prefs.peerPublicKey = peer.getString("public_key")
         prefs.endpoint = if (host.isNotEmpty()) host else DEFAULT_ENDPOINT
+        prefs.warpEnabled = true // body registrasi memang meminta warp_enabled
+    }
+
+    /**
+     * Menyembuhkan akun lama yang terdaftar tanpa flag WARP (era sebelum registrasi
+     * memakai warp_enabled): GET /reg/{id} → bila account.warp_enabled == false → hapus
+     * registrasi lama di server lalu daftar ulang (otomatis memakai flag baru).
+     * Postur fail-safe: hasil tak meyakinkan atau error jaringan → tidak melakukan apa pun
+     * (pengguna tetap bisa Daftar ulang manual). Dipanggil dari thread latar.
+     */
+    fun ensureWarpEnabled(prefs: Prefs) {
+        val id = prefs.deviceId ?: return
+        val token = prefs.token ?: return
+        val enabled: Boolean? = try {
+            val json = request("GET", "$BASE/reg/$id", null, token)
+            val account = json.optJSONObject("account")
+            if (account != null && account.has("warp_enabled")) {
+                account.optBoolean("warp_enabled")
+            } else {
+                null
+            }
+        } catch (e: Exception) {
+            null
+        }
+        when (enabled) {
+            true -> prefs.warpEnabled = true
+            false -> {
+                try {
+                    request("DELETE", "$BASE/reg/$id", null, token)
+                } catch (_: IOException) {
+                    // Server mungkin sudah lupa; tetap daftar ulang.
+                }
+                prefs.clear()
+                register(prefs) // IOException dibiarkan ke pemanggil; prefs set ulang di sana
+            }
+            null -> Unit // tak meyakinkan: jangan sentuh apa pun
+        }
     }
 
     /** Menghapus registrasi di server (best-effort) lalu membersihkan penyimpanan lokal. */

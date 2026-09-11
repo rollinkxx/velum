@@ -36,6 +36,16 @@ class Prefs(context: Context) {
         get() = sp.getString(K_ENDPOINT, null)
         set(v) = sp.edit().putString(K_ENDPOINT, v).apply()
 
+    /** Memo: akun terkonfirmasi memakai flag WARP penuh (set oleh registrasi/ensure). */
+    var warpEnabled: Boolean
+        get() = sp.getBoolean(K_WARP, false)
+        set(v) = sp.edit().putBoolean(K_WARP, v).apply()
+
+    /** Memo: terakhir kali tunnel memang UP (untuk sambung ulang saat boot). */
+    var wasUp: Boolean
+        get() = sp.getBoolean(K_WAS_UP, false)
+        set(v) = sp.edit().putBoolean(K_WAS_UP, v).apply()
+
     /** Registrasi dianggap lengkap bila semua bidang inti tersedia. */
     val isRegistered: Boolean
         get() = !privateKey.isNullOrEmpty() && !addressV4.isNullOrEmpty() &&
@@ -51,5 +61,7 @@ class Prefs(context: Context) {
         const val K_V6 = "addr_v6"
         const val K_PEER = "peer_pub"
         const val K_ENDPOINT = "endpoint"
+        const val K_WARP = "warp_enabled"
+        const val K_WAS_UP = "was_up"
     }
 }
