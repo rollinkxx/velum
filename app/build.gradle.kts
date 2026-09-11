@@ -45,6 +45,15 @@ android {
         }
     }
 
+    // Laporan teks dibutuhkan CI: laporan HTML tidak bisa dibaca dari log,
+    // dan artifact tidak bisa diunduh dari sandbox agen (lihat AGENTS.md §5).
+    lint {
+        textReport = true
+        textOutput = file("build/reports/lint-results-debug.txt")
+        abortOnError = true
+        warningsAsErrors = false
+    }
+
     buildFeatures {
         buildConfig = false
         viewBinding = false
@@ -65,6 +74,12 @@ android {
 
 dependencies {
     implementation(libs.androidx.appcompat)
+    // Dipakai langsung untuk Activity Result API (izin VPN & notifikasi).
+    implementation(libs.androidx.activity)
     implementation(libs.wireguard.tunnel)
     implementation(libs.androidx.security.crypto)
+
+    // Pengujian unit murni JVM: logika VelumFormat & keputusan uji (tidak ikut ke APK).
+    testImplementation(libs.junit)
+    testImplementation(libs.json)
 }

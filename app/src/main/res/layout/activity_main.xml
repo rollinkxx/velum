@@ -13,13 +13,32 @@
         android:padding="24dp">
 
         <TextView
+            android:id="@+id/appTitle"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:fontFamily="sans-serif-light"
-            android:letterSpacing="0.3"
+            android:includeFontPadding="false"
+            android:letterSpacing="0.34"
             android:text="@string/app_name"
             android:textColor="@color/fg"
-            android:textSize="30sp" />
+            android:textSize="34sp" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:fontFamily="sans-serif-medium"
+            android:letterSpacing="0.28"
+            android:text="@string/app_tagline"
+            android:textAllCaps="true"
+            android:textColor="@color/accent_dim"
+            android:textSize="10sp" />
+
+        <View
+            android:layout_width="52dp"
+            android:layout_height="1dp"
+            android:layout_marginTop="14dp"
+            android:background="@drawable/divider_gold" />
 
         <LinearLayout
             android:layout_width="match_parent"
@@ -34,7 +53,8 @@
                 android:id="@+id/statusDot"
                 android:layout_width="12dp"
                 android:layout_height="12dp"
-                android:background="@drawable/dot_off" />
+                android:background="@drawable/dot_off"
+                android:contentDescription="@string/cd_status_down" />
 
             <TextView
                 android:id="@+id/status"
@@ -84,7 +104,7 @@
                         android:layout_weight="1.5"
                         android:ellipsize="end"
                         android:gravity="end"
-                        android:singleLine="true"
+                        android:maxLines="2"
                         android:text="@string/value_none"
                         android:textColor="@color/fg"
                         android:textSize="13sp" />
@@ -112,7 +132,7 @@
                         android:layout_weight="1.5"
                         android:ellipsize="end"
                         android:gravity="end"
-                        android:singleLine="true"
+                        android:maxLines="2"
                         android:text="@string/value_none"
                         android:textColor="@color/fg"
                         android:textSize="13sp" />
@@ -140,7 +160,7 @@
                         android:layout_weight="1.5"
                         android:ellipsize="end"
                         android:gravity="end"
-                        android:singleLine="true"
+                        android:maxLines="2"
                         android:text="@string/value_none"
                         android:textColor="@color/fg"
                         android:textSize="13sp" />
@@ -168,7 +188,7 @@
                         android:layout_weight="1.5"
                         android:ellipsize="end"
                         android:gravity="end"
-                        android:singleLine="true"
+                        android:maxLines="2"
                         android:text="@string/value_none"
                         android:textColor="@color/fg"
                         android:textSize="13sp" />
@@ -179,7 +199,8 @@
         <Button
             android:id="@+id/toggle"
             android:layout_width="match_parent"
-            android:layout_height="52dp"
+            android:layout_height="wrap_content"
+            android:minHeight="52dp"
             android:layout_marginTop="28dp"
             android:background="@drawable/btn_primary"
             android:fontFamily="sans-serif-medium"
@@ -192,7 +213,8 @@
         <Button
             android:id="@+id/test"
             android:layout_width="match_parent"
-            android:layout_height="52dp"
+            android:layout_height="wrap_content"
+            android:minHeight="52dp"
             android:layout_marginTop="12dp"
             android:background="@drawable/btn_outline"
             android:text="@string/btn_test"
@@ -226,6 +248,32 @@
             android:textAllCaps="false"
             android:textColor="@color/off"
             android:textSize="12sp" />
+
+        <Button
+            android:id="@+id/exclusions"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="?attr/selectableItemBackground"
+            android:minHeight="48dp"
+            android:paddingStart="24dp"
+            android:paddingEnd="24dp"
+            android:text="@string/btn_exclusions"
+            android:textAllCaps="false"
+            android:textColor="@color/muted"
+            android:textSize="13sp" />
+
+        <Button
+            android:id="@+id/copyDiag"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="?attr/selectableItemBackground"
+            android:minHeight="48dp"
+            android:paddingStart="24dp"
+            android:paddingEnd="24dp"
+            android:text="@string/btn_copy_diag"
+            android:textAllCaps="false"
+            android:textColor="@color/muted"
+            android:textSize="13sp" />
 
         <TextView
             android:layout_width="wrap_content"

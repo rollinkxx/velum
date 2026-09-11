@@ -75,7 +75,7 @@ object ReconnectMonitor {
         bouncing = true
         worker.execute {
             try {
-                val prefs = Prefs(app)
+                val prefs = Prefs.of(app)
                 if (!prefs.wasUp || !prefs.isRegistered) return@execute
                 if (VelumTunnel.state != Tunnel.State.UP) {
                     tryUpOnce(app, prefs)
@@ -91,11 +91,14 @@ object ReconnectMonitor {
 
     /** Menyalakan tunnel yang mati padahal diniatkan UP (mis. proses lahir ulang). */
     private fun tryUpOnce(app: Context, prefs: Prefs) {
-        if (!Prefs(app).wasUp) return // pengguna memutus di tengah jalan
+        if (!Prefs.of(app).wasUp) return // pengguna memutus di tengah jalan
         try {
             VelumTunnel.refreshState(app)
             if (VelumTunnel.state == Tunnel.State.UP) return
             if (VpnService.prepare(app) == null) {
+                // Jaringan baru: endpoint terbaik bisa berubah (refresh() mengabaikan
+                // hasil yang masih segar <1 jam, jadi murah di jalur cepat ini).
+                EndpointProbe.refresh(prefs)
                 VelumTunnel.up(app, prefs)
                 Log.i(TAG, "sambung ulang latar berhasil")
             }
@@ -112,10 +115,11 @@ object ReconnectMonitor {
             } catch (_: InterruptedException) {
                 return
             }
-            if (!Prefs(app).wasUp) return // pengguna memutus di tengah pantulan
+            if (!Prefs.of(app).wasUp) return // pengguna memutus di tengah pantulan
             try {
                 VelumTunnel.refreshState(app)
                 if (VelumTunnel.state == Tunnel.State.UP) return
+                EndpointProbe.refresh(prefs)
                 VelumTunnel.up(app, prefs)
                 VelumTunnel.refreshState(app)
                 if (VelumTunnel.state == Tunnel.State.UP) {

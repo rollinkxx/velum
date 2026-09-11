@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Velum</string>
+    <string name="app_tagline">Tunnel aman yang ringan</string>
     <string name="status_disconnected">Terputus</string>
     <string name="status_connecting">Menyambung…</string>
     <string name="status_connected">Tersambung</string>
@@ -11,12 +12,25 @@
     <string name="btn_disconnect">Putuskan</string>
     <string name="btn_test">Uji koneksi</string>
     <string name="btn_reset">Daftar ulang</string>
+    <string name="btn_cancel">Batal</string>
+    <string name="reset_confirm_title">Daftar ulang perangkat?</string>
+    <string name="reset_confirm_body">Registrasi perangkat ini dihapus dari server lalu didaftarkan ulang. Sambungan diputus dan Velum tidak akan tersambung otomatis saat boot sampai Anda menekan Sambungkan lagi.</string>
+    <string name="cd_status_up">Status: tersambung</string>
+    <string name="cd_status_down">Status: terputus</string>
     <string name="btn_vpn_settings">Selalu aktif (pengaturan sistem)</string>
+    <string name="btn_copy_diag">Salin diagnostik</string>
+    <string name="btn_exclusions">Kecualikan aplikasi</string>
+    <string name="title_excluded">Kecualikan aplikasi</string>
+    <string name="btn_save">Simpan</string>
+    <string name="excluded_saved">Daftar pengecualian disimpan. Putuskan lalu Sambungkan agar berlaku.</string>
+    <string name="excluded_hint">Aplikasi yang dicentang dilewati dari tunnel dan memakai jalur internet langsung. Velum sendiri tidak ditawarkan agar pemeriksaan statusnya tetap bermakna. Perubahan berlaku setelah menyambung ulang.</string>
+    <string name="tile_label">Velum</string>
+    <string name="diag_copied">Ringkasan disalin (tanpa kunci &amp; alamat IP)</string>
     <string name="err_no_settings">Pengaturan VPN tidak tersedia di perangkat ini</string>
     <string name="notif_channel">Status koneksi</string>
-    <string name="notif_connected">Tersambung — lalu lintas lewat Cloudflare</string>
+    <string name="notif_connected">Tersambung — lalu lintas lewat Velum</string>
     <string name="test_running">Menguji…</string>
-    <string name="test_on">Velum aktif: lalu lintas lewat Cloudflare</string>
+    <string name="test_on">Velum aktif: lalu lintas lewat Velum</string>
     <string name="test_off">Velum tidak aktif</string>
     <string name="test_on_dc">Velum aktif · DC %1$s · %2$s</string>
     <string name="test_off_time">Belum lewat Velum · %1$s</string>
@@ -32,6 +46,7 @@
     <string name="err_register">Registrasi gagal: %1$s</string>
     <string name="err_connect">Gagal menyambung: %1$s</string>
     <string name="err_network">Kesalahan jaringan: %1$s</string>
+    <string name="err_server_reject">Layanan menolak klien ini (HTTP %1$s). Versi Velum perlu diperbarui.</string>
     <string name="reset_done">Registrasi dihapus. Tekan Sambungkan untuk mendaftar ulang.</string>
-    <string name="desc_footer">Hanya tunnel WARP. Tanpa iklan, tanpa pelacakan.</string>
+    <string name="desc_footer">Hanya tunnel Velum. Tanpa iklan, tanpa pelacakan.</string>
 </resources>

@@ -36,7 +36,14 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
 
       - name: Build debug APK
-        run: ./gradlew --no-daemon --stacktrace assembleDebug
+        run: |
+          set -o pipefail
+          ./gradlew --no-daemon --stacktrace assembleDebug 2>&1 | tee "$RUNNER_TEMP/build.log"
+
+      # Log tidak bisa dibaca dari sandbox agen (EOF): teruskan error ke anotasi.
+      - name: Laporkan error kompilasi sebagai anotasi
+        if: always()
+        run: python3 .github/scripts/anotasikan-log.py "$RUNNER_TEMP/build.log"
 
       - name: Ringkasan (fallback log)
         if: always()
@@ -57,6 +64,93 @@ jobs:
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
 
+  # Pengujian unit murni JVM (tanpa emulator): logika VelumFormat & keputusan uji.
+  # Pemblokir — mencegah regresi logika seperti false negative "Belum lewat Velum".
+  unitTest:
+    name: unitTest
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup JDK 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Pengujian unit
+        run: |
+          set -o pipefail
+          ./gradlew --no-daemon --stacktrace testDebugUnitTest 2>&1 | tee "$RUNNER_TEMP/test.log"
+
+      # Kegagalan tes hanya ada di laporan JUnit; tanpa ini job merah tanpa informasi.
+      - name: Laporkan kegagalan tes sebagai anotasi
+        if: always()
+        run: |
+          python3 .github/scripts/anotasikan-tes.py
+          python3 .github/scripts/anotasikan-log.py "$RUNNER_TEMP/test.log"
+
+      - name: Unggah laporan pengujian
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: unit-test-report
+          path: app/build/reports/tests/testDebugUnitTest
+          if-no-files-found: warn
+
+  # Pemeriksaan lint Android — ADVISORI (continue-on-error): tidak memblokir merge,
+  # hasilnya dibaca dari artifact laporan bila perlu dibersihkan.
+  lint:
+    name: lint (advisori)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup JDK 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Lint debug
+        run: ./gradlew --no-daemon --stacktrace lintDebug
+
+      - name: Tampilkan temuan lint
+        if: always()
+        run: |
+          if [ -f app/build/reports/lint-results-debug.txt ]; then
+            tail -n 150 app/build/reports/lint-results-debug.txt
+            {
+              echo "## Temuan lint"
+              echo '```'
+              tail -n 150 app/build/reports/lint-results-debug.txt
+              echo '```'
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Unggah laporan lint
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lint-report
+          path: app/build/reports/lint-results-debug.html
+          if-no-files-found: warn
+
   # Job rilis OPSIONAL (TODO 8): hanya jalan bila maintainer menyiapkan
   # Secrets SIGNING_KEYSTORE_BASE64, KEYSTORE_PASSWORD, KEY_ALIAS, KEY_PASSWORD
   # dan variable repository ENABLE_RELEASE_SIGNING=true. Tanpa itu job di-skip.
@@ -64,7 +158,7 @@ jobs:
     name: assembleRelease (bertanda tangan)
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    needs: build
+    needs: [build, unitTest]
     if: vars.ENABLE_RELEASE_SIGNING == 'true'
     steps:
       - uses: actions/checkout@v4

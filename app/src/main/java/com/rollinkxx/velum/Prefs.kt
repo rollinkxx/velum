@@ -1,10 +1,12 @@
 package com.rollinkxx.velum
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.content.SharedPreferences
 import android.util.Log
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
+import java.io.File
 
 /**
  * Penyimpanan data registrasi. Terenkripsi (AndroidX Security + Tink) dengan
@@ -55,6 +57,11 @@ class Prefs(context: Context) {
     val effectiveEndpoint: String?
         get() = speedEndpoint ?: endpoint
 
+    /** Paket aplikasi yang dikecualikan dari tunnel (split tunneling). */
+    var excludedApps: Set<String>
+        get() = sp.getStringSet(K_EXCLUDED, null)?.toSet() ?: emptySet()
+        set(v) = sp.edit().putStringSet(K_EXCLUDED, v).apply()
+
     /** Memo: akun terkonfirmasi memakai flag WARP penuh (set oleh registrasi/ensure). */
     var warpEnabled: Boolean
         get() = sp.getBoolean(K_WARP, false)
@@ -77,7 +84,20 @@ class Prefs(context: Context) {
         if (keepUp) wasUp = true
     }
 
-    private companion object {
+    companion object {
+        @Volatile
+        private var instance: Prefs? = null
+
+        /**
+         * Satu instance per proses. Membuka prefs terenkripsi itu mahal (baca + dekripsi
+         * seluruh nilai untuk pengecekan migrasi), sehingga dipakai bersama oleh UI,
+         * [ReconnectMonitor], dan [BootReceiver].
+         */
+        fun of(context: Context): Prefs =
+            instance ?: synchronized(this) {
+                instance ?: Prefs(context.applicationContext).also { instance = it }
+            }
+
         const val TAG = "Velum"
         const val FILE = "velum"
         const val LEGACY_FILE = "warp"
@@ -92,6 +112,7 @@ class Prefs(context: Context) {
         const val K_SPEED_AT = "speed_at"
         const val K_WARP = "warp_enabled"
         const val K_WAS_UP = "was_up"
+        const val K_EXCLUDED = "excluded_apps"
 
         private fun open(ctx: Context): SharedPreferences {
             val encrypted = try {
@@ -114,14 +135,30 @@ class Prefs(context: Context) {
             return encrypted
         }
 
-        /** Menyalin sekali data era polos (file "warp") ke penyimpanan terenkripsi. */
+        /** Keberadaan berkas era lama, tanpa membuka/dekripsi isinya. */
+        private fun legacyFileExists(ctx: Context): Boolean = try {
+            File(File(ctx.applicationInfo.dataDir, "shared_prefs"), "$LEGACY_FILE.xml").exists()
+        } catch (_: Exception) {
+            false
+        }
+
+        /**
+         * Menyalin sekali data era polos (file "warp") ke penyimpanan terenkripsi.
+         * `commit()` dipakai sengaja: kita harus tahu pasti data sudah menetap sebelum
+         * berkas lama dikosongkan.
+         */
+        @SuppressLint("ApplySharedPref")
         private fun migrateLegacy(ctx: Context, dst: SharedPreferences) {
+            // Cek murah dulu: bila berkas era lama tak pernah ada, tak ada yang dimigrasi
+            // dan kita terhindar dari pembacaan + dekripsi seluruh nilai (`dst.all`).
+            if (!legacyFileExists(ctx)) return
             if (dst.all.isNotEmpty()) return
             val legacy = ctx.getSharedPreferences(LEGACY_FILE, Context.MODE_PRIVATE)
-            if (legacy.all.isEmpty()) return
+            val rencana = VelumMigration.plan(legacy.all)
+            if (rencana.isEmpty()) return
             try {
                 val ed = dst.edit()
-                for ((k, v) in legacy.all) {
+                for ((k, v) in rencana) {
                     when (v) {
                         is String -> ed.putString(k, v)
                         is Boolean -> ed.putBoolean(k, v)
@@ -130,10 +167,8 @@ class Prefs(context: Context) {
                         is Float -> ed.putFloat(k, v)
                         is Set<*> -> {
                             @Suppress("UNCHECKED_CAST")
-                            val strings = v as Set<String>
-                            ed.putStringSet(k, strings)
+                            ed.putStringSet(k, v as Set<String>)
                         }
-                        else -> Unit
                     }
                 }
                 if (!ed.commit()) return

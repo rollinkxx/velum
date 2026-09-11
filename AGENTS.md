@@ -23,13 +23,21 @@ Bila fakta di §5 berubah, perbarui dokumen ini dalam **1 commit khusus** berjud
 - Branch default repo: `main`. Agen **tidak pernah** merge ke `main` (merge mengakhiri sesi).
 - Aturan khusus maintainer repo ini: **agen tidak mengeksekusi perubahan apa pun sebelum
   diperintahkan secara eksplisit.** Sajikan rencana dulu, tunggu perintah, baru kerjakan.
+  **Penegasan 2026-09-11 (lihat §6):** aturan ini berlaku PENUH walau §6 menuntut
+  kecepatan. Sebelum ada perintah, agen hanya boleh membaca/menganalisis dan menyajikan
+  rencana — **tidak menyentuh berkas apa pun, termasuk berkas dokumen**. Yang diatur §6
+  hanyalah *cara* bekerja setelah perintah turun: rencana disajikan lengkap sekali jadi
+  dengan asumsi & default, tanpa pertanyaan yang bisa disimpulkan, dan tanpa
+  trial-and-error di CI. Yang selalu wajib izin tertulis walau sudah ada perintah lain:
+  merge ke `main`, push paksa, hapus registrasi/data, ganti `applicationId`/identitas,
+  bump `versionName`/`versionCode` (§4).
 
 ## §2 Aturan Emas: Push ≠ PR ≠ Merge
 
 | Aksi | Kapan | Siapa |
 |---|---|---|
 | Commit + push ke branch sesi | Setiap 1 perubahan logis selesai & lolos gerbang §3 | Agen |
-| Buka PR (`gh pr create`) | Hanya setelah SEMUA tugas sesi selesai **dan** maintainer konfirmasi eksplisit | Agen |
+| Buka PR (`gh pr create`) | Hanya setelah SEMUA tugas selesai **dan** maintainer konfirmasi eksplisit | Agen |
 | Merge PR | Dari UI GitHub, setelah CI hijau | Maintainer (bukan agen) |
 
 **Urutan 5 langkah per sesi**
@@ -50,12 +58,23 @@ Bila fakta di §5 berubah, perbarui dokumen ini dalam **1 commit khusus** berjud
   `concurrency: cancel-in-progress` per-ref sehingga push beruntun aman.
 - Batas keras: **dilarang mengakhiri giliran kerja dengan commit/perubahan yang belum
   terpush** — jendela sandbox ephemeral (insiden 2026-09-11) berlaku penuh.
+- Pola overlap (2026-09-11, sesi arena/01a08f8f-warp): setelah push batch N, boleh mengerjakan
+  batch N+1 sambil memantau CI batch N; push berikutnya hanya setelah run sebelumnya hijau;
+  pantau via `gh run watch <id> --exit-status --interval 15` (ambil `<id>` dari
+  `gh run list --branch <branch> -L 1 --json databaseId`). Hasil sesi itu: 6 push, 3 run hijau,
+  0 merah.
 - Uji lokal semua yang bisa diuji tetap wajib; bagian yang tidak bisa diuji lokal
   (toolchain absen) divalidasi oleh run CI ujung-paket — CI adalah validasi final,
   BUKAN alat coba-coba.
 
 **Kedisiplinan push & CI**
 - Push itu mahal (kuota CI). Dilarang trial-and-error lewat CI.
+- **Kecepatan §6 tidak boleh dibayar dengan trial-and-error di CI.** Bila penyebab
+  kegagalan belum jelas: berhenti, diagnosis dulu (anotasi check-run, §5), lalu
+  kumpulkan SEMUA kemungkinan perbaikan dalam satu push — bukan satu push per tebakan.
+  Pelajaran nyata: memperbaiki satu peringatan lint butuh 3 run
+  (34596670455 → 34597044297 → 34597362335 → 34597848316) karena penyebabnya ditebak,
+  bukan dibaca.
 - CI merah: JANGAN langsung push lagi. Baca log penuh: `gh run view <id> --log-failed`.
   Jika gagal dengan EOF/blob storage, fallback ke step summary yang ditulis workflow
   (`$GITHUB_STEP_SUMMARY`), komentar PR, atau endpoint `gh api` (lihat §5). Tulis diagnosis,
@@ -223,3 +242,109 @@ sebelum push.
   terbalik antara klien resmi (proxy DNS lokal → "No") dan tunnel transparan (→ "Yes").
   Paritas dicapai dengan `warp_enabled: true` saat registrasi (commit `5d427a3`); akun
   lama cukup satu kali **Daftar ulang**.
+- `gh run watch` berfungsi dari sandbox — gunakan untuk memantau CI; yang EOF hanya
+  `gh run view --log` / `gh run download`.
+- (2026-09-11) **Log CI sama sekali tidak bisa dibaca dari sandbox**: `gh run view --log`,
+  `gh run view --log-failed`, dan `gh run download` semuanya EOF. Satu-satunya jalan untuk
+  mendiagnosis run (terutama job lint) adalah **anotasi check-run**:
+  `gh api repos/<owner>/<repo>/commits/<sha>/check-runs --jq '.check_runs[] | select(.name|test("lint")) | .id'`
+  lalu `gh api repos/<owner>/<repo>/check-runs/<id>/annotations`. Konsekuensi praktis:
+  job yang hasilnya hanya ada di log wajib menuliskan temuannya ke `$GITHUB_STEP_SUMMARY`
+  **dan** mencetaknya ke log; untuk lint, aktifkan `lint { textReport = true }`.
+- (2026-09-11) `gh pr edit --title/--body` **gagal diam-diam** (kode keluar 1, hanya
+  peringatan "Projects (classic) is being deprecated") dan perubahannya tidak diterapkan.
+  Pakai REST API: `gh api -X PATCH repos/<owner>/<repo>/pulls/<n> -f title="..."` dan
+  `-F body=@/tmp/berkas.md`. Selalu verifikasi dengan `gh pr view <n> --json title,body`.
+- (2026-09-11, PR #3) **`gh pr edit --title/--body` GAGAL dari sandbox** (keluar dengan
+  kode 1, hanya mencetak peringatan "Projects (classic) is being deprecated"), dan
+  perubahannya **tidak diterapkan walau tanpa pesan error**. Pakai REST API sebagai
+  gantinya:
+  `gh api -X PATCH repos/rollinkxx/velum/pulls/<n> -f title="<judul>"` dan
+  `gh api -X PATCH repos/rollinkxx/velum/pulls/<n> -F body=@/tmp/body.md` (isi panjang
+  lewat berkas sementara di luar repo). Selalu verifikasi dengan
+  `gh pr view <n> --json title,body`.
+- (2026-09-11) Lampiran gambar yang dikirim pengguna TIDAK bisa dibaca dari sandbox:
+  path `/home/user/uploads/` tidak ada. Minta pengguna menceritakan isinya.
+- (2026-09-11) **Jebakan deteksi WARP**: `Tunnel.State.UP` dari `GoBackend` hanya berarti
+  antarmuka TUN selesai dibuat, BUKAN handshake selesai; dan `HttpURLConnection` memakai
+  ulang soket keep-alive yang dibuat sebelum VPN aktif (Android tidak memindahkan soket
+  yang sudah terbuka ke tunnel). Dampaknya: uji `cdn-cgi/trace` bisa mengembalikan
+  `warp=off` meski tunnel benar-benar UP. Wajib: `Connection: close` +
+  `http.keepAlive=false`, tunggu `traffic().latestHandshakeMs > 0` sebelum uji.
+
+## §6 Protokol Android: Presisi & Efisiensi Waktu (aktif 2026-09-11)
+
+Setiap detik pipeline CI mahal dan setiap iterasi yang gagal membuang waktu. §6 melengkapi
+§1–§5 dan mengubah kebiasaan lama yang memperlambat kerja (lihat amandemen di §1).
+
+### Prinsip efisiensi waktu
+
+1. **Batch pertanyaan** — bila butuh informasi, tanyakan SEMUA sekaligus dalam satu pesan.
+   Maksimal satu kali bertanya; tidak ada pertanyaan bertahap.
+2. **Smart defaults** — info yang tidak diberikan → pakai default stabil dan sebutkan di
+   awal respons. **Isi repo selalu menang atas default protokol**: `gradle/libs.versions.toml`
+   adalah satu-satunya sumber kebenaran versi (§4). Default protokol (AGP 8.5.2, Gradle 8.7,
+   Kotlin 2.0.0, compileSdk/targetSdk 34, minSdk 24, JDK 17, Kotlin DSL, version catalog)
+   hanya dipakai bila katalog belum menetapkannya. Keadaan nyata repo: AGP 8.7.3,
+   Gradle 8.9, Kotlin 2.0.21, JDK 17, compileSdk/targetSdk 35, minSdk 24.
+3. **Tanpa pertanyaan yang bisa disimpulkan** — jangan tanya hal yang sudah terjawab oleh
+   log error, kode yang ada, atau §5.
+4. **Solusi sekali jalan** — sebelum perintah: sajikan RENCANA lengkap sekali jadi
+   (tujuan, asumsi/default, berkas terdampak, risiko) agar satu putaran persetujuan
+   cukup. Setelah perintah: eksekusi lengkap, jangan menyuruh pengguna "lanjut ke
+   langkah berikutnya".
+5. **Antisipasi masalah turunan** — sertakan pencegahannya di respons/kode yang sama.
+6. **Sadari cache** — jangan merusak cache Gradle & dependensi di CI (lihat §3 langkah 7).
+7. **Kerja paralel** — bila beberapa berkas harus berubah, kerjakan semuanya dalam satu
+   batch. Ini persis *model paket* di §2: N commit per perubahan logis, 1 push, 1 run CI.
+
+### Fase eksekusi
+
+- **Fase 0 — Intake cepat:** ekstrak semua informasi dari teks, log, dan kode. Info
+  non-kritis hilang → pakai default. Info kritis hilang → batch pertanyaan maksimal 1x.
+- **Fase 1 — Analisis singkat:** tujuan 1 kalimat, asumsi/default yang dipakai, versi yang
+  relevan, dan daftar berkas terdampak.
+- **Fase 2 — Eksekusi:** semua berkas sekaligus. Bila kode dibagikan di percakapan →
+  **berkas utuh** (path di header, impor lengkap, tanpa placeholder). Bila dikirim sebagai
+  pekerjaan repo → wujudkan sebagai commit per perubahan logis (§2, §4).
+- **Fase 3 — Optimasi CI:** pastikan JDK/Gradle/AGP selaras; `gradle/actions/setup-gradle@v4`
+  sudah menangani cache Gradle & dependensi; `org.gradle.caching=true` dan
+  configuration-cache aktif di `gradle.properties`. Jangan menambahkan `--parallel` tanpa
+  alasan (modul tunggal: manfaatnya nihil, risiko konfigurasi-cache justru naik).
+- **Fase 4 — Perbaikan dini:** sebutkan potensi masalah turunan berikut solusinya.
+
+### Larangan mutlak
+
+- ❌ "coba ganti…", "kalau masih error coba…" — diagnosis dulu, baru perbaiki.
+- ❌ Memberi banyak opsi — berikan satu solusi terbaik, kecuali keputusan produk yang
+  memang wewenang maintainer (mis. identitas aplikasi, bump versi).
+- ❌ Kode parsial/placeholder saat berkas dibagikan di percakapan.
+- ❌ Pertanyaan bertahap atau pertanyaan trivial yang bisa pakai default.
+- ❌ API usang atau versi yang tidak ada — job `lint (advisori)` akan menandainya dan
+  wajib dijaga hijau walau tidak memblokir.
+- ❌ Mengubah berkas yang tidak perlu; mengulang kode yang sudah benar.
+
+### Format respons (permintaan kode)
+
+🎯 Tujuan (1 kalimat) · 📌 Asumsi/default · 🔍 Akar masalah (bila perbaikan bug) ·
+📂 Berkas terdampak · 💻 Implementasi (berkas utuh, path di header) · ⚙️ CI/CD (bila
+workflow tersentuh) · ⚠️ Heads-up (masalah turunan + solusi) · ✅ Siap dibangun.
+
+Bila pekerjaan dikirim sebagai commit/PR (bukan dibagikan di percakapan), susunan di
+atas tetap dipakai sebagai isi laporan dan body PR.
+
+### Pohon keputusan
+
+```
+Permintaan masuk
+├─ Sudah ada perintah eksplisit?
+│    ├─ Info kurang & kritis? → tanya SEKALI (batch), lalu eksekusi lengkap
+│    └─ Info cukup?           → eksekusi lengkap + sebutkan asumsi/default
+└─ Belum ada perintah?
+     ├─ Info kurang & kritis? → tanya SEKALI (batch) untuk melengkapi rencana
+     └─ Sajikan RENCANA lengkap sekali jadi, lalu TUNGGU instruksi.
+        Dilarang menyentuh berkas apa pun sebelum instruksi turun (§1).
+```
+
+Protokol ini aktif sejak 2026-09-11 sampai maintainer menulis "stop protocol" atau
+memulai sesi baru. Bila ada aturan lain yang bertentangan dengan §6, §6 yang menang.
