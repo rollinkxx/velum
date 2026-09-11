@@ -40,6 +40,11 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 - Baris statistik trafik di kartu status (byte naik/turun tiap 5 detik dari backend
   WireGuard) plus deteksi tunnel basi: peringatan bila 30 detik tanpa lalu lintas dan
   handshake kedaluwarsa.
+- Baris Data kini menampilkan laju kecepatan (KB/s naik/turun) dari delta statistik
+  backend per 5 detik.
+- Proba endpoint tercepat saat menyambung (`EndpointProbe`): mengukur RTT paralel ke
+  endpoint registrasi + kandidat anycast (batas ±6 detik), memakai pemenang selama
+  1 jam; selalu fail-safe ke endpoint registrasi.
 
 ### Changed
 - AGENTS.md §3/§5 disinkronkan dengan stack, CI, dan temuan run pertama.

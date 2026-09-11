@@ -25,3 +25,5 @@
 | 21 | Statistik trafik + deteksi tunnel basi | Sedang | Selesai tervalidasi (CI run 34581202095) |
 | 22 | Uji `assembleRelease` bertanda tangan end-to-end (butuh Secrets maintainer) | Sedang | Menunggu Secrets maintainer |
 | 23 | Anotasi advisory Node.js 20 deprecated di runner (actions dipaksa ke Node 24; non-pemblokir, terlihat di run 34581202095) | Rendah | Dicatat; menunggu upstream actions |
+| 24 | Indikator laju kecepatan (KB/s) di baris Data | Tinggi | Selesai, menunggu validasi CI |
+| 25 | Proba endpoint tercepat saat menyambung | Tinggi | Selesai, menunggu validasi CI |
