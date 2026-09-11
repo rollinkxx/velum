@@ -2,11 +2,16 @@ package com.rollinkxx.velum
 
 import android.content.Context
 import android.content.SharedPreferences
+import android.util.Log
+import androidx.security.crypto.EncryptedSharedPreferences
+import androidx.security.crypto.MasterKey
 
-/** Penyimpanan ringan untuk data registrasi WARP (SharedPreferences, tanpa library tambahan). */
+/**
+ * Penyimpanan data registrasi. Terenkripsi (AndroidX Security + Tink) dengan
+ * fallback polos bila keystore perangkat gagal; data era polos dimigrasi sekali.
+ */
 class Prefs(context: Context) {
-    private val sp: SharedPreferences =
-        context.applicationContext.getSharedPreferences("velum", Context.MODE_PRIVATE)
+    private val sp: SharedPreferences = open(context.applicationContext)
 
     var privateKey: String?
         get() = sp.getString(K_PRIV, null)
@@ -59,6 +64,9 @@ class Prefs(context: Context) {
     }
 
     private companion object {
+        const val TAG = "Velum"
+        const val FILE = "velum"
+        const val LEGACY_FILE = "warp"
         const val K_PRIV = "private_key"
         const val K_ID = "device_id"
         const val K_TOKEN = "token"
@@ -68,5 +76,56 @@ class Prefs(context: Context) {
         const val K_ENDPOINT = "endpoint"
         const val K_WARP = "warp_enabled"
         const val K_WAS_UP = "was_up"
+
+        private fun open(ctx: Context): SharedPreferences {
+            val encrypted = try {
+                val masterKey = MasterKey.Builder(ctx)
+                    .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
+                    .build()
+                EncryptedSharedPreferences.create(
+                    ctx,
+                    FILE,
+                    masterKey,
+                    EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+                    EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
+                )
+            } catch (e: Exception) {
+                Log.w(TAG, "prefs terenkripsi gagal, fallback polos", e)
+                null
+            }
+            if (encrypted == null) return ctx.getSharedPreferences(FILE, Context.MODE_PRIVATE)
+            migrateLegacy(ctx, encrypted)
+            return encrypted
+        }
+
+        /** Menyalin sekali data era polos (file "warp") ke penyimpanan terenkripsi. */
+        private fun migrateLegacy(ctx: Context, dst: SharedPreferences) {
+            if (dst.all.isNotEmpty()) return
+            val legacy = ctx.getSharedPreferences(LEGACY_FILE, Context.MODE_PRIVATE)
+            if (legacy.all.isEmpty()) return
+            try {
+                val ed = dst.edit()
+                for ((k, v) in legacy.all) {
+                    when (v) {
+                        is String -> ed.putString(k, v)
+                        is Boolean -> ed.putBoolean(k, v)
+                        is Int -> ed.putInt(k, v)
+                        is Long -> ed.putLong(k, v)
+                        is Float -> ed.putFloat(k, v)
+                        is Set<*> -> {
+                            @Suppress("UNCHECKED_CAST")
+                            val strings = v as Set<String>
+                            ed.putStringSet(k, strings)
+                        }
+                        else -> Unit
+                    }
+                }
+                if (!ed.commit()) return
+                legacy.edit().clear().commit()
+                Log.i(TAG, "migrasi prefs lama selesai")
+            } catch (e: Exception) {
+                Log.w(TAG, "migrasi prefs lama gagal", e)
+            }
+        }
     }
 }

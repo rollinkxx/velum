@@ -66,4 +66,5 @@ android {
 dependencies {
     implementation(libs.androidx.appcompat)
     implementation(libs.wireguard.tunnel)
+    implementation(libs.androidx.security.crypto)
 }
