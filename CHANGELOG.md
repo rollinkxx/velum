@@ -17,6 +17,10 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
   hanya selama UP), endpoint tunnel, dan hasil uji terakhir lengkap dengan data center
   (`colo`) dan jam cek dari `cdn-cgi/trace`; uji koneksi otomatis berjalan sekali setiap
   kali tersambung.
+- Job CI opsional `assembleRelease` bertanda tangan: aktif hanya bila variable
+  `ENABLE_RELEASE_SIGNING=true` dan Secrets keystore (`SIGNING_KEYSTORE_BASE64`,
+  `KEYSTORE_PASSWORD`, `KEY_ALIAS`, `KEY_PASSWORD`) disiapkan maintainer; penandatanganan
+  dibaca dari environment — tidak ada materi rahasia di repo.
 
 ### Changed
 - AGENTS.md §3/§5 disinkronkan dengan stack, CI, dan temuan run pertama.
