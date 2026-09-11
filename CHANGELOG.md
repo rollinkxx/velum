@@ -15,6 +15,11 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 
 ### Changed
 - AGENTS.md §3/§5 disinkronkan dengan stack, CI, dan temuan run pertama.
+- Tampilan dipoles menjadi tema gelap elegan: latar gradasi charcoal, kartu status rounded
+  dengan titik indikator, tombol utama amber ber-ripple + tombol sekunder outline, tipografi
+  `sans-serif-light/medium`, status bar selaras tema; warna ikon adaptif disamakan dengan
+  aksen. Seluruhnya murni resource XML bawaan — tanpa dependensi/font eksternal, tanpa
+  memengaruhi performa maupun ukuran APK secara berarti.
 
 ### Fixed
 - Registrasi perangkat kini menyertakan flag `warp_enabled: true` agar akun terdaftar dengan

@@ -6,6 +6,7 @@ import android.net.VpnService
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.view.View
 import android.widget.Button
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
@@ -22,6 +23,7 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var prefs: Prefs
     private lateinit var statusView: TextView
+    private lateinit var statusDot: View
     private lateinit var messageView: TextView
     private lateinit var toggleButton: Button
     private lateinit var testButton: Button
@@ -39,6 +41,7 @@ class MainActivity : AppCompatActivity() {
         prefs = Prefs(this)
 
         statusView = findViewById(R.id.status)
+        statusDot = findViewById(R.id.statusDot)
         messageView = findViewById(R.id.message)
         toggleButton = findViewById(R.id.toggle)
         testButton = findViewById(R.id.test)
@@ -176,11 +179,13 @@ class MainActivity : AppCompatActivity() {
             Tunnel.State.UP -> {
                 statusView.setText(R.string.status_connected)
                 statusView.setTextColor(getColor(R.color.ok))
+                statusDot.setBackgroundResource(R.drawable.dot_ok)
                 toggleButton.setText(R.string.btn_disconnect)
             }
             else -> {
                 statusView.setText(R.string.status_disconnected)
                 statusView.setTextColor(getColor(R.color.fg))
+                statusDot.setBackgroundResource(R.drawable.dot_off)
                 toggleButton.setText(R.string.btn_connect)
             }
         }

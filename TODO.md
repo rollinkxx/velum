@@ -12,3 +12,4 @@
 | 8 | (Opsional) job `assembleRelease` bertanda tangan via Secrets | Rendah | Belum, menunggu permintaan |
 | 9 | Migrasi `actions/setup-java@v4` → `@v5` (advisory deprecation di run 34565410965) | Rendah | Belum, menunggu keputusan maintainer |
 | 10 | Paritas WARP: registrasi dengan flag `warp_enabled: true` | Tinggi | Selesai, menunggu validasi CI |
+| 11 | Poles tampilan: tema gelap elegan + kartu status + tombol custom (murni resource) | Sedang | Selesai, menunggu validasi CI |

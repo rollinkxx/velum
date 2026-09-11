@@ -1,8 +1,24 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="bg">#FFFFFFFF</color>
-    <color name="fg">#FF1F1F1F</color>
-    <color name="muted">#FF6B6B6B</color>
-    <color name="accent">#FFF6821F</color>
-    <color name="ok">#FF2E7D32</color>
+    <!-- Kanvas gelap elegan -->
+    <color name="bg_start">#0E1116</color>
+    <color name="bg_end">#151B24</color>
+
+    <!-- Permukaan kartu -->
+    <color name="card">#1A2230</color>
+    <color name="card_stroke">#2A3442</color>
+    <color name="outline">#3A4656</color>
+
+    <!-- Aksen amber-emas -->
+    <color name="accent">#E8A13D</color>
+    <color name="accent_dim">#7A5B2E</color>
+    <color name="on_accent">#241A08</color>
+
+    <!-- Teks -->
+    <color name="fg">#E9EEF5</color>
+    <color name="muted">#9AA7B8</color>
+
+    <!-- Status -->
+    <color name="ok">#3FB27F</color>
+    <color name="off">#7A8699</color>
 </resources>

@@ -1,8 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <style name="Theme.WarpLite" parent="Theme.AppCompat.DayNight.NoActionBar">
+    <style name="Theme.WarpLite" parent="Theme.AppCompat.NoActionBar">
         <item name="colorPrimary">@color/accent</item>
         <item name="colorAccent">@color/accent</item>
-        <item name="android:windowBackground">?android:attr/colorBackground</item>
+        <item name="android:windowBackground">@drawable/bg_gradient</item>
+        <item name="android:statusBarColor">@color/bg_start</item>
+        <item name="android:windowLightStatusBar">false</item>
     </style>
 </resources>
