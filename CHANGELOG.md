@@ -32,6 +32,14 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
   bila terakhir kali tunnel memang tersambung dan persetujuan VPN masih berlaku.
 - Notifikasi persisten status koneksi (kanal `status`, IMPORTANCE_LOW, ketuk untuk membuka
   aplikasi) dengan permintaan izin `POST_NOTIFICATIONS` pada Android 13+.
+- Sambung ulang otomatis saat konektivitas berubah (`ReconnectMonitor` lingkup aplikasi:
+  pantulan tunnel dengan backoff 2/5/10 detik + debounce, pemulihan sesi saat proses
+  lahir ulang, penjagaan sesi dari `BootReceiver` bila boot tanpa jaringan).
+- Penyimpanan registrasi terenkripsi (`EncryptedSharedPreferences`, AES256-GCM) dengan
+  migrasi sekali dari file era polos dan fallback aman bila keystore perangkat gagal.
+- Baris statistik trafik di kartu status (byte naik/turun tiap 5 detik dari backend
+  WireGuard) plus deteksi tunnel basi: peringatan bila 30 detik tanpa lalu lintas dan
+  handshake kedaluwarsa.
 
 ### Changed
 - AGENTS.md §3/§5 disinkronkan dengan stack, CI, dan temuan run pertama.
