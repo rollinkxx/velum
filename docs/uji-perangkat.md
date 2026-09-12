@@ -1,119 +1,154 @@
-# Uji Perangkat Velum
+# Uji Perangkat Velum — tanpa adb
 
 Checklist pengujian di perangkat Android nyata. **Dibutuhkan** karena repo ini tidak punya
-emulator — bukan di lingkungan agen, bukan di CI (lihat AGENTS.md §11.2 dan TODO 71).
-Semua yang dijanjikan di bawah ini baru terbukti *secara nalar dan kompilasi*; yang belum
-terbukti adalah perilakunya di perangkat.
+emulator — tidak di lingkungan agen, tidak di CI (AGENTS.md §11.2, §12).
 
-- **Syarat minimum:** Android 14+ (API 34+) untuk menguji penegakan tipe foreground service.
-  Uji dasar (sambung/putus/rotasi) berjalan di API 24+.
-- **Versi yang diuji:** `arena/01a09664-velum` @ `c4da5df` + paket perbaikan kedua.
-- **Penting:** uji dengan APK `debug` bila ingin membaca logcat tanpa perangkat root
-  (proses `:preview` juga bisa, tapi R8 membuat sebagian nama di log sudah terubah).
+Disusun untuk keadaan maintainer yang sebenarnya: **Android 14, tanpa adb, tanpa komputer**
+(dinyatakan 2026-09-13). Karena itu **setiap uji di sini bisa dilakukan dari layar
+perangkat saja**. Tidak ada perintah `adb`, tidak ada logcat, tidak ada `dumpsys`.
 
-## Cara merekam
+- **Alat bukti utama Anda: layar Diagnostik.** Buka aplikasi → panel Diagnostik → salin.
+  Isinya kini mencakup keadaan internal yang dulu hanya ada di logcat:
 
-```bash
-# bersihkan, lalu rekam hanya tag aplikasi ini
-adb logcat -c
-adb logcat -v time Velum:V VelumTunnel:V VelumController:V VelumMonitor:V VelumTile:V \
-                   VelumBoot:V VelumProbe:V VelumExclusion:V VelumApi:V VelumPrefs:V *:S \
-  | tee velum-uji.log
-```
+  ```
+  Velum 0.5.0
+  Status      : Tersambung
+  Endpoint    : 162.159.192.1:2408
+  Handshake   : 42 detik lalu
+  Durasi      : 01:23
+  Trafik      : turun 1,2 MB · naik 240,3 KB
+  Uji terakhir: Aktif · DC SIN · 15:25
+  Dikecualikan: tidak ada
+  Niat        : Hidup · aksi ke-7
+  Pemantau    : aktif
+  Proses      : hidup 01:23
+  Boot        : 3,1 detik · berhasil · 2 jam lalu
+  Catatan     : tanpa kunci privat, identitas perangkat, atau alamat IP Anda
+  ```
 
-Tag lengkap bisa dicek dengan `grep -rn 'const val TAG' app/src/main/java/`.
+  Empat baris terakhir adalah yang baru. Cara membacanya ada di bagian
+  [Cara membaca baris diagnostik](#cara-membaca-baris-diagnostik).
 
-Untuk melihat keputusan sistem soal layanan/tunnel:
+- **Cara melapor paling berguna:** salin **seluruh** isi diagnostik (tombol salin di panel
+  itu) dan tempel apa adanya, ditambah satu kalimat apa yang Anda lihat di layar. Jangan
+  dirangkum menjadi "berhasil" atau "lancar" — ringkasan tidak bisa dipakai memutuskan apa
+  pun (AGENTS.md §12 butir 3).
 
-```bash
-adb logcat -v time | grep -Ei 'vpn|VpnService|GoBackend|ActivityManager|ForegroundService|ANR'
-```
+---
 
-Setiap baris yang menarik (atau **hilangnya** baris yang seharusnya ada) adalah bukti.
-Tempel apa adanya ke laporan — jangan dirangkum menjadi "berhasil".
+## Cara membaca baris diagnostik
+
+| Baris | Artinya | Tanda ada masalah |
+|---|---|---|
+| **Niat** | Apakah tunnel *diharapkan* hidup (`Hidup`/`Mati`) dan berapa kali aksi sambung/putus terjadi (`aksi ke-N`) | `Status: Terputus` tapi `Niat: Hidup` → tunnel akan menyambung sendiri tanpa Anda minta. **Itu bug.** |
+| **Pemantau** | Apakah pemantau sambung-ulang otomatis sedang aktif | `Pemantau: aktif` padahal Anda baru saja memutus manual → pemantau tidak dimatikan |
+| **Proses** | Sudah berapa lama **proses aplikasi** hidup (bukan berapa lama tunnel tersambung) | Angka ini jauh lebih kecil dari lamanya Anda membiarkan aplikasi di latar → proses sempat mati dan lahir lagi, tunnel ikut mati bersamanya |
+| **Boot** | Percobaan menyambung otomatis terakhir (setelah perangkat menyala atau aplikasi diperbarui): lama, hasil, dan kapan | `GAGAL`, atau durasi mendekati/melebihi `10,0 detik`, atau `belum ada percobaan` padahal Anda baru saja memulai ulang perangkat |
+
+Angka `aksi ke-N` tidak berarti apa-apa sendirian. Yang berarti: **naik berapa kali** setelah
+satu tindakan Anda. Tekan Putuskan sekali → angka naik 1. Naik 2 atau lebih = ada pelaku lain
+(layar, ubin, pemantau) yang ikut bertindak.
 
 ---
 
-## Kelompok A — status & kepemilikan
+## Kelompok A — status & durasi (semua V1)
 
-| # | Langkah | Yang diharapkan | Bila berbeda |
-|---|---|---|---|
-| A1 | Sambungkan, putar layar 2×, lalu kunci-buka layar | Durasi tetap berjalan (tidak `00:00`); tidak ada auto-uji ulang; laju trafik **langsung** masuk akal, bukan `0 B/s` selama ~5 detik pertama | durasi reset = `upSinceElapsedMs` tidak dibaca; `0 B/s` = `resetTrafficBaseline` tidak terpanggil di `onStart` |
-| A2 | Sambungkan lewat **ubin** dengan aplikasi tertutup | Notifikasi "Tersambung" muncul tanpa membuka aplikasi | `onStateChange` tidak memposting notifikasi |
-| A3 | Sambungkan, lalu matikan VPN dari **Pengaturan sistem** (bukan dari aplikasi) | Notifikasi hilang; ubin kembali "Tidak aktif"; durasi reset | notifikasi basi = `hide()` tidak terpanggil |
-| A4 | Sambungkan, biarkan 10 menit di latar (layar mati) | Tunnel tetap UP; durasi terus bertambah saat aplikasi dibuka lagi | proses mati = VPN tidak menahan proses (bukan FGS) |
-| A5 | `adb shell dumpsys package com.rollinkxx.velum \| grep -A3 'foregroundServiceType'` | **Tidak ada** atribut itu, dan tidak ada izin `FOREGROUND_SERVICE*` di daftar `requested permissions` | manifest masih membawa deklarasi inert |
-| A6 | Sambungkan, lalu `adb shell dumpsys activity services com.rollinkxx.velum` | `GoBackend$VpnService` tercatat sebagai VpnService aktif (`isForeground=false` itu **benar**) | — |
+| # | Tingkat | Langkah | Yang diharapkan di layar | Bila berbeda |
+|---|---|---|---|---|
+| A1 | V1 | Sambungkan. Putar layar 2×. Kunci layar, buka lagi. | `Durasi` terus bertambah, tidak kembali `00:00`. `Trafik` **langsung** menampilkan angka masuk akal, bukan `0 B/s` selama ~5 detik | Durasi reset = umur tunnel tidak dibaca dari proses. `0 B/s` sesaat = dasar hitungan laju tidak direset |
+| A2 | V1 | Putuskan tunnel. Tekan **ubin** di panel cepat untuk menyambung, **tanpa membuka aplikasi**. Tunggu, lalu buka panel notifikasi. | Notifikasi "Tersambung" muncul walau aplikasi tidak pernah dibuka | Notifikasi hanya diposting oleh layar |
+| A3 | V1 | Sambungkan. Matikan VPN dari **Pengaturan sistem → Jaringan → VPN** (bukan dari aplikasi). Buka aplikasi. | `Status: Terputus`, notifikasi hilang, `Durasi` kosong. **`Niat: Mati`** | Notifikasi menetap = status basi. `Niat: Hidup` = niat bocor |
+| A4 | V1 | Sambungkan. Biarkan **30 menit** dengan layar mati, jangan buka aplikasi. Buka lagi, lihat diagnostik. | `Status: Tersambung` dan **`Proses: hidup 30:xx`** (kira-kira selama Anda meninggalkannya) | `Proses` hanya beberapa menit = proses mati di latar dan tunnel sempat putus. Ini risiko yang sengaja diambil saat deklarasi foreground service dihapus — **laporkan angkanya apa adanya** |
+| A5 | V1 | Sambungkan, biarkan 5 menit, lalu buka diagnostik dua kali berjarak 1 menit. | `Proses` dan `Durasi` bertambah keduanya, selisihnya konsisten | `Durasi` bertambah tapi `Proses` reset = proses lahir ulang diam-diam |
 
-## Kelompok B — niat pengguna lintas pelaku
+## Kelompok B — niat pengguna lintas pelaku (V1 lewat baris Niat)
 
-| # | Langkah | Yang diharapkan | Bila berbeda |
-|---|---|---|---|
-| B1 | Tekan **Putuskan** di aplikasi, lalu **dalam 1 detik** tekan ubin untuk menyambung | Yang menang adalah aksi terakhir; tunnel tidak "bangkit sendiri" setelahnya | generasi niat tidak diperiksa |
-| B2 | Tekan ubin untuk menyambung (proba endpoint ~6 dtk), lalu tekan **Putuskan** di aplikasi sebelum selesai | Tunnel berakhir **mati**, `wasUp=false`, pemantau mati | aksi ubin menimpa setelah `down()` |
-| B3 | Sambungkan, lalu **matikan Wi-Fi/data** dan hidupkan lagi 3× cepat | Tunnel kembali UP sekali, bukan berulang; tidak ada "sambung-putus" beruntun | pemantau memantul tanpa backoff |
-| B4 | Putuskan secara manual, lalu matikan-hidupkan jaringan | Tunnel **tetap mati** (niat pengguna = putus). Log: pemantau menolak karena `wasUp=false` | `ReconnectMonitor.ensure` menyalakan pemantau tanpa memeriksa niat |
-| B5 | Sambungkan → matikan jaringan → **tunggu > 60 detik** → hidupkan jaringan | Bounce dengan backoff terjadi; bila gagal, ada log jujur (bukan diam) | — |
+Yang diuji di sini **gejalanya**, bukan mekanismenya. Anda tidak perlu presisi milidetik:
+lakukan secepat yang wajar, lalu baca baris `Niat`.
 
-## Kelompok C — pengecualian aplikasi (split tunnel)
+| # | Tingkat | Langkah | Yang diharapkan | Bila berbeda |
+|---|---|---|---|---|
+| B1 | V1 | Tekan **Putuskan** di aplikasi, lalu **segera** tekan ubin untuk menyambung. Buka diagnostik. | Keadaan akhir **konsisten**: `Status` dan `Niat` sepadan (sama-sama hidup atau sama-sama mati) | `Status: Terputus` + `Niat: Hidup` = tunnel akan menyambung sendiri → **bug, laporkan** |
+| B2 | V1 | Tekan ubin untuk menyambung, lalu **secepatnya** buka aplikasi dan tekan Putuskan sebelum selesai. Tunggu 15 detik, buka diagnostik. | `Status: Terputus`, **`Niat: Mati`**, `Pemantau: mati`. Tunnel **tidak** menyambung sendiri setelah itu | Tunnel hidup lagi sendiri = aksi ubin menimpa setelah Putuskan |
+| B3 | V1 | Sambungkan. Matikan Wi-Fi **dan** data, tunggu 10 detik, hidupkan lagi. Ulangi 3× cepat. Buka diagnostik tiap kali. | `Status: Tersambung` kembali. `aksi ke-N` tidak melonjak liar (naik wajar, tidak belasan) | Niat melonjak banyak = pemantau memantul berulang tanpa kendali |
+| B4 | V1 | Putuskan **secara manual** dari aplikasi. Lalu matikan-hidupkan jaringan. Buka diagnostik. | Tunnel **tetap mati**: `Status: Terputus`, `Niat: Mati`, `Pemantau: mati` | `Pemantau: aktif` atau tunnel hidup lagi = niat "putus" tidak dihormati |
+| B5 | V1 | Sambungkan. Matikan jaringan, biarkan **2 menit**, hidupkan lagi. Tunggu 1 menit, buka diagnostik. | `Status: Tersambung` pulih sendiri tanpa Anda menyentuh aplikasi | Tidak pulih = pemantau menyerah terlalu cepat |
 
-| # | Langkah | Yang diharapkan | Bila berbeda |
-|---|---|---|---|
-| C1 | Dalam keadaan **tersambung**, buka Pengecualian, centang 1 aplikasi, Simpan | Toast "…menyambungkan ulang…"; tunnel putus-sambung **sekali** (~1–3 dtk); aplikasi itu langsung keluar dari tunnel | perubahan tidak berlaku = `restart()` tidak dipanggil |
-| C2 | Bukti C1: `adb shell dumpsys connectivity \| grep -i vpn` atau buka aplikasi yang dikecualikan dan periksa lewat situs "what is my ip" | IP aplikasi yang dikecualikan ≠ IP tunnel | `disallowedApplications` tidak sampai ke `VpnService.Builder` |
-| C3 | Simpan **tanpa mengubah** centang apa pun | Tidak ada penyambungan ulang (log: daftar tidak berubah) | pemborosan: restart tiap kali Simpan |
-| C4 | Dalam keadaan **putus**, ubah daftar lalu Simpan | Hanya tersimpan; tunnel tidak dinyalakan | `save()` menyambung padahal niat pengguna = putus |
+## Kelompok C — pengecualian aplikasi (V1, lewat situs pemeriksa IP)
 
-## Kelompok D — penyimpanan & registrasi
+| # | Tingkat | Langkah | Yang diharapkan | Bila berbeda |
+|---|---|---|---|---|
+| C1 | V1 | Dalam keadaan **tersambung**: buka Pengecualian, centang **browser** Anda, Simpan. | Toast berbunyi "…menyambungkan ulang…". Tunnel putus-sambung **sekali** (~1–3 detik), lalu tersambung lagi | Tidak ada restart = perubahan tidak diterapkan. Restart berulang = ada yang memantul |
+| C2 | V1 | Bukti C1 **tanpa adb**: sebelum mencentang, buka `cloudflare.com/cdn-cgi/trace` di browser dan catat baris `ip=` dan `loc=`. Sesudah mencentang + tersambung lagi, buka halaman yang sama. | `ip=` dan `loc=` **berubah** menjadi IP/lokasi asli Anda (bukan Cloudflare) — artinya browser keluar dari tunnel. Aplikasi lain yang tidak dicentang tetap lewat tunnel | Tidak berubah = pengecualian tidak sampai ke sistem |
+| C3 | V1 | Buka Pengecualian, **jangan ubah apa pun**, tekan Simpan. | Toast "Daftar pengecualian disimpan." **tanpa** "menyambungkan ulang…", dan tunnel tidak putus | Ikut restart = membuang waktu tiap kali Simpan |
+| C4 | V1 | Dalam keadaan **putus**: ubah daftar, Simpan, buka diagnostik. | Hanya tersimpan. `Status: Terputus`, `Niat: Mati` — aplikasi tidak menyalakan tunnel sendiri | Tunnel menyambung = niat "sedang putus" diabaikan |
 
-| # | Langkah | Yang diharapkan | Bila berbeda |
-|---|---|---|---|
-| D1 | Daftar ulang (`Prefs.clear`) saat tunnel **tersambung** dan daftar pengecualian **tidak kosong** | Tunnel diputus; pengecualian **tetap ada** setelah daftar ulang; `wasUp` mengikuti niat | pengecualian hilang = `clear()` tidak mempertahankannya |
-| D2 | Paksa proses mati di tengah penyimpanan (`adb shell am force-stop` saat mendaftar) lalu buka aplikasi | Data konsisten: **semua** field registrasi baru, atau **semua** yang lama. Tidak ada campuran (kunci baru + endpoint lama) | `saveRegistration` tidak atomik |
-| D3 | `adb shell run-as com.rollinkxx.velum ls shared_prefs/` (APK debug) | Ada `velum.xml`. `velum_plain.xml` **hanya** ada bila keystore perangkat gagal | `velum_plain.xml` ada padahal keystore sehat = fallback terpakai diam-diam |
-| D4 | Bila D3 menemukan `velum_plain.xml` | Logcat memuat "penyimpanan polos dipakai" + layar diagnostik menandainya. **Perlu daftar ulang sekali** — itu konsekuensi yang diketahui dari pemisahan nama berkas (lihat komentar di `Prefs.open`) | fallback tidak memberi tanda apa pun |
+## Kelompok D — penyimpanan & registrasi (V1)
 
-## Kelompok E — rotasi endpoint
+| # | Tingkat | Langkah | Yang diharapkan | Bila berbeda |
+|---|---|---|---|---|
+| D1 | V1 | Susun daftar pengecualian (2 aplikasi). Sambungkan. Lalu **Daftar ulang**. Setelah selesai, buka Pengecualian lagi. | Kedua aplikasi **masih tercentang**. Tunnel diputus selama pendaftaran ulang | Daftar kosong = `clear()` menghapus pilihan Anda |
+| D2 | V1 | Buka diagnostik, periksa ada/tidaknya baris `Peringatan`. | **Tidak ada** baris `Peringatan : penyimpanan TIDAK terenkripsi` | Ada baris itu = keystore perangkat gagal, kunci privat tersimpan tanpa enkripsi. **Laporkan segera** — dan perlu daftar ulang sekali (konsekuensi yang diketahui, TODO 78) |
+| D3 | V1 | Paksa aplikasi berhenti (Pengaturan → Aplikasi → Velum → **Paksa berhenti**) **tepat saat** menekan Sambungkan/Daftar ulang. Buka lagi. | Aplikasi tetap bisa dipakai: atau tersambung penuh, atau kembali ke keadaan sebelum itu — **tidak campuran** (mis. terdaftar tapi tidak bisa menyambung) | Keadaan campuran = penulisan penyimpanan tidak atomik |
 
-| # | Langkah | Yang diharapkan | Bila berbeda |
-|---|---|---|---|
-| E1 | Putar endpoint dari layar utama saat **tersambung** | Notifikasi hilang-muncul sebentar, durasi kembali `00:00`, tunnel UP lagi dengan endpoint baru | — |
-| E2 | Putar endpoint saat **tidak** terpasang/tidak terdaftar | Tidak ada perubahan preferensi yang ditulis; log jujur ("tidak ada endpoint pengganti") | `rotate()` menulis prefs di jalur gagal |
-| E3 | Ulangi putar endpoint 5× berturut-turut | Tidak ada kebocoran (tiap putaran selesai sebelum berikutnya); tidak ada ANR | kunci `@Synchronized` menahan terlalu lama |
+## Kelompok E — rotasi endpoint (V1)
 
-## Kelompok F — boot & pembaruan
+| # | Tingkat | Langkah | Yang diharapkan | Bila berbeda |
+|---|---|---|---|---|
+| E1 | V1 | Dalam keadaan tersambung, putar endpoint dari layar utama. | Notifikasi hilang-muncul sebentar, `Durasi` kembali `00:00`, `Endpoint` berubah, lalu tersambung lagi | Endpoint tidak berubah tapi aplikasi mengklaim berpindah = laporan palsu |
+| E2 | V1 | Putar endpoint **5× berturut-turut**, masing-masing tunggu selesai. | Semua selesai, aplikasi tetap responsif, tidak ada dialog "tidak merespons" | Macet/ANR = kunci tunnel menahan terlalu lama |
+| E3 | V1 | Putar endpoint saat tunnel **putus**. Buka diagnostik. | `Status: Terputus`, dan tidak ada klaim berhasil berpindah | Aplikasi melaporkan berpindah padahal tidak = temuan B4 belum tertutup |
 
-| # | Langkah | Yang diharapkan | Bila berbeda |
-|---|---|---|---|
-| F1 | Dalam keadaan tersambung, `adb reboot`; jangan buka aplikasi | Tunnel menyambung sendiri setelah boot; notifikasi ada | `BootReceiver` tidak menuntaskan `up()` dalam anggaran `goAsync()` |
-| F2 | **Catat waktunya:** berapa detik dari layar kunci muncul sampai notifikasi "Tersambung"? | — | **Angka ini yang dibutuhkan** untuk memutuskan temuan D6 (risiko `goAsync` vs proses dibunuh). Tulis apa adanya, termasuk bila > 10 detik atau bila gagal |
-| F3 | Dalam keadaan **putus**, `adb reboot` | Tunnel tetap mati; pemantau tidak menyalakannya | `wasUp` salah tersimpan |
-| F4 | `adb install -r app-debug.apk` saat tersambung (memicu `MY_PACKAGE_REPLACED`) | Tunnel kembali UP tanpa dibuka manual | — |
-| F5 | F1/F4 sambil merekam `adb logcat -b all \| grep -Ei 'broadcast.*timeout\|exceed\|Background execution'` | Tidak ada peringatan sistem soal receiver melebihi batas | ada = D6 terbukti nyata, bukan teoretis |
+## Kelompok F — boot & pembaruan (V1 lewat baris Boot)
 
-## Kelompok G — izin & kegagalan
+Ini kelompok yang paling penting untuk keputusan TODO 77, dan sekarang **tidak butuh
+logcat sama sekali** — angkanya ada di baris `Boot`.
 
-| # | Langkah | Yang diharapkan | Bila berbeda |
-|---|---|---|---|
-| G1 | Cabut izin notifikasi (Android 13+), lalu sambungkan | Tunnel tetap UP; tidak ada crash; tidak ada dialog sistem yang macet | — |
-| G2 | Tolak dialog persetujuan VPN saat pertama menyambung | Pesan jelas, tidak ada tunnel setengah jadi, tidak ada notifikasi palsu | — |
-| G3 | Matikan jaringan sepenuhnya lalu tekan Sambungkan | Kegagalan dijelaskan (`VelumError`), tombol tidak terkunci selamanya | tombol mati = state tidak dikembalikan |
-| G4 | Mode pesawat → sambungkan → matikan mode pesawat | Pemantau memulihkan tunnel tanpa sentuhan pengguna | — |
+| # | Tingkat | Langkah | Yang diharapkan | Bila berbeda |
+|---|---|---|---|---|
+| F1 | V1 | Dalam keadaan tersambung, **mulai ulang perangkat**. Setelah menyala, **jangan buka aplikasi** selama 2 menit. Lalu buka diagnostik. | `Status: Tersambung`, dan baris `Boot` berisi durasi + `berhasil` + umur beberapa menit | `Boot: … GAGAL` atau `belum ada percobaan` padahal Anda baru memulai ulang = sambung ulang boot tidak jalan |
+| F2 | V1 | **Catat angka durasi pada baris `Boot` dari F1.** Inilah angka keputusan itu. | Kurang dari `10,0 detik` | **`10,0 detik` atau lebih = anggaran receiver terlampaui.** Laporkan angkanya persis (mis. `14,2 detik`); dari situ TODO 77 diputuskan |
+| F3 | V1 | Dalam keadaan **putus**, mulai ulang perangkat, tunggu 2 menit, buka diagnostik. | `Status: Terputus` (tunnel tidak menyambung sendiri), `Niat: Mati`, baris `Boot` **tidak** berubah menjadi percobaan baru | Tunnel menyambung sendiri = niat "putus" tidak dihormati saat boot |
+| F4 | V1 | Perbarui aplikasi (pasang APK baru menimpa yang lama) saat tunnel tersambung. Tunggu 2 menit, buka diagnostik. | `Status: Tersambung` kembali tanpa Anda buka aplikasi; baris `Boot` terisi percobaan baru | Tetap putus = `MY_PACKAGE_REPLACED` tidak bekerja |
+| F5 | V1 | Setelah F1/F4, perhatikan layar selama 1 menit: adakah jeda panjang, layar "Aplikasi tidak merespons", atau notifikasi sistem soal aplikasi yang menguras baterai? | Tidak ada | Ada → catat **kapan** dan **apa bunyinya** persis. Ini pengganti pemeriksaan `broadcast timeout` yang tadinya butuh adb |
+
+## Kelompok G — izin & kegagalan (V1)
+
+| # | Tingkat | Langkah | Yang diharapkan | Bila berbeda |
+|---|---|---|---|---|
+| G1 | V1 | Cabut izin notifikasi (Pengaturan → Aplikasi → Velum → Izin → Notifikasi: mati). Lalu sambungkan. | Tunnel tetap tersambung, aplikasi tidak menutup sendiri | Crash = izin dianggap wajib |
+| G2 | V1 | Hapus data aplikasi (atau pasang ulang) lalu tekan Sambungkan, dan **tolak** dialog persetujuan VPN. | Pesan jelas, `Status: Terputus`, tidak ada notifikasi "Tersambung" palsu | Notifikasi/klaim tersambung padahal ditolak |
+| G3 | V1 | Nyalakan **mode pesawat**, lalu tekan Sambungkan. | Kegagalan dijelaskan dengan kalimat yang bisa dimengerti, tombol tidak terkunci permanen | Tombol macet di "Menyambungkan…" selamanya |
+| G4 | V1 | Masih dalam mode pesawat, tunggu 30 detik, lalu matikan mode pesawat. Jangan sentuh aplikasi. Tunggu 1 menit, buka diagnostik. | `Status: Tersambung` pulih sendiri | Tidak pulih = pemantau tidak bekerja setelah jaringan kembali |
 
 ---
+
+## Yang TIDAK bisa Anda uji — dan jangan dicoba
+
+Berikut ini dulu tertulis sebagai tugas Anda. Semuanya **ditarik kembali**: tanpa adb tidak
+ada cara menjalankannya, dan memintanya berarti memindahkan beban yang seharusnya dipikul
+agen (AGENTS.md §12, "Kewajiban mengubah V3 menjadi V1").
+
+| Dulu diminta | Kenapa tidak lagi | Penggantinya |
+|---|---|---|
+| `adb shell dumpsys package … \| grep foregroundServiceType` | Butuh adb | Sudah dipastikan dari sumber: manifest tidak lagi mendeklarasikannya, dan library upstream tidak memanggil `startForeground()` sama sekali. Yang tersisa adalah **akibatnya** di runtime → diuji lewat A4/A5 (baris `Proses`) |
+| `adb logcat` per-tag untuk semua kelompok | Butuh adb | Baris diagnostik `Niat`/`Pemantau`/`Proses`/`Boot` |
+| `adb shell run-as … ls shared_prefs/` (memeriksa berkas penyimpanan) | Butuh adb + build debug | Baris `Peringatan` di diagnostik (D2) |
+| `adb reboot`, `adb install -r` | Butuh adb | Mulai ulang perangkat lewat menu sistem (F1), pasang APK menimpa lewat pengelola berkas (F4) |
+| Mengukur jendela race ~1 detik antar-thread | Bukan pengamatan manusia | Gejalanya yang diuji (B1/B2) lewat baris `Niat` |
+| `grep 'broadcast timeout'` di logcat | Butuh adb | Pengamatan langsung (F5) + durasi di baris `Boot` (F2) |
+
+**Yang tetap tidak terverifikasi oleh siapa pun** (status permanen `hanya nalar`, tercatat di
+ledger): apakah kunci `@Synchronized` benar-benar menserialisasi transisi tunnel di bawah
+tekanan nyata, dan apakah ada interleaving langka yang hanya muncul pada beban tertentu.
+Keduanya tidak punya gejala layar yang bisa dipancing dengan sengaja. Risikonya dicatat apa
+adanya di `docs/verifikasi-perangkat.md`, bukan disembunyikan di balik kata "sudah diuji".
 
 ## Cara melaporkan
 
-Untuk tiap baris: **nomor uji**, **hasil sebenarnya** (termasuk angka detik dan kutipan
-logcat), dan **perangkat/versi Android**. Contoh yang berguna:
+Tempel untuk tiap uji: **nomor uji**, **apa yang Anda lihat** (salinan baris diagnostik +
+satu kalimat), dan **vonis Anda bila mau** (`LULUS` / `GAGAL` / `tidak sesuai harapan`).
+Bila sebuah uji tidak dijalankan, tulis `tidak diuji` — jangan dikosongkan, dan jangan
+dianggap lulus.
 
-> F2 — Pixel 7, Android 15. Notifikasi "Tersambung" muncul 14 detik setelah layar kunci.
-> Logcat: `VelumBoot: menunggu VpnService…` lalu jeda 9 detik sebelum `up()` selesai.
-> Tidak ada peringatan broadcast timeout.
-
-Yang **tidak** berguna: "semua lancar". Bila sebuah uji tidak dijalankan, tulis
-`tidak diuji` — jangan dikosongkan, dan jangan dianggap lulus (AGENTS.md §11).
-
-Temuan F2 dan F5 secara khusus menentukan apakah `BootReceiver` perlu diubah dari
-`goAsync()` — keputusan itu sengaja tidak diambil dari sandbox karena kedua pilihan
-mempunyai risiko nyata (lihat komentar di `BootReceiver.kt`).
+Agen yang merapikannya ke format ledger; Anda tidak perlu menulis ulang apa pun.

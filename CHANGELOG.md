@@ -210,7 +210,27 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
   `goAsync()` proses yang baru lahir untuk broadcast bisa dibunuh sebelum tunnel naik.
   Memilih di antara dua risiko itu butuh pengukuran di perangkat (uji F1/F2/F5), bukan
   penalaran dari sandbox.
-- **Komentar build tidak lagi memuat angka baris yang sudah usang** (klaim "±1.900 baris"
+- **Layar diagnostik kini menampilkan keadaan internal, permanen di semua varian build**
+  (persetujuan maintainer 2026-09-13). Empat baris baru: `Niat` (apakah tunnel diharapkan
+  hidup + berapa kali aksi sambung/putus terjadi), `Pemantau` (aktif/mati), `Proses` (umur
+  proses aplikasi), dan `Boot` (berapa lama + hasil percobaan menyambung otomatis setelah
+  perangkat dinyalakan atau aplikasi diperbarui).
+  Alasannya bukan kosmetik: maintainer menguji di perangkat **tanpa adb**, sehingga keadaan
+  yang menentukan benar/tidaknya perilaku konkurensi dan daya tahan proses sebelumnya
+  **tidak bisa diperiksa sama sekali** — semuanya hanya ada di logcat. Dengan baris-baris
+  ini, uji yang tadinya mustahil menjadi cukup dilihat: "tunnel menyambung sendiri setelah
+  diputus" terbaca sebagai `Status: Terputus` sementara `Niat: Hidup`; "apakah penyambungan
+  saat boot melewati anggaran receiver" terbaca sebagai angka pada `Boot` (mis. `14,2 detik`).
+  Baris `Proses` memakai `Process.getStartElapsedRealtime()` (API 24, sama dengan `minSdk`,
+  jadi tanpa guard versi) dan **melampaui daftar empat baris yang ditawarkan** — ditambahkan
+  karena tanpa itu uji daya tahan proses di latar tidak punya padanan layar, padahal risiko
+  itu justru muncul dari penghapusan deklarasi foreground service. Dilaporkan terbuka
+  (TODO 89), hapus bila tidak dikehendaki.
+  Batasnya tetap: hanya boolean, angka generasi, dan durasi — tanpa kunci privat, token,
+  identitas perangkat, atau IP pengguna, dan ada uji yang menjaganya tetap begitu.
+  `Prefs.bootRecord` ditulis dengan `commit()` (bukan `apply()`) karena penulisannya terjadi
+  tepat sebelum `PendingResult.finish()`, sesudah itu proses boleh dibunuh kapan saja.
+- - **Komentar build tidak lagi memuat angka baris yang sudah usang** (klaim "±1.900 baris"
   saat kenyataannya sudah jauh di atas itu), diganti penjelasan kenapa angkanya memang
   tidak perlu ditulis: ia berubah setiap rilis, dan komentar berisi angka usang lebih
   menyesatkan daripada komentar tanpa angka.
