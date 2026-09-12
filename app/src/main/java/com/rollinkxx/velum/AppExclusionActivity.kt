@@ -4,7 +4,9 @@ import android.content.Intent
 import android.os.Bundle
 import android.widget.Button
 import android.widget.CheckBox
+import android.widget.ImageButton
 import android.widget.LinearLayout
+import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 
@@ -28,12 +30,24 @@ class AppExclusionActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_app_exclusion)
+        VelumInsets.applySystemBars(findViewById(R.id.root))
         prefs = Prefs.of(this)
         list = findViewById(R.id.appList)
 
         val excluded = prefs.excludedApps
         val warna = resources.getColor(R.color.fg, theme)
-        for (app in launcherApps()) {
+        val apps = launcherApps()
+        if (apps.isEmpty()) {
+            // Perangkat tanpa aplikasi peluncur yang terbaca (mis. profil kerja
+            // terbatas): jelaskan keadaan kosong, jangan biarkan layar menggantung.
+            list.addView(TextView(this).apply {
+                setText(R.string.excluded_empty)
+                setTextColor(resources.getColor(R.color.muted, theme))
+                textSize = 13f
+                setPadding(0, 12, 0, 12)
+            })
+        }
+        for (app in apps) {
             val box = CheckBox(this).apply {
                 text = app.label
                 isChecked = app.packageName in excluded
@@ -44,6 +58,11 @@ class AppExclusionActivity : AppCompatActivity() {
             list.addView(box)
         }
         findViewById<Button>(R.id.save).setOnClickListener { save() }
+        // Tombol kembali di bilah atas: memakai dispatcher yang sama dengan gestur
+        // sistem, sehingga ikut tampil mulus pada animasi predictive back.
+        findViewById<ImageButton>(R.id.back).setOnClickListener {
+            onBackPressedDispatcher.onBackPressed()
+        }
     }
 
     private fun save() {

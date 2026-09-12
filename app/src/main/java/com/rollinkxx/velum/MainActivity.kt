@@ -35,10 +35,12 @@ class MainActivity : AppCompatActivity(), VelumController.Ui {
     private lateinit var messageView: TextView
     private lateinit var toggleButton: Button
     private lateinit var testButton: Button
-    private lateinit var resetButton: Button
-    private lateinit var vpnSettingsButton: Button
-    private lateinit var copyDiagButton: Button
-    private lateinit var exclusionsButton: Button
+    // Baris aksi pada kartu: wadah LinearLayout yang bisa ditekan, bukan Button,
+    // supaya ikon + judul + subjudul bisa disusun bebas.
+    private lateinit var resetRow: View
+    private lateinit var vpnSettingsRow: View
+    private lateinit var copyDiagRow: View
+    private lateinit var exclusionsRow: View
     private lateinit var infoDuration: TextView
     private lateinit var infoEndpoint: TextView
     private lateinit var infoTest: TextView
@@ -83,16 +85,18 @@ class MainActivity : AppCompatActivity(), VelumController.Ui {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+        // Wajib sejak targetSdk 36: jendela menggambar sampai ke tepi layar.
+        VelumInsets.applySystemBars(findViewById(R.id.root))
 
         statusView = findViewById(R.id.status)
         statusDot = findViewById(R.id.statusDot)
         messageView = findViewById(R.id.message)
         toggleButton = findViewById(R.id.toggle)
         testButton = findViewById(R.id.test)
-        resetButton = findViewById(R.id.reset)
-        vpnSettingsButton = findViewById(R.id.vpnSettings)
-        copyDiagButton = findViewById(R.id.copyDiag)
-        exclusionsButton = findViewById(R.id.exclusions)
+        resetRow = findViewById(R.id.reset)
+        vpnSettingsRow = findViewById(R.id.vpnSettings)
+        copyDiagRow = findViewById(R.id.copyDiag)
+        exclusionsRow = findViewById(R.id.exclusions)
         infoDuration = findViewById(R.id.infoDuration)
         infoEndpoint = findViewById(R.id.infoEndpoint)
         infoTest = findViewById(R.id.infoTest)
@@ -100,10 +104,10 @@ class MainActivity : AppCompatActivity(), VelumController.Ui {
 
         toggleButton.setOnClickListener { onToggle() }
         testButton.setOnClickListener { controller.runTest() }
-        resetButton.setOnClickListener { onReset() }
-        vpnSettingsButton.setOnClickListener { onOpenVpnSettings() }
-        copyDiagButton.setOnClickListener { copyDiagnostics() }
-        exclusionsButton.setOnClickListener { onOpenExclusions() }
+        resetRow.setOnClickListener { onReset() }
+        vpnSettingsRow.setOnClickListener { onOpenVpnSettings() }
+        copyDiagRow.setOnClickListener { copyDiagnostics() }
+        exclusionsRow.setOnClickListener { onOpenExclusions() }
 
         controller = VelumController(this, this)
 
@@ -263,7 +267,10 @@ class MainActivity : AppCompatActivity(), VelumController.Ui {
 
     override fun setBusy(busy: Boolean) {
         toggleButton.isEnabled = !busy
-        resetButton.isEnabled = !busy
+        resetRow.isEnabled = !busy
+        // LinearLayout tak punya status visual seperti Button, jadi keadaan
+        // nonaktif ditandai dengan peredupan agar tetap terlihat jelas.
+        resetRow.alpha = if (busy) 0.45f else 1f
     }
 
     override fun setStatusText(resId: Int) {

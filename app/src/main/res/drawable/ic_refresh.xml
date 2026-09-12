@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  "Daftar ulang": cincin berputar searah jarum jam dengan kepala panah.
+  Cincin dibentuk dua lingkaran (fillType evenOdd) yang dipotong baji 6-40 derajat
+  di sisi kanan atas; kepala panah dipasang pada potongan itu dengan alas sedikit
+  lebih lebar dari cincin agar arah putarannya langsung terbaca. Seluruh titik
+  dihitung dari pusat (12,12) — bukan dari pustaka ikon pihak ketiga.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:fillType="evenOdd"
+        android:pathData="M12,4.8 a7.2,7.2 0 1,1 -0.01,0 z M12,6.3 a5.7,5.7 0 1,0 0.01,0 z M12.75,4.84 L14.22,5.15 L15.60,5.76 L16.63,6.48 L15.66,7.63 L15.02,7.17 L14.32,6.79 L13.57,6.52 L12.60,6.33 Z" />
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M12.83,4.14 L16.80,3.69 L12.46,7.62 Z" />
+</vector>
