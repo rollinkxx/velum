@@ -393,22 +393,44 @@ final** untuk kompilasi. Mitigasi wajib sebelum push:
    (kurung seimbang, XML valid, package-vs-path cocok) karena semuanya buta terhadap
    isi teks. Em dash, elipsis, dan tanda kutip tipografis Bahasa Indonesia **sah**
    dan tidak termasuk rentang di atas.
-10. **Bandingkan anotasi lint terhadap run acuan (ditambahkan 2026-09-13).** Setelah
-    CI hijau, ambil anotasi run baru dan run acuan, lalu bandingkan **jumlah dan
-    jenisnya**:
+10. **Bandingkan lint terhadap run acuan (ditambahkan 2026-09-13; DIPERBAIKI pada hari
+    yang sama setelah terbukti cacat).** Niatnya benar: "CI hijau" mudah dipakai untuk
+    menyiratkan tidak ada yang memburuk, padahal lint bisa menambah peringatan di tengah
+    run yang sukses. Tetapi cara pertama yang ditulis di sini — membandingkan **anotasi
+    check-run** — tidak andal, dan dikoreksi sesuai §11 (koreksi atas klaim sendiri).
 
-    ```bash
-    gh api repos/<owner>/<repo>/check-runs/<job-id>/annotations \
-      --jq '[.[]|.message|.[0:60]] | group_by(.) | map({msg:.[0], n:length})'
-    ```
+    **Kenapa anotasi tidak bisa dipakai sebagai pembanding jumlah:** GitHub membatasi
+    **10 anotasi warning + 10 error + 10 notice per step** (dokumentasi `actions/toolkit`,
+    "Problem Matchers → Limitations"). Begitu sebuah run menyentuh batas itu, daftarnya
+    TERPOTONG dan komposisinya bergeser antar-run. Bukti pada repo ini:
 
-    Warning **baru** = gerbang gagal, perbaiki sebelum melaporkan selesai. Warning
-    **lama** boleh menetap hanya bila keputusannya tercatat di `TODO.md` (perbaiki /
-    terima dengan alasan). Tanpa pembanding ini, "CI hijau" mudah dipakai untuk
-    menyiramkan bahwa tidak ada yang memburuk — padahal lint bisa saja menambah
-    peringatan di tengah run yang sukses. Preseden penerapannya: run 34723051399
-    dibandingkan terhadap 34707253187 (8× KTX `SharedPreferences.edit` + 1×
-    static-context + 1× `allowBackup`, identik → bukan regresi).
+    | Run | Anotasi yang dilaporkan | Total |
+    |---|---|---|
+    | 34723051399 | 1× `allowBackup` + 1× static-context + 8× KTX `SharedPreferences.edit` | **tepat 10** |
+    | 34725480643 | 1× static-context + 9× KTX `SharedPreferences.edit` | **tepat 10** |
+
+    Warning `allowBackup` tampak "hilang" — bukan karena diperbaiki, melainkan tergeser
+    keluar kuota. Menyimpulkan "warning berkurang" dari tabel itu akan salah.
+
+    **Urutan pembanding yang benar:**
+    a. **Hitung dari sumber** — paling andal dan tersedia di sandbox. Hitung pola yang
+       di-flag lint sebelum dan sesudah perubahan, misalnya
+       `git show <acuan>:<berkas> | grep -c '\.edit()'` vs `grep -c '\.edit()' <berkas>`
+       untuk KTX `SharedPreferences` (hasil 2026-09-13: 18 → 20, +2, keduanya dari fungsi
+       penulis rekaman boot yang baru — delta yang bisa dijelaskan). Delta yang **tidak**
+       bisa dijelaskan dari diff = selidiki sebelum push.
+    b. **Ukuran artifact `lint-report`** sebagai sinyal kasar (20.206 → 20.478 byte pada
+       perubahan yang sama) — tersedia lewat API artifact walau isinya tidak bisa diunduh.
+    c. **Anotasi check-run** hanya sah selama totalnya **di bawah 10** per tingkat; pada
+       atau di atas 10, angka itu bukan jumlah sebenarnya.
+    d. **Laporan lint penuh hanya terbaca di mesin maintainer.** Unduhan artifact dan log
+       run keduanya gagal dari sandbox (EOF ke blob storage / results-receiver — diverifikasi
+       ulang 2026-09-13), jadi jangan menjanjikan pembacaan laporan penuh dari agen.
+
+    Warning **baru** = perbaiki, atau terima dengan keputusan tercatat di `TODO.md`
+    (misalnya 2026-09-13: dua warning KTX baru diterima karena `sp.edit()` eksplisit
+    konsisten dengan 18 pemanggilan lain di berkas yang sama; mencampur idiom demi
+    angka lint yang lebih kecil adalah pertukaran yang buruk).
 
 **Catatan tentang langkah 1 (review diff dua lapis) — bukan aturan baru, tapi
 pengakuan bahwa aturan lama itu bekerja.** Gerbang membaca diff sudah ada sebelum
