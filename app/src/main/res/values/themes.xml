@@ -1,5 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <!--
+      `android:statusBarColor` dan `android:windowLightStatusBar` di bawah ini INERT sejak
+      targetSdk 35 (Android 15): edge-to-edge dipaksakan sistem, dan warna bilah status
+      tidak lagi bisa diatur aplikasi. Keduanya sengaja TIDAK dihapus karena minSdk 24 —
+      pada API 24-34 atribut ini masih bekerja dan mewarnai bilah status mengikuti kanvas.
+
+      Yang berlaku di SEMUA versi adalah padding akar layout lewat `VelumInsets`. Jangan
+      mengandalkan dua atribut ini untuk penempatan isi layar.
+    -->
     <style name="Theme.Velum" parent="Theme.AppCompat.NoActionBar">
         <item name="colorPrimary">@color/accent</item>
         <item name="colorAccent">@color/accent</item>
