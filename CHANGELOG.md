@@ -5,7 +5,68 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 
 ## [Unreleased]
 
+### Added
+- Varian build **preview**: konfigurasi rilis (R8 + shrink resources) yang ditandatangani
+  kunci debug, sehingga APK kecil siap pasang bisa diuji di perangkat nyata tanpa keystore
+  rilis. Dibangun di setiap push agar R8 teruji terus-menerus — bukan pertama kali saat
+  rilis publik. Memakai `applicationIdSuffix = ".preview"` sehingga bisa dipasang
+  berdampingan dengan varian debug.
+- Aturan R8 diperluas dari 2 menjadi beberapa aturan bersasaran: field protobuf Tink
+  (mencegah crash `EncryptedSharedPreferences` saat runtime — kegagalan senyap yang hanya
+  muncul pada build yang diperkecil), `VelumTileService`, `BootReceiver`, serta
+  `SourceFile`/`LineNumberTable` agar laporan crash tetap terbaca.
+- CI mengunggah artifact `app-preview` dan `mapping-preview` (`mapping.txt` untuk
+  memulihkan stack trace), dan step summary menyandingkan ukuran debug vs preview.
+- Pemecahan APK per arsitektur (ABI split) untuk `arm64-v8a`, `armeabi-v7a`, dan `x86_64`,
+  plus satu APK universal sebagai cadangan. Isi APK didominasi pustaka native WireGuard
+  (satu `.so` per ABI) yang tidak tersentuh R8, sehingga memecah per arsitektur adalah
+  satu-satunya cara menurunkan ukuran unduhan secara berarti — perangkat hanya mengambil
+  arsitekturnya sendiri.
+- `versionCode` otomatis per varian (`abiCode * 1000 + versionCode`), dengan APK universal
+  memakai nilai terendah supaya varian spesifik arsitektur selalu lebih diutamakan.
+
+- Verifikasi `apksigner` di job rilis: build digagalkan bila APK ternyata tidak
+  bertanda tangan atau memakai kunci debug, dan sidik jari SHA-256 tiap APK dicetak
+  ke step summary. Sebelumnya kegagalan penandatanganan lolos diam-diam — Gradle
+  tetap menghasilkan APK dan CI tetap hijau, cacatnya baru ketahuan saat pengguna
+  gagal memasang.
+
 ### Changed
+- **AGP 8.7.3 → 9.4.0** (PR #5 Dependabot, diterapkan di branch sesi). Bukan
+  sekadar ganti nomor versi — AGP 9 menghapus beberapa API yang dipakai repo ini:
+  - Plugin `org.jetbrains.kotlin.android` **dihapus** dari kedua berkas build.
+    AGP 9 punya Kotlin bawaan; menerapkan plugin lama justru menggagalkan build.
+    Versi Kotlin ikut dihapus dari katalog karena AGP kini membawa KGP-nya sendiri
+    (≥ 2.2.10) — menyimpan versi terpisah hanya menciptakan sumber kebenaran kedua.
+  - `android.kotlinOptions.jvmTarget` dihapus; dengan Kotlin bawaan nilainya
+    mengikuti `compileOptions.targetCompatibility` yang sudah disetel ke 17.
+  - `defaultConfig.resourceConfigurations` → `androidResources.localeFilters`.
+  - `compileSdk` 35 → 36 (AGP 9 mensyaratkan SDK Build Tools 36).
+  - `targetSdk` sengaja **tetap 35**: menaikkannya mengubah perilaku runtime
+    (izin, foreground service, VPN) dan itu keputusan produk, bukan efek samping
+    pembaruan alat bangun.
+
+### Changed
+- CI mengunggah seluruh varian APK (`*.apk`) alih-alih satu berkas bernama tetap, dan step
+  summary kini menampilkan tabel ukuran tiap APK sehingga dampak pemecahan terlihat tanpa
+  perlu mengunduh artifact.
+- `docs/rilis-github.md`: panduan verifikasi & penerbitan disesuaikan untuk empat berkas APK,
+  lengkap dengan tabel "pilih berkas sesuai perangkat" untuk catatan rilis.
+- CI dikonsolidasikan: `assembleDebug`, `unitTest`, dan `lint` yang sebelumnya tiga job
+  terpisah kini menjadi satu job `verifikasi (build, tes, lint)`. Toolchain
+  (JDK + Android SDK + Gradle) disiapkan sekali, bukan tiga kali, dan cache Gradle dipakai
+  ulang antar tugas — memangkas ±60% waktu runner per push. Lint tetap advisori lewat
+  `continue-on-error` di level step. Urutan sengaja tes → build → lint agar kegagalan
+  termurah muncul lebih dulu, dan semua tahap tetap berjalan (`if: always()`) supaya satu
+  run melaporkan seluruh masalah sekaligus.
+- AGENTS.md §1 kini **portabel**: nama branch sesi dan SHA pangkal tidak lagi ditulis di
+  dalam aturan, melainkan ditemukan saat runtime lewat ritual pra-tugas 5 langkah; kronologi
+  insiden dipindah ke §5. Ditambah larangan menyentuh branch sesi lama & `dependabot/*`.
+- AGENTS.md §5 disinkronkan dengan keadaan repo setelah PR #3 ter-merge: 18 berkas Kotlin
+  (termasuk `VelumController`, `VelumUpstream`, `VelumError`, `VelumRegistration`,
+  `VelumMigration`, `VelumDiagnostics`, `VelumTileService`, `AppExclusionActivity`),
+  CI 4 job (`assembleDebug`, `unitTest`, `lint` advisori, `release`), skrip anotasi,
+  Dependabot, daftar run hijau, ukuran artifact, dan 9 PR Dependabot terbuka.
 - Identitas visual & teks: seluruh teks yang terlihat pengguna kini mengikuti nama
   aplikasi. `notif_connected` dan `test_on` tidak lagi menyebut pihak ketiga, dan
   `desc_footer` menjadi "Hanya tunnel Velum. Tanpa iklan, tanpa pelacakan.".
