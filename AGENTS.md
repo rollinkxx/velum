@@ -961,6 +961,20 @@ run ujung `main` 34702351553 hijau):**
   di clone dangkal:** `git cat-file -p <merge-sha>` (baca daftar `parent`) dan
   `git rev-parse <a>^{tree} <b>^{tree}` (tree sama = konten sama). Jangan pernah
   menyimpulkan "kerja sesi lama hilang/belum ter-merge" dari `--is-ancestor` saja.
+- **Lingkungan pengujian maintainer (dinyatakan 2026-09-13): Android 14, TANPA adb.**
+  Tidak ada komputer untuk `adb logcat`, `dumpsys`, atau `install -r`. Ini fakta yang
+  mengubah bentuk pekerjaan, bukan preferensi: checklist uji yang menuntut perintah di luar
+  perangkat **tidak bisa dijalankan** dan tidak boleh diserahkan sebagai tugas. Cara
+  mengatasinya diatur §12 (tiga tingkat verifikasi + kewajiban mengubah uji teknis menjadi
+  gejala yang terlihat, bila perlu lewat instrumentasi layar diagnostik).
+- **Layar diagnostik memuat keadaan internal, permanen di semua varian build** (persetujuan
+  maintainer 2026-09-13, karena tidak ada adb): baris `Niat` (`wasUp` + generasi niat),
+  `Pemantau` (aktif/mati), `Proses` (umur proses via `Process.getStartElapsedRealtime()`,
+  API 24 — sama dengan `minSdk`, jadi tanpa guard versi), dan `Boot` (durasi + hasil +
+  umur percobaan sambung ulang otomatis terakhir, direkam `BootReceiver` ke
+  `Prefs.bootRecord` dengan `commit()` karena ditulis tepat sebelum `PendingResult.finish()`).
+  Semuanya boolean/angka/durasi — tanpa kunci, token, identitas perangkat, atau IP pengguna.
+  Baris `Boot` inilah pengganti pengukuran logcat untuk memutuskan TODO 77 (`goAsync()`).
 - **Trailer commit berasal dari hook PLATFORM, bukan dari repo.** Setiap commit yang dibuat di
   sandbox otomatis mendapat footer
   `Co-authored-by: arena-agent <297053741+arena-agent@users.noreply.github.com>`, ditambahkan
@@ -1562,6 +1576,40 @@ menyiapkan uji yang bisa dijalankan, lalu mencatat hasilnya apa adanya.
 | Mencatat hasil ke ledger | ✅ | — |
 | Memutuskan apakah temuan perangkat = bug yang diperbaiki | usulkan | ✅ |
 
+### Fakta yang menentukan bentuk protokol ini
+
+Dinyatakan maintainer 2026-09-13: **tidak ada adb sama sekali** — tidak ada komputer untuk
+`adb logcat`, `dumpsys`, atau `install -r`. Perangkat ujinya **Android 14**. Jadi setiap
+uji yang menuntut perintah di luar perangkat **tidak bisa dijalankan**, dan menulisnya ke
+checklist sama dengan menggantungkan verifikasi pada hal yang mustahil bagi maintainer.
+
+Konsekuensinya protokol ini memakai **tiga tingkat**, dan setiap uji di checklist wajib
+menyebut tingkatnya:
+
+| Tingkat | Definisi | Boleh diminta ke maintainer? |
+|---|---|---|
+| **V1 — terlihat** | Gejalanya tampak di layar perangkat: teks, angka, warna, notifikasi, atau baris di layar diagnostik. Tanpa komputer. | ✅ Ya |
+| **V2 — perlu perintah** | Butuh `adb`/`dumpsys`/logcat, hasilnya tinggal ditempel. | ❌ **Tidak** — maintainer tidak punya adb. Hanya boleh ditulis bila disertai padanan V1, atau ditandai `opsional, lewati bila tidak ada adb` |
+| **V3 — teknis dalam** | Yang diukur bukan gejala melainkan mekanisme internal (jendela interleaving antar-thread, cakupan kunci, margin anggaran receiver). | ❌ Tidak pernah |
+
+### Kewajiban mengubah V3 menjadi V1
+
+**Agen DILARANG menyerahkan uji V3 kepada maintainer.** Yang wajib dilakukan, berurutan:
+
+1. **Cari padanan gejala yang terlihat.** Sebagian besar mekanisme internal punya gejala
+   layar. Contoh: race antar-pelaku saat memutus (V3) gejala terlihatnya adalah *"tunnel
+   menyambung sendiri padahal baru diputus"* (V1). Yang diuji adalah gejalanya, bukan
+   mekanismenya — maintainer tidak perlu tahu apa itu interleaving.
+2. **Bila tidak ada gejala yang terlihat, tambahkan instrumentasi.** Keadaan internal
+   ditampilkan di layar diagnostik (`VelumDiagnostics`) sebagai boolean, angka generasi,
+   atau durasi — sehingga yang tadinya hanya ada di logcat menjadi V1. Inilah alasan
+   baris Niat/Pemantau/Proses/Boot ada (persetujuan maintainer 2026-09-13). Batasnya:
+   tanpa kunci, token, identitas perangkat, atau IP pengguna.
+3. **Bila keduanya tidak mungkin**, uji itu berstatus **permanen `hanya nalar`**: tulis di
+   ledger apa risikonya, apa yang akan terjadi bila ternyata salah, dan jangan pernah
+   mengklaimnya terverifikasi. Jangan memindahkan beban pembuktian yang tidak bisa
+   dipikul maintainer.
+
 ### Aturan
 
 1. **Checklist kanonis: `docs/uji-perangkat.md`.** Setiap paket perubahan yang menyentuh
@@ -1572,12 +1620,20 @@ menyiapkan uji yang bisa dijalankan, lalu mencatat hasilnya apa adanya.
 2. **Ledger hasil: `docs/verifikasi-perangkat.md`.** Satu baris per uji yang dijalankan:
    tanggal, perangkat + versi Android, nomor uji, hasil sebenarnya, vonis
    (`LULUS`/`GAGAL`/`TIDAK SESUAI HARAPAN`), tindak lanjut.
-3. **Laporan yang sah memuat pengamatan, bukan penilaian.** Wajib: angka (detik, byte,
-   jumlah percobaan) dan kutipan logcat apa adanya. "Semua lancar", "OK", "sudah dicoba"
-   **tidak sah** — agen wajib meminta ulangnya, dan tidak boleh menafsirkannya sebagai
-   `LULUS`.
+3. **Laporan yang sah memuat pengamatan, bukan penilaian.** Wajib: apa yang **terlihat**
+   (angka di layar, teks baris diagnostik, ada/tidaknya notifikasi) dan, bila tersedia,
+   kutipan logcat apa adanya. "Semua lancar", "OK", "sudah dicoba" **tidak sah** — agen
+   wajib meminta ulangnya, dan tidak boleh menafsirkannya sebagai `LULUS`. Karena
+   maintainer tidak punya adb, **menyalin baris layar diagnostik adalah bentuk laporan
+   utama** dan sama sahnya dengan logcat; agen dilarang menuntut logcat sebagai syarat.
+   Bila sebuah uji V1 gagal, agen yang wajib menerjemahkan gejalanya ke dugaan penyebab —
+   bukan meminta maintainer mendiagnosis.
 4. **Status TODO tidak boleh naik menjadi `Selesai tervalidasi` untuk perubahan runtime
-   tanpa baris ledger.** CI hijau hanya memvalidasi kompilasi tiga varian + unit test JVM
+   tanpa baris ledger.** Aturan ini mengikat **agen**, bukan membebani maintainer: bila
+   sebuah perubahan runtime tidak punya padanan uji V1, agenlah yang harus membuatnya
+   (lihat "Kewajiban mengubah V3 menjadi V1"), dan bila itu pun tidak mungkin, statusnya
+   ditulis `tidak terverifikasi — hanya nalar` beserta risikonya, **bukan** dilempar
+   sebagai tugas maintainer. CI hijau hanya memvalidasi kompilasi tiga varian + unit test JVM
    + lint; itu bukan bukti perilaku di perangkat. Kalimat yang diizinkan agen:
    *"terbukti kompilasi + unit test + nalar; uji perangkat: <nomor uji>, belum dijalankan"*.
    Yang dilarang: *"sudah diverifikasi"*, *"sudah diuji"*, *"berfungsi normal"*.
@@ -1591,6 +1647,9 @@ menyiapkan uji yang bisa dijalankan, lalu mencatat hasilnya apa adanya.
    diperbaiki diam-diam di paket berikutnya, supaya jejaknya ada.
 7. **Bila maintainer melaporkan hasil tanpa format ledger**, agen yang merapikannya ke
    dalam ledger — bukan meminta maintainer menulis ulang. Beban format ada di agen.
+8. **Setiap uji di checklist wajib bertanda tingkat (V1/V2/V3).** Uji tanpa tanda dianggap
+   belum siap diserahkan, karena berarti agen belum memutuskan apakah maintainer benar-benar
+   bisa menjalankannya.
 
 ### Hubungan dengan bagian lain
 
