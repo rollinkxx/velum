@@ -172,11 +172,13 @@ sebelum push.
 - **Stack aktual** (dari `gradle/libs.versions.toml`, satu-satunya sumber versi): Gradle
   **9.7.1** (wrapper ter-commit, termasuk `gradle-wrapper.jar`; naik dari 8.9 lewat PR #8),
   AGP 8.7.3, Kotlin 2.0.21, JDK 17,
-  compileSdk/targetSdk 35, minSdk 24. **Peringatan kombinasi:** Gradle 9.x secara resmi
-  hanya diuji dengan AGP 9.0+, dan Kotlin 2.0.21 dijamin penuh sampai Gradle 8.6 — pasangan
-  Gradle 9.7.1 + AGP 8.7.3 + Kotlin 2.0.21 di repo ini berada di luar matriks resmi
-  ketiganya. Bila muncul kegagalan Gradle yang tidak berhubungan dengan kode aplikasi,
-  curigai ini lebih dulu (lihat catatan teknis).
+  compileSdk/targetSdk 35, minSdk 24. **Catatan kombinasi:** Gradle 9.x secara resmi hanya
+  diuji dengan AGP 9.0+, dan Kotlin 2.0.21 dijamin penuh sampai Gradle 8.6 — pasangan
+  Gradle 9.7.1 + AGP 8.7.3 + Kotlin 2.0.21 berada di luar matriks resmi ketiganya, namun
+  **terbukti membangun dengan bersih** (run 34660850896: tes, assembleDebug, dan lint
+  semuanya hijau, tanpa satu pun peringatan deprecation Gradle). Statusnya "berfungsi tetapi
+  tidak dijamin upstream": bila kelak muncul kegagalan Gradle yang tidak berhubungan dengan
+  kode aplikasi, curigai pasangan ini lebih dulu.
   Dependensi runtime hanya `androidx.appcompat` **1.8.0**,
   `androidx.activity` (Activity Result API), `com.wireguard.android:tunnel` **1.0.20260102**
   (GoBackend),
@@ -261,6 +263,11 @@ sebelum push.
   - `.github/dependabot.yml`: ekosistem `gradle` (mingguan) & `github-actions` (bulanan),
     maks. 5 PR, prefix commit `build`/`ci`. Dependabot hanya membuka PR — **manusia yang
     memutuskan**, dan `gradle/libs.versions.toml` tetap satu-satunya sumber versi.
+  - **Run acuan setelah konsolidasi:** 34660850896 (`f2dae7f`, **4m04s**, 19 step hijau) —
+    job tunggal, artifact `app-debug` **10,08 MB** · `unit-test-report` 12,7 KB ·
+    `lint-report` 17,6 KB. Sekaligus bukti pertama Gradle 9.7.1 + AGP 8.7.3 bisa dibangun.
+    Anotasi: **0 error**, 10 peringatan lint advisori (GoBackend static field, allowBackup
+    deprecated, ikon peluncur, tawaran versi baru) — tidak ada peringatan Node.js.
   - **Run hijau terakhir sebelum konsolidasi:** 34658145458 (`7a89e70`, 3m56s) — run
     pertama setelah bump keempat action; **anotasi Node.js 20 hilang** di sini (TODO 23).
   - **Run hijau bersejarah:** 34562586434 (`26104f6`) · 34565410965 (`9f0adb9`) ·
