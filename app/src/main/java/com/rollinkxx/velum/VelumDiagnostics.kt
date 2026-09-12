@@ -34,7 +34,7 @@ object VelumDiagnostics {
         append("Durasi      : ").append(VelumFormat.formatDuration(s.connectedSec * 1000)).append('\n')
         append("Trafik      : turun ").append(VelumFormat.formatBytes(s.rxBytes))
             .append(" · naik ").append(VelumFormat.formatBytes(s.txBytes)).append('\n')
-        append("Uji terakhir : ").append(
+        append("Uji terakhir: ").append(
             if (s.lastTest.isNullOrEmpty()) "belum ada" else s.lastTest
         ).append('\n')
         append("Dikecualikan: ").append(
