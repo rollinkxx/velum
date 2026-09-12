@@ -166,15 +166,23 @@ sebelum push.
 
 ## §5 Fakta Proyek
 
-**Keadaan repo (fakta per 2026-09-12, audit ulang setelah PR #3 ter-merge):**
+**Keadaan repo (fakta per 2026-09-12, audit ulang setelah 8 PR Dependabot ter-merge):**
 - Aplikasi Android ringan fungsi **WARP saja** (tunnel WireGuard ke Cloudflare), tanpa mode
   DNS, tanpa iklan/analitik/akun. UI Bahasa Indonesia.
-- **Stack aktual** (dari `gradle/libs.versions.toml`, satu-satunya sumber versi): Gradle 8.9
-  (wrapper ter-commit, termasuk `gradle-wrapper.jar`), AGP 8.7.3, Kotlin 2.0.21, JDK 17,
-  compileSdk/targetSdk 35, minSdk 24. Dependensi runtime hanya `androidx.appcompat`,
-  `androidx.activity` (Activity Result API), `com.wireguard.android:tunnel` (GoBackend),
+- **Stack aktual** (dari `gradle/libs.versions.toml`, satu-satunya sumber versi): Gradle
+  **9.7.1** (wrapper ter-commit, termasuk `gradle-wrapper.jar`; naik dari 8.9 lewat PR #8),
+  AGP 8.7.3, Kotlin 2.0.21, JDK 17,
+  compileSdk/targetSdk 35, minSdk 24. **Peringatan kombinasi:** Gradle 9.x secara resmi
+  hanya diuji dengan AGP 9.0+, dan Kotlin 2.0.21 dijamin penuh sampai Gradle 8.6 — pasangan
+  Gradle 9.7.1 + AGP 8.7.3 + Kotlin 2.0.21 di repo ini berada di luar matriks resmi
+  ketiganya. Bila muncul kegagalan Gradle yang tidak berhubungan dengan kode aplikasi,
+  curigai ini lebih dulu (lihat catatan teknis).
+  Dependensi runtime hanya `androidx.appcompat` **1.8.0**,
+  `androidx.activity` (Activity Result API), `com.wireguard.android:tunnel` **1.0.20260102**
+  (GoBackend),
   dan `androidx.security:security-crypto` (Tink, ±1 MB) — tanpa Compose/OkHttp/coroutine demi ukuran
   APK & RAM kecil. Khusus pengujian (tidak ikut ke APK): `junit` 4.13.2 dan `org.json:json`
+  **20260814**
   (bawaan `android.jar` berupa rintisan di unit test JVM). `gradle.properties`:
   configuration-cache & build-cache aktif,
   `nonTransitiveRClass`. Resource hanya Bahasa Indonesia (`resourceConfigurations += "in"`).
@@ -225,18 +233,25 @@ sebelum push.
     ikon adaptif vektor + PNG polos untuk API 24–25.
   - Rilis: `signingConfigs.release` membaca env (`KEYSTORE_FILE/PASSWORD/ALIAS/KEY_PASSWORD`);
     minify+R8 aktif; `proguard-rules.pro` keep `com.wireguard.**`.
-- **CI (`.github/workflows/build.yml`) — 4 job:** trigger `push` semua branch (paths-ignore
+- **CI (`.github/workflows/build.yml`) — 2 job** (dikonsolidasikan 2026-09-12 dari 4 job):
+  trigger `push` semua branch (paths-ignore
   `**.md`, `docs/**`) + `workflow_dispatch`; `concurrency: cancel-in-progress` per-ref;
-  `permissions: contents: read`. Semua job memakai setup-java **v5** (17 temurin) →
-  android-actions/setup-android@v3 → gradle/actions/setup-gradle@v4.
-  1. `assembleDebug` (**pemblokir**): `./gradlew --no-daemon --stacktrace assembleDebug`
-     dengan `set -o pipefail` + `tee` → `anotasikan-log.py` (`if: always()`) → step summary
-     → artifact `app-debug`.
-  2. `unitTest` (**pemblokir**): `testDebugUnitTest` → `anotasikan-tes.py` +
-     `anotasikan-log.py` (`if: always()`) → artifact `unit-test-report`.
-  3. `lint (advisori)`: `lintDebug` dengan `continue-on-error: true`; temuan dicetak ke log
-     **dan** `$GITHUB_STEP_SUMMARY` → artifact `lint-report`. Tidak memblokir, tetap dijaga hijau.
-  4. `release` (opsional; `needs: [build, unitTest]`, `if: vars.ENABLE_RELEASE_SIGNING == 'true'`):
+  `permissions: contents: read`. Semua job memakai actions/checkout@**v7** →
+  setup-java@**v5** (17 temurin) → android-actions/setup-android@**v4** →
+  gradle/actions/setup-gradle@**v6** → actions/upload-artifact@**v7**.
+  1. `verifikasi (build, tes, lint)` (**pemblokir**) — satu job berisi seluruh verifikasi
+     kode, urut: `testDebugUnitTest` (id `unit_test`) → `assembleDebug` (id `assemble`) →
+     `lintDebug` (id `lint`). Alasan urutan: tugas termurah gagal lebih dulu. Semua tahap
+     memakai `if: always()` sehingga satu run melaporkan seluruh masalah sekaligus, bukan
+     berhenti di kegagalan pertama. **Lint tetap advisori** lewat `continue-on-error` di
+     level *step* (bukan job). Anotasi: `anotasikan-tes.py` + `anotasikan-log.py` dijaga
+     `if: always()` dan diberi penjaga `[ -f ... ]` karena log mungkin belum sempat ditulis.
+     Artifact: `app-debug` (hanya bila sukses), `unit-test-report`, `lint-report`.
+     Step summary memuat kesimpulan tiap tahap + versi Gradle/AGP terdeteksi.
+     **Mengapa digabung:** tiga job lama mengulang checkout+JDK+SDK+Gradle (±1,5 menit
+     masing-masing) dan memakai tiga cache Gradle terpisah; digabung, toolchain disiapkan
+     sekali dan cache konfigurasi/build dipakai ulang antar tugas (hemat ±60% waktu runner).
+  2. `release` (opsional; `needs: [verify]`, `if: vars.ENABLE_RELEASE_SIGNING == 'true'`):
      decode keystore dari Secrets → `assembleRelease` → artifact `app-release`.
      Yang harus diset maintainer: Secrets `SIGNING_KEYSTORE_BASE64`, `KEYSTORE_PASSWORD`,
      `KEY_ALIAS`, `KEY_PASSWORD` + variable `ENABLE_RELEASE_SIGNING=true`.
@@ -246,6 +261,8 @@ sebelum push.
   - `.github/dependabot.yml`: ekosistem `gradle` (mingguan) & `github-actions` (bulanan),
     maks. 5 PR, prefix commit `build`/`ci`. Dependabot hanya membuka PR — **manusia yang
     memutuskan**, dan `gradle/libs.versions.toml` tetap satu-satunya sumber versi.
+  - **Run hijau terakhir sebelum konsolidasi:** 34658145458 (`7a89e70`, 3m56s) — run
+    pertama setelah bump keempat action; **anotasi Node.js 20 hilang** di sini (TODO 23).
   - **Run hijau bersejarah:** 34562586434 (`26104f6`) · 34565410965 (`9f0adb9`) ·
     34580968135 (`5781180`, rename) · 34581202095 (`a813b2b`) · 34586619601 (`7e6b9b3`) ·
     34592495242 (`9864b9f`) · 34594076246 (`dcbe0ce`, unitTest pertama) ·
@@ -255,15 +272,21 @@ sebelum push.
     belum minify; release memakai minify+shrink), `unit-test-report` ≈ 11 KB,
     `lint-report` ≈ 18 KB.
 - Remote: `https://github.com/rollinkxx/velum.git` (di-rename dari `warp` 2026-09-11),
-  default branch `main`. PR #1–#3 sudah **merged**; `main` = hasil merge PR #3.
-- **PR Dependabot terbuka (per 2026-09-12), belum ditinjau maintainer:** #4 wireguard-tunnel
-  1.0.20260102, #5 AGP 9.4.0 (**CI merah** — satu-satunya PR yang gagal: ketiga job gugur,
-  lonjakan mayor), #6 gradle/actions v6, #7 actions/checkout v7, #8 gradle-wrapper 9.7.1,
-  #9 org.json 20260814, #10 setup-android v4, #11 upload-artifact v7, #12 appcompat 1.8.0.
-  Semua selain #5 hijau. Keputusan bump = wewenang maintainer (§4); agen tidak menyentuh
-  branch `dependabot/*` (§1).
-- Sandbox: tanpa JDK/Gradle/Android SDK; `gh` terautentikasi; clone **dangkal**
-  (`git log` hanya memuat 1 commit) dengan refspec fetch terbatas.
+  default branch `main`. **Repo diubah menjadi PUBLIK oleh maintainer 2026-09-12** —
+  konsekuensi: Actions gratis tanpa batas (sebelumnya privat, kuota 2.000 menit/bulan
+  dengan spending limit $0), dan seluruh riwayat commit terbaca publik.
+  PR #1–#4 dan #6–#12 sudah **merged**; `main` = `48c40c9`.
+- **PR Dependabot tersisa:** hanya **#5** (AGP 8.7.3 → 9.4.0), masih terbuka & CI merah.
+  Patch-nya hanya mengubah satu baris `agp` di katalog, padahal AGP 9 mensyaratkan
+  Gradle ≥ 9.1 (kini terpenuhi lewat #8), **Kotlin/KGP ≥ 2.2.10** karena built-in Kotlin,
+  dan **SDK Build Tools 36** — jadi #5 tidak akan hijau tanpa bump menyertai.
+  Keputusan bump = wewenang maintainer (§4); agen tidak menyentuh branch `dependabot/*` (§1).
+- Sandbox: tanpa JDK/Gradle/Android SDK, dan **jaringan keluar diblokir**
+  (`services.gradle.org`, `repo1.maven.org`, `api.adoptium.net` → SSL_ERROR_SYSCALL),
+  sehingga memasang toolchain sendiri pun mustahil — CI benar-benar satu-satunya jalan
+  build. `gh` terautentikasi tetapi **tanpa izin `workflow_dispatch`** (HTTP 403) dan tanpa
+  akses billing/permissions; satu-satunya cara memicu CI dari sandbox adalah **push**.
+  Clone **dangkal** (`git log` hanya memuat 1 commit) dengan refspec fetch terbatas.
 - Dokumen: `README.md` (pointer), `CONTRIBUTING.md` (pointer ke dokumen ini), `CHANGELOG.md`,
   `TODO.md`, `docs/adr/` (001 superseded, 002 identitas Velum) + indeks,
   `docs/rilis-github.md` (runbook APK rilis GitHub).
@@ -343,10 +366,29 @@ sebelum push.
   (a) commit dokumen pun bisa memicu CI bila ter-push bersamaan dengan perubahan kode;
   (b) anotasi check-run hanya memuat "Process completed with exit code 1" — karena itulah
   `anotasikan-tes.py` dibuat.
+- (2026-09-12, run 34658567073/34658584676/34658670008/34658688817) **Kuota Actions habis —
+  cara membedakannya dari kegagalan kode.** Empat run merah beruntun ternyata bukan salah
+  kode: repo masih privat, jatah 2.000 menit/bulan habis, spending limit default $0.
+  **Tanda khas (semuanya harus cocok):** (a) run selesai dalam **±8 detik**, jauh di bawah
+  durasi normal 2,5–4 menit; (b) setiap job punya **`steps: 0`** — tidak satu langkah pun
+  dieksekusi; (c) semua job gugur **pada detik yang sama**, termasuk job yang biasanya
+  `continue-on-error`; (d) **anotasi kosong** — tidak ada error kompilasi maupun tes gagal.
+  Bandingkan dengan kegagalan kode sungguhan (run 34601913928): job gugur satu per satu di
+  step bernama, disertai anotasi. Periksa dengan
+  `gh api repos/<owner>/<repo>/actions/runs/<id>/jobs --jq '.jobs[] | {name,conclusion,steps:(.steps|length)}'`.
+  Jangan pernah "memperbaiki" kode berdasarkan run semacam ini. Solusi: repo dijadikan
+  publik (Actions gratis tanpa batas) atau spending limit dinaikkan. Catatan: run yang mati
+  begini **tidak bisa** di-`gh run rerun` ("workflow file may be broken").
 - (2026-09-12) Anotasi advisory tetap muncul di setiap run: **Node.js 20 deprecated** —
   `actions/checkout@v4`, `actions/upload-artifact@v4`, `android-actions/setup-android@v3`,
   `gradle/actions/setup-gradle@v4` dipaksa berjalan di Node 24. Non-pemblokir; menunggu
   keputusan maintainer atas PR Dependabot #6/#7/#10/#11 (TODO No. 23).
+- (2026-09-12) **"PR Dependabot hijau" bisa menyesatkan.** Cek CI sebuah PR dijalankan di
+  **base saat PR dibuat**, bukan di ujung `main` saat di-merge. Empat PR (#9, #12, #4, #8)
+  sama-sama hijau di base `d873f1e`, tetapi kombinasi hasil gabungannya (Gradle 9.7.1 dari
+  #8 + AGP 8.7.3 yang tidak ikut naik) **tidak pernah dibangun sekali pun**. Sebelum
+  menyimpulkan `main` sehat setelah beberapa merge beruntun, pastikan ada **satu run di
+  ujung `main`** — bukan menjumlahkan status PR.
 - (2026-09-11) **Jebakan deteksi WARP**: `Tunnel.State.UP` dari `GoBackend` hanya berarti
   antarmuka TUN selesai dibuat, BUKAN handshake selesai; dan `HttpURLConnection` memakai
   ulang soket keep-alive yang dibuat sebelum VPN aktif (Android tidak memindahkan soket

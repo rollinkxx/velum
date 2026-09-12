@@ -24,7 +24,7 @@
 | 20 | Enkripsi SharedPreferences (EncryptedSharedPreferences + migrasi) | Tinggi | Selesai tervalidasi (CI run 34581202095) |
 | 21 | Statistik trafik + deteksi tunnel basi | Sedang | Selesai tervalidasi (CI run 34581202095) |
 | 22 | Uji `assembleRelease` bertanda tangan end-to-end (butuh Secrets maintainer) | Sedang | Menunggu Secrets maintainer |
-| 23 | Anotasi advisory Node.js 20 deprecated di runner (actions dipaksa ke Node 24; non-pemblokir, terlihat di run 34581202095) | Rendah | Dicatat; menunggu upstream actions |
+| 23 | Anotasi advisory Node.js 20 deprecated di runner (actions dipaksa ke Node 24; non-pemblokir, terlihat di run 34581202095) | Rendah | Selesai tervalidasi (CI run 34658145458) — hilang setelah PR #6/#7/#10/#11 di-merge |
 | 24 | Indikator laju kecepatan (KB/s) di baris Data | Tinggi | Selesai tervalidasi (CI run 34586619601) |
 | 25 | Proba endpoint tercepat saat menyambung | Tinggi | Selesai tervalidasi (CI run 34586619601) |
 | 26 | Fix false negative "Belum lewat Velum" di Uji terakhir: tunggu handshake, keep-alive off, ulang sekali | Tinggi | Selesai tervalidasi (PR #3, CI run 34592495242) |
@@ -41,4 +41,6 @@
 | 37 | Seluruh teks UI mengikuti nama aplikasi (tanpa sebutan pihak ketiga) + judul aplikasi elegan di bagian atas | Tinggi | Selesai tervalidasi (PR #3, CI run 34608952744) |
 | 38 | Portabilitas AGENTS.md §1: identitas branch sesi & SHA pangkal jadi temuan runtime (ritual pra-tugas), bukan teks hardcode | Sedang | Selesai (gerbang lokal §3; push `.md` tidak memicu CI) |
 | 39 | Sinkronisasi AGENTS.md §5 dengan keadaan pasca-merge PR #3 (18 berkas Kotlin, CI 4 job, skrip anotasi, Dependabot, run hijau, clone dangkal) | Sedang | Selesai (gerbang lokal §3; push `.md` tidak memicu CI) |
-| 40 | Tinjau 9 PR Dependabot terbuka (#4, #6–#12 hijau; #5 AGP 9.4.0 merah) — keputusan bump wewenang maintainer | Sedang | Menunggu keputusan maintainer |
+| 40 | Tinjau PR Dependabot: #4, #6–#12 di-merge maintainer 2026-09-11/12; sisa #5 (AGP 9.4.0) | Sedang | Sebagian selesai; #5 menunggu keputusan maintainer (butuh Kotlin ≥2.2.10 + Build Tools 36) |
+| 41 | Konsolidasi CI: 3 job verifikasi → 1 job (setup toolchain sekali, cache dipakai ulang) | Tinggi | Selesai, menunggu validasi CI |
+| 42 | Validasi kombinasi Gradle 9.7.1 (PR #8) + AGP 8.7.3 di ujung `main` — belum pernah dibangun | Tinggi | Selesai, menunggu validasi CI |
