@@ -206,10 +206,13 @@ sebelum push.
 - **Identitas (ADR 002):** `applicationId` = `com.rollinkxx.velum` (debug: suffix `.debug`),
   package Kotlin `com.rollinkxx.velum`, nama aplikasi **Velum**, versi awal `0.1.0`/code 1.
 - **Struktur modul `app/`** (`app/src/main/java/com/rollinkxx/velum/`, 19 berkas Kotlin):
-  - `MainActivity.kt` — **hanya render**: UI satu layar (View XML), panel info interaktif
+  - `MainActivity.kt` — **hanya render**: UI satu layar (View XML) yang **dirancang muat
+    satu layar tanpa menggulir** (estimasi 656 dp; ScrollView hanya cadangan untuk layar
+    pendek/skala huruf besar), panel info interaktif
     (durasi/endpoint/hasil uji+DC/laju+deteksi basi), izin notifikasi Android 13+ (diminta
     hanya bila perlu, lewat Activity Result API), pintasan pengaturan VPN/Always-on,
     konfirmasi Daftar ulang, salin diagnostik, judul bergradien (`polishAppTitle()`).
+    Tanpa footer: ruangnya lebih berharga untuk baris aksi.
   - `VelumController.kt` — **orkestrasi** koneksi & uji, terpisah dari Activity agar tidak
     ikut mati saat Activity dibuat ulang (rotasi/proses lahir ulang).
   - `VelumApi.kt` — registrasi/hapus registrasi ke API upstream
@@ -557,6 +560,19 @@ sebelum push.
   setiap kali berkas resource ditulis ulang — termasuk memeriksa `@color/nama` ke
   `res/color/*.xml` (color-state-list) **dan** `values/*.xml`, karena dua tempat itu mudah
   terlewat.
+- (2026-09-12) **`layout_gravity="center_vertical"` pada anak ScrollView = konten
+  terpotong permanen.** Gejalanya nyata di perangkat pengguna: judul "Velum" hilang
+  sebagian di layar (hanya sisa huruf bagian bawah yang terlihat) dan tidak bisa
+  digulir kembali. Sebabnya: saat isi lebih tinggi dari viewport, gravity pada
+  *LayoutParams* anak memindahkan seluruh isi ke atas (offset negatif), sementara
+  ScrollView hanya bisa menggulir dari 0 ke bawah — bagian atasnya mustahil dicapai.
+  **Cara yang benar:** `android:fillViewport="true"` pada ScrollView +
+  `android:gravity="center_vertical"` pada **isi** LinearLayout. Saat isi lebih pendek,
+  ia dipusatkan; saat lebih tinggi, ukurannya = tinggi alaminya sehingga tidak ada
+  pergeseran. **Pelajaran tambahan:** perangkat pengguna bisa punya viewport efektif
+  lebih kecil dari perkiraan (skala huruf/ukuran tampilan), jadi jangan pernah
+  mengandalkan "kurang-lebih muat" — ukur dengan
+  `tools/est_layout.py` (semacam ini) lalu sisakan margin lega.
 - (2026-09-11) **Jebakan deteksi WARP**: `Tunnel.State.UP` dari `GoBackend` hanya berarti
   antarmuka TUN selesai dibuat, BUKAN handshake selesai; dan `HttpURLConnection` memakai
   ulang soket keep-alive yang dibuat sebelum VPN aktif (Android tidak memindahkan soket

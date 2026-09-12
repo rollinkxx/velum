@@ -46,6 +46,9 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
   gagal memasang.
 
 ### Changed
+- Footer "Hanya tunnel Velum. Tanpa iklan, tanpa pelacakan." dihapus dari layar utama
+  beserta string-nya: memakan ruang tanpa menambah informasi, dan justru membuat tata
+  letak melebihi satu layar. Pesan itu tetap hidup di sini (CHANGELOG) dan di ADR.
 - **`targetSdk` 35 → 36 (Android 16)** atas izin maintainer. Konsekuensi yang ikut
   ditangani dalam perubahan yang sama, bukan ditunda:
   - **Edge-to-edge dipaksakan** — isi jendela kini berada di bawah bilah status dan
@@ -256,6 +259,16 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
   (lihat ADR 002). Penyebutan WARP yang tersisa hanya referensial (endpoint/protokol).
 
 ### Fixed
+- **Layar utama tidak lagi terpotong.** Judul "Velum" hilang sebagian di perangkat
+  pengguna: isi layar lebih tinggi dari layar, dan `android:layout_gravity="center_vertical"`
+  pada anak ScrollView menggeser seluruh isi ke atas lalu memotong bagian atas secara
+  permanen (tidak bisa dicapai dengan menggulir). Diperbaiki dengan `fillViewport="true"`
+  + `android:gravity="center_vertical"` **di dalam** LinearLayout isi, dan seluruh tata
+  letak dipadatkan: estimasi tinggi isi turun 808 -> 656 dp (ponsel 873 dp kini lega
+  ~150 dp, tinggi itu diukur dengan `tools/est_layout.py` di sandbox karena Android SDK
+  tidak tersedia). ScrollView tetap ada sebagai cadangan untuk layar sangat pendek atau
+  skala huruf besar — kini tanpa risiko pemotongan.
+
 - Lint dibersihkan agar tidak ada temuan tingkat *error*: `android:tint` diganti
   `app:tint` pada ikon baris aksi & tombol kembali (wajib di proyek berbasis AppCompat),
   warna ikon yang ternyata tidak terpakai dihapus, dan struktur layar pengecualian
