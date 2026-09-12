@@ -24,8 +24,19 @@ object EndpointProbe {
     private const val TOTAL_TIMEOUT_SEC = 6L
     private const val FRESH_MS = 3600_000L
     private const val WG_PORT = 2408
-    private const val MAX_PROBE_THREADS = 8
     private const val KEEP_ALIVE_SEC = 30L
+
+    /**
+     * Ukuran pool MENGIKUTI jumlah kandidat, bukan angka tetap yang ditulis tangan.
+     *
+     * Sebelumnya `MAX_PROBE_THREADS = 8` sementara kandidat ada 7 (+1 endpoint registrasi)
+     * — pas-pasan, dan tidak ada yang menegakkan hubungan itu. Menambah satu kandidat saja
+     * membuat tugas kesembilan mengantre di `LinkedBlockingQueue`, tidak sempat berjalan
+     * dalam anggaran 6 detik, lalu dibatalkan **diam-diam**: proba tampak berhasil padahal
+     * sebagian kandidat tidak pernah diukur, dan endpoint "tercepat" dipilih dari data
+     * yang tidak lengkap.
+     */
+    private val probeThreads = VelumUpstream.CANDIDATES.size + 1
 
 
     /**
@@ -71,8 +82,19 @@ object EndpointProbe {
             prefs.workingEndpoint = null
             prefs.speedEndpoint = if (VelumFormat.isIpLiteral(next)) "$next:$WG_PORT" else null
             prefs.speedEndpointAt = System.currentTimeMillis()
-            Log.i(TAG, "endpoint diputar ke ${prefs.effectiveEndpoint} (${ranked.size} kandidat terukur)")
-            true
+            val installed = prefs.effectiveEndpoint?.let(VelumFormat::hostPart)
+            if (installed == null || installed == current) {
+                // Bisa terjadi bila `next` bukan literal IPv4: speedEndpoint menjadi null
+                // sehingga effectiveEndpoint jatuh ke endpoint registrasi, yang mungkin
+                // justru host yang barusan gagal. Mengembalikan true di sini berarti
+                // mengklaim "endpoint sudah diganti" padahal tidak ada yang berubah, dan
+                // uji ulang lalu mengulang kegagalan yang sama persis.
+                Log.w(TAG, "putar endpoint: hasil ($installed) sama dengan yang gagal; tidak ada pengganti")
+                false
+            } else {
+                Log.i(TAG, "endpoint diputar ke ${prefs.effectiveEndpoint} (${ranked.size} kandidat terukur)")
+                true
+            }
         }
     } catch (e: Exception) {
         Log.w(TAG, "putar endpoint gagal", e)
@@ -87,7 +109,7 @@ object EndpointProbe {
         // core == max supaya pengukuran benar-benar paralel; allowCoreThreadTimeOut
         // membuat thread menganggur mati sendiri setelah KEEP_ALIVE.
         ThreadPoolExecutor(
-            MAX_PROBE_THREADS, MAX_PROBE_THREADS, KEEP_ALIVE_SEC, TimeUnit.SECONDS,
+            probeThreads, probeThreads, KEEP_ALIVE_SEC, TimeUnit.SECONDS,
             LinkedBlockingQueue()
         ) { r -> Thread(r, "velum-probe").apply { isDaemon = true } }.apply {
             allowCoreThreadTimeOut(true)
