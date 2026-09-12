@@ -442,7 +442,8 @@ Empat poin di atas WAJIB masuk laporan Fase 1 §6 sebelum minta perintah eksekus
 [CI](#ci-github-workflowsbuildyml) · [Run acuan](#run-acuan-terkini) ·
 [Jebakan](#catatan-teknis-penting-jebakan)
 
-**Keadaan repo (fakta per 2026-09-12, audit ulang setelah 8 PR Dependabot ter-merge):**
+**Keadaan repo (fakta per 2026-09-12, disinkronkan pasca-merge PR #14 — `main` = `93f71b0`,
+run ujung `main` 34702351553 hijau):**
 - Aplikasi Android ringan fungsi **WARP saja** (tunnel WireGuard ke Cloudflare), tanpa mode
   DNS, tanpa iklan/analitik/akun. UI Bahasa Indonesia.
 - <a id="stack-aktual"></a>**Stack aktual** (dari `gradle/libs.versions.toml`, satu-satunya sumber versi): Gradle
@@ -451,7 +452,8 @@ Empat poin di atas WAJIB masuk laporan Fase 1 §6 sebelum minta perintah eksekus
   katalog** — AGP 9 membawa KGP-nya sendiri (≥ 2.2.10); jangan menambahkannya kembali "supaya
   eksplisit" (sumber kebenaran kedua yang bisa menyimpang). Syarat AGP 9.4: Gradle ≥ 9.6.0
   (wrapper 9.7.1) dan JDK ≥ 17 (CI di 17) — pasangan ini **terbukti membangun dengan bersih**
-  (run 34669207614 hijau percobaan pertama setelah bump AGP; seterusnya sampai run 34700716425).
+  (run 34669207614 hijau percobaan pertama setelah bump AGP; seterusnya sampai run 34702351553
+  di ujung `main` pasca-merge PR #14).
   Dependensi runtime hanya `androidx.appcompat` **1.8.0**, `androidx.activity` **1.9.3**
   (Activity Result API), `com.wireguard.android:tunnel` **1.0.20260102** (GoBackend), dan
   `androidx.security:security-crypto` **1.1.0** (Tink, ±1 MB) — tanpa Compose/OkHttp/coroutine
@@ -555,14 +557,27 @@ Empat poin di atas WAJIB masuk laporan Fase 1 §6 sebelum minta perintah eksekus
   - `.github/dependabot.yml`: ekosistem `gradle` (mingguan) & `github-actions` (bulanan),
     maks. 5 PR, prefix commit `build`/`ci`. Dependabot hanya membuka PR — **manusia yang
     memutuskan**, dan `gradle/libs.versions.toml` tetap satu-satunya sumber versi.
-  - <a id="run-acuan-terkini"></a>**Run acuan terkini (branch sesi `arena/01a09481-velum`, 2026-09-12):**
+  - <a id="run-acuan-terkini"></a>**Run acuan terkini (ujung `main`, 2026-09-12):**
+    34702351553 (`93f71b0`, hijau, **dua job**) — run pertama di ujung `main` setelah
+    PR #14 di-merge, sehingga memenuhi syarat di jebakan "PR Dependabot hijau bisa
+    menyesatkan": kesehatan `main` dibuktikan oleh satu run di ujungnya, bukan oleh
+    penjumlahan status PR. Job rilis tetap berjalan (kunci penandatanganan sudah
+    dikonfigurasi maintainer sejak 2026-09-12).
+    Artifact: `app-release` **12.773.630 byte** (12,77 MB / 12,18 MiB) · `app-preview`
+    12.773.526 byte — **hanya beda 104 byte** dari rilis, selisih tanda tangan saja ·
+    `app-debug` 27.593.336 byte · `mapping-preview` 634 KB · `unit-test-report` 14,2 KB ·
+    `lint-report` 19,7 KB. Isi tree identik dengan ujung branch sesi lama
+    (`git rev-parse` tree keduanya = `b821fd7f…`), jadi run ini juga membuktikan hasil
+    merge tidak menyimpang dari yang sudah diuji di branch sesi.
+  - **Run acuan ujung branch sesi lama (`arena/01a09481-velum`, 2026-09-12):**
     34700716425 (`7eff286`, **5m04s**, hijau, dua job) — popup tawaran kesiapan dihapus, uji
     koneksi diperbaiki (handshake jadi syarat; keadaan "belum ada data" ≠ kegagalan jaringan;
     endpoint diputar saat handshake tak terjadi; hasil uji disimpan `Prefs.lastTest`; host
     trace cadangan `one.one.one.one`), ikon emblem, `targetSdk` 36, `VelumInsets`. Artifact:
     `app-preview`/`app-release` **12,18 MiB** · `app-debug` 26,32 MiB · `mapping-preview`
     634 KB. Satu run merah di paket yang sama (34700496000) — diagnosisnya ada di daftar
-    jebakan di bawah.
+    jebakan di bawah. Tiga commit sesudahnya (`a8b9268`, `f88311e`, `ae8d73f`) hanya
+    menyentuh `*.md` → tidak memicu CI karena `paths-ignore`.
   - **Run acuan sebelumnya:** 34671312706 (`a74c1e7`, **7m19s**, hijau) — **run pertama
     dengan job rilis benar-benar berjalan**. Maintainer mengisi Secrets keystore
     2026-09-12, jadi `vars.ENABLE_RELEASE_SIGNING` kini `true` dan job `release`
@@ -638,10 +653,15 @@ Empat poin di atas WAJIB masuk laporan Fase 1 §6 sebelum minta perintah eksekus
   default branch `main`. **Repo diubah menjadi PUBLIK oleh maintainer 2026-09-12** —
   konsekuensi: Actions gratis tanpa batas (sebelumnya privat, kuota 2.000 menit/bulan
   dengan spending limit $0), dan seluruh riwayat commit terbaca publik.
-  PR #1–#4, #6–#12, dan **#13** sudah **merged**; `main` sebelum PR #14 = `a6c6814`.
-  Seluruh kerja sesi 2026-09-12 (ikon emblem, pantulan 5 percobaan, targetSdk 36,
-  penghapusan popup tawaran, perbaikan uji koneksi, penggantian aturan AGENTS.md) masuk
-  lewat **PR #14**, di-merge atas perintah eksplisit maintainer.
+  PR #1–#4, #6–#12, #13, dan **#14** sudah **merged**; `main` = **`93f71b0`** (merge commit
+  PR #14, ber-parent `a6c6814` + `ae8d73f`; di-merge atas perintah eksplisit maintainer
+  2026-09-12 15:28 UTC). Seluruh kerja sesi 2026-09-12 (ikon emblem, pantulan 5 percobaan,
+  targetSdk 36, penghapusan popup tawaran, perbaikan uji koneksi, penggantian aturan
+  AGENTS.md) masuk lewat **PR #14**.
+  **Keadaan per 2026-09-12 pasca-merge: 0 PR terbuka, 0 issue terbuka, 0 tag, 0 release**
+  (`gh api repos/…/git/refs/tags` → HTTP 404 karena namespace tag benar-benar kosong).
+  Ketiadaan rilis itu bukan kelalaian yang bisa dibereskan agen dari sandbox — lihat
+  jebakan "artifact CI tidak bisa diunduh" di bawah.
 - **PR Dependabot: tidak ada lagi yang terbuka.** #5 (AGP 8.7.3 → 9.4.0) **ditutup**
   atas perintah maintainer 2026-09-12, setelah isinya diterapkan lebih lengkap di
   branch sesi (`42b94bb`, CI 34669207614 hijau). Patch #5 hanya mengubah satu baris
@@ -796,6 +816,39 @@ Empat poin di atas WAJIB masuk laporan Fase 1 §6 sebelum minta perintah eksekus
   Yang tersisa: pintasan **"Selalu aktif"** di baris aksi (kueri `VPN_SETTINGS` tetap).
   Jangan menghidupkan lagi tawaran yang muncul sendiri — bantuan kontekstual tanpa
   diminta lebih mengganggu daripada berguna.
+- (2026-09-12) **Artifact CI tidak bisa diunduh dari sandbox lewat JALUR MANA PUN.**
+  Verifikasi baru, melengkapi entri 2026-09-11: bukan hanya `gh run download` yang EOF,
+  tetapi juga jalur API `gh api repos/…/actions/artifacts/<id>/zip` — keduanya dialihkan
+  ke host blob yang sama (`productionresultssa2.blob.core.windows.net`) dan mati dengan
+  EOF, termasuk untuk artifact sekecil 14 KB. **Konsekuensi keras: menerbitkan GitHub
+  Release dengan APK terlampir mustahil dilakukan agen dari sandbox** (TODO 57); rilis
+  wajib dijalankan maintainer dari mesin sendiri atau lewat UI GitHub. Yang tetap bisa
+  dilakukan agen: membaca nama/ukuran artifact via `gh api …/actions/runs/<id>/artifacts`,
+  dan membaca sidik jari SHA-256 dari step summary job rilis. Jangan menjanjikan rilis
+  yang "sudah terbit" bila APK-nya tidak pernah bisa diunduh.
+- (2026-09-12) **16 KB page size: TERBUKTI selaras, tanpa bump dependensi (menutup TODO 55).**
+  Bukti bertingkat: (a) upstream `WireGuard/wireguard-android` commit **`a57ca57e`**
+  (2025-05-20, judul harfiah *"tools: align to 16k"*) menambahkan
+  `-DANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES=ON` ke `tunnel/build.gradle.kts` di dalam
+  `buildTypes { all { … } }` untuk ketiga target `libwg-go.so`, `libwg.so`,
+  `libwg-quick.so` — jadi berlaku pula untuk artifact rilis yang diterbitkan ke Maven;
+  (b) flag itu sudah ada di tag `1.0.20250531` maupun di **`1.0.20260102` yang repo ini
+  pakai** (baris 38 berkas yang sama); (c) repo ini tidak menyimpan `.so` pra-bangun
+  (semuanya dari artifact Maven), tidak menyetel `useLegacyPackaging`, dan AGP 9.4.0
+  menangani zipalign native lib. **Batas bukti (jujur):** yang diverifikasi adalah
+  *konfigurasi bangun*, bukan byte ELF — artifact tidak bisa diunduh (entri di atas).
+  Cek byte-level di mesin maintainer: `zipalign -c -P 16 -v 4 app-arm64-v8a-release.apk`.
+  Bump ke `1.0.20260315` **tidak diperlukan demi 16 KB**: 8 commit pembeda hanya berisi
+  perbaikan retry updater, string hindi, appid di User-Agent, AGP 9.1 upstream, minSdk
+  modul, penghapusan `bundleOf` usang, dan bump versi — tak satu pun soal page size.
+- (2026-09-12) **Clone dangkal membuat `git merge-base --is-ancestor` MENIPU.** Setelah
+  fetch eksplisit branch sesi lama, perintah itu melaporkan "bukan ancestor" dan
+  `git log <lama> --not HEAD` mencetak puluhan commit — padahal merge commit `93f71b0`
+  benar-benar ber-parent `ae8d73f` dan tree keduanya identik. Penyebab: graph riwayat
+  terpotong di batas shallow, bukan pekerjaan yang belum masuk. **Pembanding yang andal
+  di clone dangkal:** `git cat-file -p <merge-sha>` (baca daftar `parent`) dan
+  `git rev-parse <a>^{tree} <b>^{tree}` (tree sama = konten sama). Jangan pernah
+  menyimpulkan "kerja sesi lama hilang/belum ter-merge" dari `--is-ancestor` saja.
 
 ## §6 Protokol Android: Presisi & Efisiensi Waktu (aktif 2026-09-11)
 
