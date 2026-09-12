@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Lapisan monokrom ikon adaptif (Android 13+): satu warna polos yang diwarnai
+  ulang oleh sistem mengikuti tema perangkat (ikon tematik). Bentuknya sama
+  dengan monogram di ic_launcher_foreground.xml, tanpa gradien.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M35,30 L42.6,30 L54,67 L65.4,30 L73,30 L58,76 L50,76 Z" />
+</vector>

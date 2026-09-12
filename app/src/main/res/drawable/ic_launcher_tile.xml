@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Glif satu warna untuk ubin pengaturan cepat & ikon notifikasi.
+
+  Viewport sengaja dipotong rapat ke monogram (31..77 x, 26..80 y) supaya huruf
+  "V" mengisi bidang ikon secara wajar saat sistem menyeragamkan ukurannya —
+  ic_launcher_foreground.xml tidak cocok untuk keperluan ini karena monogramnya
+  hanya menempati sepertiga kanvas 108x108.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="28dp"
+    android:viewportWidth="46"
+    android:viewportHeight="54">
+    <group
+        android:translateX="-31"
+        android:translateY="-26">
+        <path
+            android:fillColor="#FFFFFFFF"
+            android:pathData="M35,30 L42.6,30 L54,67 L65.4,30 L73,30 L58,76 L50,76 Z" />
+    </group>
+</vector>

@@ -1,13 +1,70 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  Monogram "V" untuk lapisan adaptif (kanvas 108x108).
+
+  Bentuknya harus identik dengan berkas PNG legacy (mipmap-*/ic_launcher.png):
+  - gradien diagonal champagne -> amber pada badan huruf;
+  - pita kilau terang di tepi atas tiap lengan (kesan cahaya jatuh dari atas).
+
+  Monogram hanya menempati area 35..73 (x) dan 30..76 (y) dari kanvas 108 —
+  di dalam zona aman 72x72 ikon adaptif, sehingga tidak terpotong oleh topeng
+  peluncur mana pun.
+-->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <path
-        android:fillColor="#FFFFFFFF"
-        android:pathData="M30,44 L46,44 A12,12 0 0 1 46,68 L30,68 Z M30,50 L30,62 L46,62 A6,6 0 0 0 46,50 Z" />
-    <path
-        android:fillColor="#FFFFFFFF"
-        android:pathData="M52,44 L78,44 L78,50 L52,50 Z M56,53 L74,53 L74,59 L56,59 Z M60,62 L70,62 L70,68 L60,68 Z" />
+
+    <!-- Badan huruf: gradien champagne (kiri-atas) -> amber (kanan-bawah). -->
+    <path android:pathData="M35,30 L42.6,30 L54,67 L65.4,30 L73,30 L58,76 L50,76 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:endX="73"
+                android:endY="76"
+                android:startX="35"
+                android:startY="30"
+                android:type="linear">
+                <item
+                    android:color="@color/icon_monogram_start"
+                    android:offset="0" />
+                <item
+                    android:color="@color/icon_monogram_end"
+                    android:offset="1" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- Kilau tepi atas: memudar ke bawah sehingga menyatu dengan badan huruf. -->
+    <path android:pathData="M35,30 L42.6,30 L42.6,33.4 L35,33.4 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:endY="34.2"
+                android:startY="30"
+                android:type="linear">
+                <item
+                    android:color="@color/icon_monogram_rim"
+                    android:offset="0" />
+                <item
+                    android:color="#00FFF8E6"
+                    android:offset="1" />
+            </gradient>
+        </aapt:attr>
+    </path>
+    <path android:pathData="M65.4,30 L73,30 L73,33.4 L65.4,33.4 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:endY="34.2"
+                android:startY="30"
+                android:type="linear">
+                <item
+                    android:color="@color/icon_monogram_rim"
+                    android:offset="0" />
+                <item
+                    android:color="#00FFF8E6"
+                    android:offset="1" />
+            </gradient>
+        </aapt:attr>
+    </path>
 </vector>

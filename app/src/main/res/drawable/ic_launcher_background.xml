@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Latar ikon adaptif (kanvas 108x108): kartu gelap bergradien vertikal dengan
+  pendar emas lembut di belakang monogram. Sengaja memakai layer-list berisi
+  <shape> (bukan vektor bergradien) agar tidak butuh atribut aapt dan tampil
+  sama persis di semua versi Android yang mendukung ikon adaptif (API 26+).
+-->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item>
+        <shape android:shape="rectangle">
+            <gradient
+                android:angle="270"
+                android:endColor="@color/icon_bg_bottom"
+                android:startColor="@color/icon_bg_top"
+                android:type="linear" />
+        </shape>
+    </item>
+    <item
+        android:width="84dp"
+        android:height="84dp"
+        android:gravity="center">
+        <shape android:shape="oval">
+            <gradient
+                android:centerX="0.5"
+                android:centerY="0.44"
+                android:endColor="#00E8A13D"
+                android:gradientRadius="42dp"
+                android:startColor="#38E8A13D"
+                android:type="radial" />
+        </shape>
+    </item>
+</layer-list>
