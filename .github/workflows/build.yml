@@ -226,6 +226,40 @@ jobs:
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: ./gradlew --no-daemon --stacktrace assembleRelease
 
+      # Tanpa langkah ini kegagalan penandatanganan LOLOS DIAM-DIAM: signingConfig
+      # hanya terpasang bila KEYSTORE_FILE terisi, dan kalau tidak, Gradle tetap
+      # menghasilkan APK (tanpa tanda tangan) lalu CI tetap hijau. Cacatnya baru
+      # ketahuan ketika pengguna gagal memasang APK — terlalu terlambat.
+      #
+      # Selain memastikan APK bertanda tangan, langkah ini menolak APK yang
+      # tertandatangani kunci DEBUG: kunci debug seragam di semua mesin, jadi
+      # siapa pun bisa menerbitkan "pembaruan" palsu untuk aplikasi ini.
+      - name: Verifikasi tanda tangan APK rilis
+        run: |
+          set -euo pipefail
+          APKSIGNER=$(find "$ANDROID_HOME/build-tools" -name apksigner | sort -V | tail -1)
+          echo "apksigner: $APKSIGNER"
+          {
+            echo "## Sidik jari penandatangan"
+            echo ""
+            echo "| APK | SHA-256 |"
+            echo "|---|---|"
+          } >> "$GITHUB_STEP_SUMMARY"
+          for f in app/build/outputs/apk/release/*.apk; do
+            nama=$(basename "$f")
+            keluaran=$("$APKSIGNER" verify --print-certs "$f")
+            echo "== $nama"
+            echo "$keluaran"
+            if echo "$keluaran" | grep -qi "CN=Android Debug"; then
+              echo "::error::$nama ditandatangani kunci DEBUG, bukan kunci rilis."
+              exit 1
+            fi
+            sidik=$(echo "$keluaran" | grep -i "SHA-256 digest" | head -1 | awk '{print $NF}')
+            echo "| $nama | \`${sidik:-tidak terbaca}\` |" >> "$GITHUB_STEP_SUMMARY"
+          done
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "Sidik jari WAJIB sama di setiap rilis; berubah = pengguna tidak bisa memperbarui." >> "$GITHUB_STEP_SUMMARY"
+
       - name: Ringkasan APK rilis
         if: always()
         run: |
