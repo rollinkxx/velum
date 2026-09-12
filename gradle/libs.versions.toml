@@ -5,12 +5,12 @@ kotlin = "2.0.21"
 compileSdk = "35"
 targetSdk = "35"
 minSdk = "24"
-appcompat = "1.7.0"
+appcompat = "1.8.0"
 activity = "1.9.3"
-wireguardTunnel = "1.0.20250531"
+wireguardTunnel = "1.0.20260102"
 securityCrypto = "1.1.0"
 junit = "4.13.2"
-json = "20250517"
+json = "20260814"
 
 [libraries]
 androidx-appcompat = { module = "androidx.appcompat:appcompat", version.ref = "appcompat" }
