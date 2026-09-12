@@ -865,6 +865,19 @@ run ujung `main` 34702351553 hijau):**
   di clone dangkal:** `git cat-file -p <merge-sha>` (baca daftar `parent`) dan
   `git rev-parse <a>^{tree} <b>^{tree}` (tree sama = konten sama). Jangan pernah
   menyimpulkan "kerja sesi lama hilang/belum ter-merge" dari `--is-ancestor` saja.
+- **Trailer commit berasal dari hook PLATFORM, bukan dari repo.** Setiap commit yang dibuat di
+  sandbox otomatis mendapat footer
+  `Co-authored-by: arena-agent <297053741+arena-agent@users.noreply.github.com>`, ditambahkan
+  oleh `.git/hooks/commit-msg` yang **dipasang platform saat provision** — mtime hook sama
+  dengan detik `checkout`, repo tidak melacak hook apa pun (`git ls-files | grep -c hook` = 0)
+  dan tidak punya `.githooks/`. Isi hook-nya idempoten: bila trailer sudah ada di berkas
+  pesan, keluar tanpa mengubah apa pun. Karena hook ini bagian dari **lingkungan**, ia tidak
+  bisa dinonaktifkan dari dalam repo; §4 sudah menetapkan trailer otomatis platform tidak
+  dihapus. Konsekuensi yang harus disadari maintainer: trailer ini **ikut masuk riwayat
+  `main`** bila branch sesi di-merge apa adanya — memutuskan mempertahankannya atau
+  membersihkannya lewat squash/rebase adalah keputusan merge, bukan keputusan agen. Jangan
+  menulis ulang pesan commit demi menghapusnya: itu melanggar §4 dan menghapus jejak
+  asal-usul pekerjaan (lihat TODO 81).
 - (2026-09-12, paket perbaikan kedua) **Sandbox bisa di-provision ulang antar-giliran: `.git`
   lahir baru (shallow, refspec hanya `main`) sementara berkas kerja dipulihkan dari snapshot,
   sehingga HEAD kembali ke basis dan commit sesi sebelumnya lenyap dari object store lokal.**
