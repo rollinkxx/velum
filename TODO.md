@@ -60,3 +60,6 @@
 | 56 | Uji perangkat APK `app-preview` untuk perilaku targetSdk 36: tampilan edge-to-edge, layanan VPN tidak ditolak sistem, dan bilah kembali di layar pengecualian | Tinggi | Belum — butuh maintainer (tidak bisa diuji dari sandbox) |
 | 57 | Terbitkan rilis GitHub pertama (`gh release create v0.1.0`): APK rilis sudah siap di artifact `app-release`, namun 0 tag & 0 release | Sedang | Belum — menunggu perintah maintainer (bump versi & tag adalah wewenang maintainer) |
 | 58 | Perbaikan layar utama: judul terpotong (layout_gravity salah pada anak ScrollView), footer dihapus, tata letak dipadatkan agar muat satu layar (808 -> 656 dp) | Tinggi | Selesai tervalidasi (CI run 34683624375) — konfirmasi tampilan di perangkat tetap wewenang maintainer |
+| 59 | Logo emblem (cincin emas + monogram "V"), palet ikon disesuaikan, 10 PNG legacy dibangkitkan ulang serempak | Tinggi | Selesai, menunggu validasi CI |
+| 60 | Pantulan jaringan lebih sabar: backoff 3 -> 5 percobaan (2/5/10/30/60 dtk) | Tinggi | Selesai, menunggu validasi CI |
+| 61 | Tawaran sekali: Always-on VPN + blokir tanpa VPN & bebas optimasi baterai, keputusan diuji unit (`VelumSetup.offer`) | Tinggi | Selesai, menunggu validasi CI — perilaku nyata perlu uji perangkat |

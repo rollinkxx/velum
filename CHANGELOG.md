@@ -6,6 +6,25 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 ## [Unreleased]
 
 ### Added
+- **Logo baru bergaya emblem** (arah "A" yang dipilih maintainer): cincin emas tipis
+  mengelilingi monogram "V" — bukan huruf polos tanpa bingkai lagi. Cincin digambar
+  sebagai dua lingkaran (`fillType="evenOdd"`) dengan gradien gading-emas terang di atas
+  lalu amber gelap di bawah, sehingga terbaca sebagai logam, bukan bidang datar.
+  Seluruh bentuk (cincin diameter 64,8 pada kanvas 108) berada di dalam zona aman
+  72x72, jadi topeng peluncur apa pun tidak memotongnya.
+- **Tawaran kesiapan sekali saja** (`VelumSetup`): bila Always-on VPN belum diarahkan ke
+  Velum (atau blokir koneksi tanpa VPN belum menyala) dan/atau Velum masih dioptimalkan
+  baterai, aplikasi menawarkan pengaturannya sekali dengan bahasa awam lalu membuka layar
+  pengaturan sistem yang tepat. Ini penambal paling ampuh untuk kelemahan yang tidak bisa
+  diatasi aplikasi sendiri: proses yang dimatikan OS tidak bisa bangkit sendiri.
+  Keputusan tawaran (`VelumSetup.offer`) murni tanpa framework dan teruji unit —
+  termasuk aturan penting bahwa keadaan **"tidak diketahui" tidak pernah dianggap
+  kekurangan**, sehingga tawaran tidak muncul menuduh tanpa dasar.
+- `VelumSetupTest` (8 uji) — berkas uji ke-7.
+- Blok `<queries>` baru untuk dua aksi pengaturan sistem (`VPN_SETTINGS`,
+  `IGNORE_BATTERY_OPTIMIZATION_SETTINGS`), supaya resolusi intent tetap berhasil pada
+  API 30+ dengan pembatasan visibilitas paket.
+
 - Varian build **preview**: konfigurasi rilis (R8 + shrink resources) yang ditandatangani
   kunci debug, sehingga APK kecil siap pasang bisa diuji di perangkat nyata tanpa keystore
   rilis. Dibangun di setiap push agar R8 teruji terus-menerus — bukan pertama kali saat
@@ -46,6 +65,18 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
   gagal memasang.
 
 ### Changed
+- **Pantulan jaringan lebih sabar** ([ReconnectMonitor]): backoff 3 percobaan
+  (2/5/10 dtk) menjadi **5 percobaan (2/5/10/30/60 dtk)**. Jaringan yang baru berganti —
+  habis pindah Wi-Fi, keluar mode pesawat, atau baru menyala setelah boot — sering butuh
+  belasan detik sebelum benar-benar siap diakses; menyerah pada detik ke-17 terlalu cepat.
+  Pantulan tetap dibatalkan begitu pengguna menekan Putuskan.
+- Ikon aplikasi: monogram tanpa bingkai diganti emblem cincin + monogram; palet ikon
+  ikut menyesuaikan (`icon_ring_start`/`icon_ring_end`, `icon_monogram_rim` dihapus karena
+  tidak lagi dipakai). PNG legacy (10 berkas) dibangkitkan ulang dari kanvas yang sama,
+  dan justru **lebih ringan** dari versi sebelumnya (1,9-10,7 KB vs 3,4-19 KB per berkas).
+- Glif ubin pengaturan cepat & ikon notifikasi memakai emblem yang dipotong rapat,
+  menyamakan bahasa visual ikon di layar peluncur, ubin, dan notifikasi.
+
 - Footer "Hanya tunnel Velum. Tanpa iklan, tanpa pelacakan." dihapus dari layar utama
   beserta string-nya: memakan ruang tanpa menambah informasi, dan justru membuat tata
   letak melebihi satu layar. Pesan itu tetap hidup di sini (CHANGELOG) dan di ADR.
@@ -259,6 +290,10 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
   (lihat ADR 002). Penyebutan WARP yang tersisa hanya referensial (endpoint/protokol).
 
 ### Fixed
+- Tawaran pengaturan tidak muncul lagi setelah pengguna memilih "Nanti saja": memo
+  `setupPostponed` bertahan bahkan ketika pengguna menekan Daftar ulang (yang membersihkan
+  data registrasi). Sebelumnya `Prefs.clear()` akan menghapus memo semacam itu.
+
 - **Layar utama tidak lagi terpotong.** Judul "Velum" hilang sebagian di perangkat
   pengguna: isi layar lebih tinggi dari layar, dan `android:layout_gravity="center_vertical"`
   pada anak ScrollView menggeser seluruh isi ke atas lalu memotong bagian atas secara

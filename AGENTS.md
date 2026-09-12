@@ -205,7 +205,7 @@ sebelum push.
   (laporan HTML tidak terbaca dari sandbox), `abortOnError = true`.
 - **Identitas (ADR 002):** `applicationId` = `com.rollinkxx.velum` (debug: suffix `.debug`),
   package Kotlin `com.rollinkxx.velum`, nama aplikasi **Velum**, versi awal `0.1.0`/code 1.
-- **Struktur modul `app/`** (`app/src/main/java/com/rollinkxx/velum/`, 19 berkas Kotlin):
+- **Struktur modul `app/`** (`app/src/main/java/com/rollinkxx/velum/`, 20 berkas Kotlin):
   - `MainActivity.kt` — **hanya render**: UI satu layar (View XML) yang **dirancang muat
     satu layar tanpa menggulir** (estimasi 656 dp; ScrollView hanya cadangan untuk layar
     pendek/skala huruf besar), panel info interaktif
@@ -236,6 +236,10 @@ sebelum push.
     tunnel; daftar dibatasi `<queries>` peluncur (tanpa `QUERY_ALL_PACKAGES`); bilah atas
     dengan tombol **Kembali** (`onBackPressedDispatcher`, bukan `onBackPressed` usang) dan
     keterangan bila daftar aplikasi kosong.
+  - `VelumSetup.kt` — kesiapan agar tunnel pulih sendiri: membaca Always-on VPN
+    (lewat refleksi `Settings.Global.ALWAYS_ON_VPN_APP`/`_LOCKDOWN` — dua kunci itu baru
+    jadi konstanta publik di API 26, sedangkan minSdk 24) dan status optimasi baterai,
+    lalu **menawarkan sekali**; keputusan tawaran `offer()` murni & teruji unit.
   - `VelumInsets.kt` — padding bilah sistem untuk tampilan **edge-to-edge** yang dipaksakan
     sejak `targetSdk` 36; dipanggil dari akar layout (`@+id/root`) kedua activity. Pada
     perangkat/jendela non-edge-to-edge insets bernilai nol sehingga tidak menggandakan jarak.
@@ -246,7 +250,7 @@ sebelum push.
     `VelumRegistration.kt` (validasi respons `POST /reg`, port WG 2408),
     `VelumMigration.kt` (rencana migrasi data era polos, konservatif),
     `VelumDiagnostics.kt` (ringkasan gangguan **ramah privasi**: tanpa kunci/IP/token).
-    Uji padanannya di `app/src/test/java/com/rollinkxx/velum/*Test.kt` (6 berkas).
+    Uji padanannya di `app/src/test/java/com/rollinkxx/velum/*Test.kt` (7 berkas).
   - `AndroidManifest.xml` — VpnService milik library (`GoBackend$VpnService`) di-merge
     (`tools:node="merge"`) untuk menambah `foregroundServiceType="specialUse"` + property
     subtype `vpn`; receiver boot exported; service ubin QS (`BIND_QUICK_SETTINGS_TILE`,
@@ -565,6 +569,19 @@ sebelum push.
   setiap kali berkas resource ditulis ulang — termasuk memeriksa `@color/nama` ke
   `res/color/*.xml` (color-state-list) **dan** `values/*.xml`, karena dua tempat itu mudah
   terlewat.
+- (2026-09-12) **Always-on VPN tidak bisa dipastikan dari dalam aplikasi — pakai perangkat
+  uji.** Aplikasi hanya bisa *membaca* (dan itu pun lewat refleksi, lihat `VelumSetup`),
+  tidak bisa menyalakan; jadi tawaran bersifat anjuran dan **wajib diuji di perangkat**:
+  aktifkan Selalu aktif VPN untuk Velum + opsi Blokir koneksi tanpa VPN, lalu periksa
+  dengan `adb shell settings get secure always_on_vpn_app` (harus `com.rollinkxx.velum`
+  atau `…preview`/`…debug`) dan `adb shell settings get secure always_on_vpn_lockdown`
+  (harus `1`). Uji nyata ketahanannya: buka Velum, nyalakan, lalu `adb shell am force-stop
+  com.rollinkxx.velum` — bila Always-on menyala, sistem akan menyalakan VPN kembali
+  dalam beberapa detik.
+- (2026-09-12) **Tawaran pengaturan harus sekali saja dan tidak menuduh.** `VelumSetup.offer`
+  sengaja memperlakukan `null` (pembacaan gagal) sebagai "tidak ada masalah", dan memo
+  `setupPostponed` **dipertahankan** oleh `Prefs.clear()` — kalau tidak, menekan Daftar
+  ulang akan memunculkan lagi dialog yang sudah ditolak pengguna.
 - (2026-09-12) **`layout_gravity="center_vertical"` pada anak ScrollView = konten
   terpotong permanen.** Gejalanya nyata di perangkat pengguna: judul "Velum" hilang
   sebagian di layar (hanya sisa huruf bagian bawah yang terlihat) dan tidak bisa
