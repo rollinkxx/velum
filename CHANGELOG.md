@@ -137,6 +137,84 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
     (izin, foreground service, VPN) dan itu keputusan produk, bukan efek samping
     pembaruan alat bangun.
 
+#### Audit ulang (paket kedua)
+- **Pengecualian aplikasi langsung berlaku, tanpa menyuruh pengguna memutus manual.**
+  Sebelumnya daftar pengecualian dibaca sekali saat `Tunnel.getConfiguration()` dipakai
+  untuk membangun tunnel, jadi perubahan baru terasa setelah pengguna memutus dan
+  menyambung lagi sendiri — dan dua string di layar itu memang mengatakan begitu
+  ("Putuskan lalu Sambungkan agar berlaku"). Itu bukan solusi, itu memindahkan pekerjaan
+  aplikasi ke pengguna. Kini `save()` memanggil `VelumTunnel.restart()` bila tunnel sedang
+  UP, di executor latar (bukan main thread), dan toast-nya jujur: "menyambungkan ulang…"
+  saat restart memang terjadi, bukan saat hanya disimpan. Menyimpan tanpa mengubah apa pun
+  tidak lagi memicu restart. Teks bantuan layar ikut diperbarui — instruksi manualnya
+  dihapus karena sudah tidak benar.
+- **Niat pengguna (sambung/putus) kini milik proses, bukan milik satu layar.**
+  Generasi niat pindah dari field privat `VelumController` ke `VelumTunnel`
+  (`bumpIntent`/`intentStale`/`currentIntent`), dan ubin pengaturan cepat serta
+  `ReconnectMonitor` ikut memeriksanya. Sebelumnya ketiga pelaku itu menulis `Prefs.wasUp`
+  dan menghidup-matikan pemantau tanpa penanda urutan, sehingga ada interleaving nyata:
+  pengguna memutus lewat ubin, ekor `connect()` milik layar menulis `wasUp = true` dan
+  menyalakan pemantau lagi, lalu tunnel yang baru dimatikan membangkitkan dirinya sendiri
+  pada peristiwa jaringan berikutnya. Untuk aplikasi VPN itu kebocoran niat, bukan kosmetik.
+  Yang **tidak** dijamin juga dicatat jujur di KDoc: `@Synchronized` hanya melindungi
+  transisi tunnel, bukan memo niat maupun hidup/matinya pemantau.
+- **Manifest tidak lagi mendeklarasikan foreground service yang tidak pernah dimulai.**
+  `FOREGROUND_SERVICE`, `FOREGROUND_SERVICE_SPECIAL_USE`,
+  `android:foregroundServiceType="specialUse"`, dan properti subtype-nya dihapus. Bukti,
+  bukan dugaan: tidak ada satu pun pemanggilan `startForeground()` — nol di aplikasi ini,
+  nol di `GoBackend.java` pada sumber upstream tag 1.0.20260102 (library memulai layanan
+  dengan `Context.startService` lalu menunggu 2 detik), dan manifest library sendiri tidak
+  mendeklarasikan tipe apa pun. Sistem hanya memeriksa tipe saat `startForeground()`
+  dipanggil, jadi deklarasi itu inert — dan menyatakan `specialUse` yang tidak dipakai
+  justru menuntut pembenaran di Play Console untuk sesuatu yang tidak ada. Yang menahan
+  proses tetap hidup selama tunnel UP adalah VPN yang aktif. Bila kelak memang dibutuhkan,
+  tipe yang benar untuk aplikasi VPN adalah `systemExempted`, dan itu tertulis di manifest.
+- **Laju trafik pada sampel pertama tidak lagi dihitung terhadap uptime perangkat.**
+  Sejak rotasi layar tidak lagi dianggap transisi (perbaikan di atas), layar hasil rotasi
+  tidak menerima `onConnectedVisual()` — sehingga dasar hitungan tetap kosong dan
+  `lastPollMs` tetap `0`. Sampel pertama lalu membagi selisih byte dengan
+  `elapsedRealtime / 1000`, hasilnya ≈ `0 B/s` selama satu siklus (~5 detik) sebelum benar
+  sendiri. Kembali dari latar punya cacat yang sama dengan angka berbeda. Kini
+  `resetTrafficBaseline()` dipanggil dari `onStart` setiap layar terlihat dengan tunnel UP.
+- **Rotasi endpoint tidak lagi menulis preferensi di jalur gagal**, dan keputusannya
+  dikeluarkan dari kelas Android menjadi objek murni `VelumEndpointChoice` dengan 9 uji
+  regresi (JVM, tanpa perangkat). Sebelumnya `rotate()` menyimpan kandidat ke preferensi
+  *sebelum* memeriksa apakah pemenangnya ternyata endpoint yang sedang gagal; pada jalur
+  itu preferensi sudah berubah tetapi tunnel tidak diapa-apakan, dan log lama mengklaim
+  "berpindah" padahal tidak ada perpindahan. Uji mencakup kasus regresinya secara
+  eksplisit: pemenang bukan-IP yang sama dengan endpoint gagal → `changed = false`.
+- **Penyimpanan diperbaiki di dua tempat.** `Prefs.clear()` kini satu transaksi
+  (`clear()` + penulisan ulang `wasUp`/`excludedApps` + `commit()`), bukan tiga tulisan
+  terpisah: proses yang mati di antaranya dulu menghapus niat dan pengecualian pengguna —
+  persis kelas kegagalan yang `saveRegistration` sudah tutup. Dan fallback polos (dipakai
+  bila keystore perangkat gagal) kini memakai berkas `velum_plain`, bukan berbagi nama
+  `velum` dengan store terenkripsi. Berbagi nama rusak dua arah: `EncryptedSharedPreferences`
+  mengenkripsi *nama* kunci juga, jadi pembacaan polos atas berkas terenkripsi melihat
+  ciphertext dan menyimpulkan "belum terdaftar"; sebaliknya tulisan polos membuat berkas
+  itu tidak bisa dibuka lagi sebagai store terenkripsi bila keystore pulih. **Konsekuensi
+  yang diterima sadar:** perangkat yang sudah terlanjur jatuh ke fallback sebelum perubahan
+  ini perlu daftar ulang sekali. Migrasi heuristik dari berkas lama ditolak karena
+  membedakan "berkas polos era lama" dari "berkas terenkripsi" berarti menebak, dan tebakan
+  yang salah di sini merusak data yang sebenarnya masih bisa dibaca.
+- **Tiga tempat yang melebihkan kenyataan dikoreksi**, dan dua keputusan arsitektur yang
+  kemarin dibuat tanpa catatan kini punya ADR 003 (kepemilikan status koneksi & model
+  konkurensi, termasuk alternatif yang ditolak dan alasannya). Ditambah
+  `docs/uji-perangkat.md`: checklist 30 uji dalam 7 kelompok, lengkap dengan perintah
+  logcat, hasil yang diharapkan, dan kolom "bila berbeda" — karena repo ini tidak punya
+  emulator di CI maupun di lingkungan agen, dan "sudah diverifikasi" tanpa perangkat adalah
+  klaim yang tidak bisa dipertanggungjawabkan.
+- **Risiko `BootReceiver` didokumentasikan, bukan diubah.** `goAsync()` menahan proses
+  tetap hidup selama `up()`, yang bisa memakan 2 detik (menunggu VpnService) ditambah
+  sampai 10×1 detik retry resolusi DNS saat boot. Menggantinya dengan "serahkan ke
+  `ReconnectMonitor` lalu selesai" tidak menghapus risiko, hanya memindahkannya: tanpa
+  `goAsync()` proses yang baru lahir untuk broadcast bisa dibunuh sebelum tunnel naik.
+  Memilih di antara dua risiko itu butuh pengukuran di perangkat (uji F1/F2/F5), bukan
+  penalaran dari sandbox.
+- **Komentar build tidak lagi memuat angka baris yang sudah usang** (klaim "±1.900 baris"
+  saat kenyataannya sudah jauh di atas itu), diganti penjelasan kenapa angkanya memang
+  tidak perlu ditulis: ia berubah setiap rilis, dan komentar berisi angka usang lebih
+  menyesatkan daripada komentar tanpa angka.
+
 ### Changed
 - CI mengunggah seluruh varian APK (`*.apk`) alih-alih satu berkas bernama tetap, dan step
   summary kini menampilkan tabel ukuran tiap APK sehingga dampak pemecahan terlihat tanpa
