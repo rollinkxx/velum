@@ -328,11 +328,15 @@ sebelum push.
   - `.github/dependabot.yml`: ekosistem `gradle` (mingguan) & `github-actions` (bulanan),
     maks. 5 PR, prefix commit `build`/`ci`. Dependabot hanya membuka PR — **manusia yang
     memutuskan**, dan `gradle/libs.versions.toml` tetap satu-satunya sumber versi.
-  - **Run acuan terkini (branch sesi `arena/01a09481-velum`):** 34683624375
+  - **Run acuan terkini (branch sesi `arena/01a09481-velum`):** 34684549219
+    (`e0d96c9`, **5m33s**, hijau) — logo emblem + pantulan 5 percobaan + tawaran kesiapan.
+    Semua tahap lolos (unit test termasuk 8 uji `VelumSetup` baru, build debug & preview,
+    lint, verifikasi tanda tangan rilis). Artifact: `app-preview`/`app-release` **12,17 MB**
+    (turun dari 12,21 MB karena PNG ikon baru lebih ringan) · `app-debug` 26,30 MB.
+  - **Run sebelumnya di branch sesi:** 34683624375
     (`a294f2c`, **5m18s**, hijau) — perbaikan tata letak layar utama (muat satu layar,
-    footer dihapus). Artifact tidak berubah ukurannya dari run sebelumnya
-    (`app-preview`/`app-release` 12,21 MB · `app-debug` 26,45 MB): perubahan hanya di
-    resource layout. Anotasi lint tetap sama seperti daftar di bawah (tanpa temuan baru).
+    footer dihapus). Artifact saat itu: `app-preview`/`app-release` 12,21 MB ·
+    `app-debug` 26,45 MB (perubahan hanya di resource layout).
   - **Run sebelumnya di branch sesi:** 34681658613
     (`4f211ee`, **5m12s**, hijau) — paket ikon baru + baris aksi + targetSdk 36 +
     pembersihan lint. Artifact: `app-release` **12,21 MB** · `app-preview` 12,21 MB ·
@@ -415,8 +419,9 @@ sebelum push.
     commit lanjutan. **Pelajaran:** menambah ImageView ber-`tint` atau membungkus
     `layout_weight` di dalam `layout_weight` selalu memicu lint; periksa keduanya
     sebelum push.
-  - **Sisa peringatan lint (run 34681658613, sesudah pembersihan):** 7 usulan KTX
-    `SharedPreferences.edit` pada `Prefs.kt` (sengaja tidak diambil — menuntut
+  - **Sisa peringatan lint (run 34684549219, sesudah pembersihan):** 8 usulan KTX
+    `SharedPreferences.edit` pada `Prefs.kt` (bertambah satu karena `setupPostponed`
+    menambah satu pemakaian `edit()`) (sengaja tidak diambil — menuntut
     dependensi `androidx.core:core-ktx` hanya untuk tiga baris idiom yang sudah benar),
     `GoBackend` static field (dari library WireGuard, bukan kode repo), `allowBackup`
     usang, dan tawaran versi `androidx.activity` yang lebih baru. Tiga advisory ikon
