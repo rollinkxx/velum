@@ -1,10 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  Layar sekunder (pengecualian aplikasi): kini punya bilah atas sendiri agar
-  pengguna tidak terjebak — sebelumnya hanya ada tombol Simpan, tanpa jalan
-  kembali yang terlihat selain gestur/tombol sistem.
+  Layar sekunder (pengecualian aplikasi) dengan bilah atas sendiri agar pengguna
+  tidak terjebak: sebelumnya hanya ada tombol Simpan, tanpa jalan kembali yang
+  terlihat selain gestur/tombol sistem.
+
+  Struktur sengaja rata (tanpa pembungkus ber-weight) — `layout_weight` bersarang
+  ditandai lint sebagai boros pengukuran ganda. Padding dipasang per elemen,
+  sementara hanya ScrollView yang mengambil sisa tinggi.
 -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:id="@+id/root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
@@ -28,7 +33,7 @@
             android:contentDescription="@string/btn_back"
             android:scaleType="centerInside"
             android:src="@drawable/ic_back"
-            android:tint="@color/fg" />
+            app:tint="@color/fg" />
 
         <TextView
             android:layout_width="0dp"
@@ -48,47 +53,44 @@
         android:layout_height="1dp"
         android:background="@color/card_stroke" />
 
-    <LinearLayout
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="24dp"
+        android:layout_marginTop="20dp"
+        android:layout_marginEnd="24dp"
+        android:lineSpacingMultiplier="1.25"
+        android:text="@string/excluded_hint"
+        android:textColor="@color/muted"
+        android:textSize="13sp" />
+
+    <ScrollView
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_weight="1"
-        android:orientation="vertical"
-        android:paddingStart="24dp"
-        android:paddingTop="20dp"
-        android:paddingEnd="24dp"
-        android:paddingBottom="20dp">
+        android:layout_marginStart="24dp"
+        android:layout_marginTop="12dp"
+        android:layout_marginEnd="24dp"
+        android:layout_weight="1">
 
-        <TextView
+        <LinearLayout
+            android:id="@+id/appList"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:lineSpacingMultiplier="1.25"
-            android:text="@string/excluded_hint"
-            android:textColor="@color/muted"
-            android:textSize="13sp" />
+            android:orientation="vertical" />
+    </ScrollView>
 
-        <ScrollView
-            android:layout_width="match_parent"
-            android:layout_height="0dp"
-            android:layout_marginTop="12dp"
-            android:layout_weight="1">
-
-            <LinearLayout
-                android:id="@+id/appList"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical" />
-        </ScrollView>
-
-        <Button
-            android:id="@+id/save"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="14dp"
-            android:background="@drawable/btn_primary"
-            android:minHeight="52dp"
-            android:text="@string/btn_save"
-            android:textAllCaps="false"
-            android:textColor="@color/btn_primary_text"
-            android:textSize="15sp" />
-    </LinearLayout>
+    <Button
+        android:id="@+id/save"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="24dp"
+        android:layout_marginTop="14dp"
+        android:layout_marginEnd="24dp"
+        android:layout_marginBottom="20dp"
+        android:background="@drawable/btn_primary"
+        android:minHeight="52dp"
+        android:text="@string/btn_save"
+        android:textAllCaps="false"
+        android:textColor="@color/btn_primary_text"
+        android:textSize="15sp" />
 </LinearLayout>

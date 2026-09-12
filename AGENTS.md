@@ -389,8 +389,13 @@ sebelum push.
     KTX x3, ukuran teks 10sp, adaptive icon tanpa `monochrome`, dan ikon peluncur yang
     mengisi seluruh piksel x5). Perubahan 2026-09-12 menyelesaikan tujuh di antaranya —
     tagline 11sp, lapisan `monochrome` ditambahkan, monogram "V" ditaruh di zona aman
-    72x72 — sehingga **yang diharapkan tersisa hanya `Prefs.kt` `.edit()` x3**. Verifikasi
-    lewat anotasi check-run setelah push, bukan lewat ingatan dokumen ini.
+    72x72. Hasil nyata (run 34681373449): lint **masih** memunculkan temuan baru dari
+    perubahan itu sendiri — 4 error `UseAppTint` (`android:tint` harus `app:tint` di
+    proyek AppCompat), 1 `UnusedResources`, 1 `NestedWeights` — semuanya diperbaiki di
+    commit lanjutan. **Pelajaran:** menambah ImageView ber-`tint` atau membungkus
+    `layout_weight` di dalam `layout_weight` selalu memicu lint; periksa keduanya
+    sebelum push. Sisa peringatan yang diharapkan sekarang hanya usulan KTX pada
+    `Prefs.kt` (8 baris laporan; sengaja tidak diambil karena menambah dependensi).
   - **Run hijau terakhir sebelum konsolidasi:** 34658145458 (`7a89e70`, 3m56s) — run
     pertama setelah bump keempat action; **anotasi Node.js 20 hilang** di sini (TODO 23).
   - **Run hijau bersejarah:** 34562586434 (`26104f6`) · 34565410965 (`9f0adb9`) ·

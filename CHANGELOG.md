@@ -253,6 +253,12 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
   (lihat ADR 002). Penyebutan WARP yang tersisa hanya referensial (endpoint/protokol).
 
 ### Fixed
+- Lint dibersihkan agar tidak ada temuan tingkat *error*: `android:tint` diganti
+  `app:tint` pada ikon baris aksi & tombol kembali (wajib di proyek berbasis AppCompat),
+  warna ikon yang ternyata tidak terpakai dihapus, dan struktur layar pengecualian
+  diratakan supaya tidak ada `layout_weight` bersarang (boros pengukuran ganda).
+  Sisa peringatan advisori: usulan KTX `SharedPreferences.edit` di `Prefs.kt` —
+  sengaja tidak diambil karena menambah `androidx.core:core-ktx` ke APK.
 - Layar "Kecualikan aplikasi" kini punya bilah atas dengan tombol **Kembali** di kiri:
   sebelumnya satu-satunya jalan keluar adalah tombol sistem, sehingga pengguna yang
   membuka layar ini terasa terjebak. Layar juga menampilkan keterangan bila daftar

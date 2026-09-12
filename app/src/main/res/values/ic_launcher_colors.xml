@@ -8,7 +8,6 @@
 <resources>
     <color name="icon_bg_top">#0B0F15</color>
     <color name="icon_bg_bottom">#1E2A3A</color>
-    <color name="icon_glow">#E8A13D</color>
     <color name="icon_monogram_start">#FFF2CE</color>
     <color name="icon_monogram_end">#CE8F26</color>
     <color name="icon_monogram_rim">#FFF8E6</color>
