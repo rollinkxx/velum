@@ -270,7 +270,24 @@ sebelum push.
   - `.github/dependabot.yml`: ekosistem `gradle` (mingguan) & `github-actions` (bulanan),
     maks. 5 PR, prefix commit `build`/`ci`. Dependabot hanya membuka PR — **manusia yang
     memutuskan**, dan `gradle/libs.versions.toml` tetap satu-satunya sumber versi.
-  - **Run acuan terkini:** 34667447646 (`f06c4ee`, **4m02s**, hijau) — build pertama dengan
+  - **Run acuan terkini:** 34668310746 (`a0d20fc`, hijau) — build pertama dengan varian
+    **preview** (konfigurasi release + R8, ditandatangani kunci debug). Artifact:
+    `app-debug` 25,83 MB · `app-preview` **12,09 MB** · `mapping-preview` 613 KB.
+    R8 memangkas **±3,4 MB per APK** (dex+resources), sehingga preview per-ABI **±2,2 MB**
+    lawan debug per-ABI ±5,6 MB — **-53%** pada total artifact.
+    - Varian preview dibangun **setiap push**, disengaja: R8 hanya aktif di `release`, dan
+      `release` tak bisa dipasang tanpa keystore. Tanpa preview, R8 baru dijalankan pertama
+      kali saat rilis publik. **Jangan hapus step ini** untuk menghemat waktu CI (+ ~1 menit).
+    - `app/proguard-rules.pro` wajib memuat keep untuk **field protobuf Tink**
+      (`-keepclassmembers class * extends ...GeneratedMessageLite { <fields>; }`).
+      `EncryptedSharedPreferences` di `Prefs.kt` membaca keyset secara reflektif: tanpa
+      aturan ini build tetap **sukses** lalu aplikasi **crash saat runtime** hanya pada
+      varian yang diperkecil. Kegagalan senyap — tidak akan tertangkap CI, hanya di perangkat.
+    - Menambah komponen baru di manifest (service/receiver/activity) → tambahkan keep-nya,
+      karena sistem menginstansiasi berdasarkan nama string.
+    - `mapping.txt` diunggah sebagai artifact; wajib dipakai untuk membaca stack trace dari
+      APK preview/rilis, kalau tidak nama kelas tampil teracak.
+  - **Run acuan pemecahan ABI:** 34667447646 (`f06c4ee`, **4m02s**, hijau) — build pertama dengan
     pemecahan ABI. Artifact `app-debug` berisi **4 APK**, total 25,8 MB: universal 9,6 MB
     (setara APK tunggal sebelum pemecahan) + tiga varian ABI **rata-rata ±5,4 MB**, yaitu
     **±44% lebih kecil** dari universal untuk pengguna akhir. Angka ini varian *debug*

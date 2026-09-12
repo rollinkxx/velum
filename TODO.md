@@ -45,5 +45,5 @@
 | 41 | Konsolidasi CI: 3 job verifikasi → 1 job (setup toolchain sekali, cache dipakai ulang) | Tinggi | Selesai tervalidasi (CI run 34660850896, 4m04s, 19 step hijau) |
 | 42 | Validasi kombinasi Gradle 9.7.1 (PR #8) + AGP 8.7.3 di ujung `main` — belum pernah dibangun | Tinggi | Selesai tervalidasi (CI run 34660850896): kombinasi TERBUKTI JALAN, APK 10,08 MB |
 | 43 | Pemecahan APK per ABI (arm64-v8a, armeabi-v7a, x86_64) + universal, versionCode otomatis per varian | Tinggi | Selesai tervalidasi (CI run 34667447646): APK per-ABI ±5,4 MB debug vs universal 9,6 MB (hemat ±44%) |
-| 44 | Varian preview (R8 + tanda tangan debug) agar APK kecil bisa diuji tanpa keystore; R8 teruji tiap push | Tinggi | Selesai, menunggu validasi CI |
-| 45 | Aturan R8 bersasaran: Tink protobuf, TileService, BootReceiver, atribut baris untuk stack trace | Tinggi | Selesai, menunggu validasi CI |
+| 44 | Varian preview (R8 + tanda tangan debug) agar APK kecil bisa diuji tanpa keystore; R8 teruji tiap push | Tinggi | Selesai tervalidasi (CI run 34668310746): preview ±2,2 MB vs debug ±5,6 MB |
+| 45 | Aturan R8 bersasaran: Tink protobuf, TileService, BootReceiver, atribut baris untuk stack trace | Tinggi | Selesai tervalidasi (CI run 34668310746), mapping.txt 613 KB diunggah |
