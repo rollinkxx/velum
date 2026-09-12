@@ -235,6 +235,13 @@ sebelum push.
     ikon adaptif vektor + PNG polos untuk API 24–25.
   - Rilis: `signingConfigs.release` membaca env (`KEYSTORE_FILE/PASSWORD/ALIAS/KEY_PASSWORD`);
     minify+R8 aktif; `proguard-rules.pro` keep `com.wireguard.**`.
+  - **Pemecahan APK per ABI** (`splits.abi`, aktif 2026-09-12): `arm64-v8a`, `armeabi-v7a`,
+    `x86_64` + `isUniversalApk = true`. `x86` 32-bit sengaja dibuang. `versionCode` per
+    varian di-override lewat `androidComponents.onVariants`
+    (`abiCode * 1000 + versionCode`, peta `armeabi-v7a`=1, `x86_64`=2, `arm64-v8a`=3);
+    universal tidak diubah sehingga nilainya terendah — varian spesifik selalu menang.
+    **Konsekuensi yang mudah terlupa:** nama keluaran bukan lagi `app-debug.apk`/
+    `app-release.apk`, jadi setiap path artifact/rilis WAJIB memakai pola `*.apk`.
 - **CI (`.github/workflows/build.yml`) — 2 job** (dikonsolidasikan 2026-09-12 dari 4 job):
   trigger `push` semua branch (paths-ignore
   `**.md`, `docs/**`) + `workflow_dispatch`; `concurrency: cancel-in-progress` per-ref;
@@ -263,6 +270,11 @@ sebelum push.
   - `.github/dependabot.yml`: ekosistem `gradle` (mingguan) & `github-actions` (bulanan),
     maks. 5 PR, prefix commit `build`/`ci`. Dependabot hanya membuka PR — **manusia yang
     memutuskan**, dan `gradle/libs.versions.toml` tetap satu-satunya sumber versi.
+  - **Run acuan terkini:** 34667447646 (`f06c4ee`, **4m02s**, hijau) — build pertama dengan
+    pemecahan ABI. Artifact `app-debug` berisi **4 APK**, total 25,8 MB: universal 9,6 MB
+    (setara APK tunggal sebelum pemecahan) + tiga varian ABI **rata-rata ±5,4 MB**, yaitu
+    **±44% lebih kecil** dari universal untuk pengguna akhir. Angka ini varian *debug*
+    (tanpa R8); varian *release* akan lebih kecil lagi karena minify+shrink aktif.
   - **Run acuan setelah konsolidasi:** 34660850896 (`f2dae7f`, **4m04s**, 19 step hijau) —
     job tunggal, artifact `app-debug` **10,08 MB** · `unit-test-report` 12,7 KB ·
     `lint-report` 17,6 KB. Sekaligus bukti pertama Gradle 9.7.1 + AGP 8.7.3 bisa dibangun.
