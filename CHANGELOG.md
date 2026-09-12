@@ -34,6 +34,9 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
   ikon adaptif 108x108 yang hurufnya tampak kecil saat diseragamkan sistem.
 - Ikon baris aksi (daur ulang, pengatur, kisi aplikasi, salin) digambar sendiri sebagai
   vektor sederhana — tanpa pustaka ikon pihak ketiga, demi ukuran APK dan lisensi.
+  Catatan ukuran: PNG legacy baru menambah ±100 KB per APK (ikon lama 115-412 byte
+  karena hanya warna datar; ikon bergradien 3-19 KB x10 berkas) — diukur pada run
+  34681658613: `app-debug` 26,03 -> 26,45 MB, `app-preview`/`app-release` 11,92 -> 12,21 MB.
 
 
 - Verifikasi `apksigner` di job rilis: build digagalkan bila APK ternyata tidak

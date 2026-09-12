@@ -321,7 +321,15 @@ sebelum push.
   - `.github/dependabot.yml`: ekosistem `gradle` (mingguan) & `github-actions` (bulanan),
     maks. 5 PR, prefix commit `build`/`ci`. Dependabot hanya membuka PR — **manusia yang
     memutuskan**, dan `gradle/libs.versions.toml` tetap satu-satunya sumber versi.
-  - **Run acuan terkini (ujung `main`):** 34676712159 (`a6c6814`, **6m4s**, hijau) —
+  - **Run acuan terkini (branch sesi `arena/01a09481-velum`):** 34681658613
+    (`4f211ee`, **5m12s**, hijau) — paket ikon baru + baris aksi + targetSdk 36 +
+    pembersihan lint. Artifact: `app-release` **12,21 MB** · `app-preview` 12,21 MB ·
+    `app-debug` 26,45 MB · `mapping-preview` 0,59 MB. Naik ±0,3 MB dari sebelumnya:
+    ±100 KB di antaranya PNG ikon baru (ikon lama nyaris kosong: 115-412 byte karena
+    hanya warna datar, ikon baru bergradien sehingga 3-19 KB per berkas x10), sisanya
+    dari tata letak & dex baru. Langkah lint kini **success** (bukan lagi keluar kode 1):
+    temuan `UseAppTint`/`UnusedResources`/`NestedWeights` sudah dibereskan.
+  - **Run acuan sebelumnya (ujung `main`):** 34676712159 (`a6c6814`, **6m4s**, hijau) —
     run **pertama yang membangun persis ujung `main` setelah PR terakhir di-merge**;
     inilah bukti yang menjawab jebakan "PR hijau ≠ ujung `main` hijau" (lihat catatan
     teknis). Dua job: `verifikasi (build, tes, lint)` 23 step · `assembleRelease
@@ -394,8 +402,13 @@ sebelum push.
     proyek AppCompat), 1 `UnusedResources`, 1 `NestedWeights` — semuanya diperbaiki di
     commit lanjutan. **Pelajaran:** menambah ImageView ber-`tint` atau membungkus
     `layout_weight` di dalam `layout_weight` selalu memicu lint; periksa keduanya
-    sebelum push. Sisa peringatan yang diharapkan sekarang hanya usulan KTX pada
-    `Prefs.kt` (8 baris laporan; sengaja tidak diambil karena menambah dependensi).
+    sebelum push.
+  - **Sisa peringatan lint (run 34681658613, sesudah pembersihan):** 7 usulan KTX
+    `SharedPreferences.edit` pada `Prefs.kt` (sengaja tidak diambil — menuntut
+    dependensi `androidx.core:core-ktx` hanya untuk tiga baris idiom yang sudah benar),
+    `GoBackend` static field (dari library WireGuard, bukan kode repo), `allowBackup`
+    usang, dan tawaran versi `androidx.activity` yang lebih baru. Tiga advisory ikon
+    yang dulu muncul (10sp, monokrome, ikon mengisi seluruh piksel) **sudah hilang**.
   - **Run hijau terakhir sebelum konsolidasi:** 34658145458 (`7a89e70`, 3m56s) — run
     pertama setelah bump keempat action; **anotasi Node.js 20 hilang** di sini (TODO 23).
   - **Run hijau bersejarah:** 34562586434 (`26104f6`) · 34565410965 (`9f0adb9`) ·
