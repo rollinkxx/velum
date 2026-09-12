@@ -93,61 +93,50 @@ commit keystore maupun `.b64` ke repo.
 
 ## 3. Picu build rilis
 
-Mengatur variable tidak memicu workflow. Picu dengan push apa pun ke `main`,
-atau manual:
+Mengisi Secret/variable **tidak** memicu workflow. Picu dengan mendorong commit
+kode apa pun, atau secara manual:
 
 ```sh
 gh workflow run build --ref main
 gh run watch --exit-status
 ```
 
-## 4. Verifikasi hasilnya
-
-Job `assembleRelease (bertanda tangan)` seharusnya **berjalan**, bukan lagi
-di-skip. Unduh artifact `app-release`, lalu periksa tanda tangannya:
-
-```sh
-apksigner verify --print-certs app-arm64-v8a-release.apk
-```
-
-Di Termux: `pkg install apksigner`. Pastikan sidik jari sertifikat yang muncul
-sama dengan keystore Anda — dan **tetap sama pada setiap rilis berikutnya**.
-Sidik jari yang berubah berarti pengguna tidak bisa memperbarui aplikasi;
-mereka harus mencopot pasang dulu dan kehilangan data registrasi.
-
-## Bila terjadi kesalahan
-
-| Gejala | Sebab | Perbaikan |
-|---|---|---|
-| Job `release` tetap di-skip | `ENABLE_RELEASE_SIGNING` dibuat sebagai Secret, bukan Variable | Pindahkan ke tab **Variables** |
-| `keystore password was incorrect` | `KEYSTORE_PASSWORD`/`KEY_PASSWORD` tertukar | Samakan; keduanya sama bila langkah 1 memakai Enter |
-| `Failed to read key velum` | `KEY_ALIAS` salah ketik | Cek dengan `keytool -list -keystore velum-release.keystore` |
-| APK rilis tidak muncul | base64 rusak/terpotong | Buat ulang `.b64` dengan `-w0`, set ulang Secret |
-
-Atau dorong commit kode apa pun (job rilis ikut berjalan setelah `assembleDebug` hijau).
+Job `assembleRelease (bertanda tangan)` berjalan setelah job verifikasi hijau.
+Bila job itu tampil abu-abu (*skipped*), berarti `ENABLE_RELEASE_SIGNING` belum
+terbaca — lihat tabel di bagian "Bila terjadi kesalahan".
 
 ## 4. Ambil & verifikasi APK
 
+CI sudah memverifikasi tanda tangannya sendiri: job rilis menggagalkan build bila
+APK ternyata tidak bertanda tangan atau memakai kunci debug, dan mencetak sidik
+jari SHA-256 tiap APK ke step summary. Periksa tabel itu lebih dulu — sering kali
+tidak perlu mengunduh apa pun.
+
+Untuk memeriksa sendiri:
+
 ```sh
 gh run download <id-run> -n app-release
-ls *.apk   # beberapa berkas: per arsitektur + satu universal
+ls *.apk   # empat berkas: tiga per arsitektur + satu universal
 apksigner verify --print-certs app-arm64-v8a-release.apk
 ```
 
 Sejak pemecahan per ABI diaktifkan, satu build menghasilkan **empat** APK:
 
-| Berkas | Untuk siapa | Perkiraan ukuran |
+| Berkas | Untuk siapa | Ukuran |
 |---|---|---|
-| `app-arm64-v8a-release.apk` | Mayoritas ponsel Android modern (64-bit) | paling kecil |
-| `app-armeabi-v7a-release.apk` | Ponsel lama 32-bit | paling kecil |
-| `app-x86_64-release.apk` | Emulator & Chromebook | paling kecil |
+| `app-arm64-v8a-release.apk` | Mayoritas ponsel Android modern (64-bit) | ±3 MB |
+| `app-armeabi-v7a-release.apk` | Ponsel lama 32-bit | ±3 MB |
+| `app-x86_64-release.apk` | Emulator & Chromebook | ±3 MB |
 | `app-universal-release.apk` | Cadangan: berjalan di semua arsitektur | terbesar |
 
 `versionCode` tiap berkas sengaja berbeda (`abiCode * 1000 + versionCode`), sedangkan
 universal memakai nilai terendah — supaya APK spesifik arsitektur selalu lebih diutamakan.
 
-`apksigner` ada di Android SDK build-tools. Alternatif cepat: pasang APK di
-perangkat dan pastikan `applicationId` `com.rollinkxx.velum` + versi sesuai.
+**Sidik jari SHA-256 wajib sama pada setiap rilis.** Bila berubah, pengguna lama
+tidak bisa memperbarui aplikasi: mereka harus mencopot pasang dan kehilangan data
+registrasi. Catat sidik jari rilis pertama sebagai acuan.
+
+`apksigner` ada di Android SDK build-tools; di Termux: `pkg install apksigner`.
 
 ## 5. Terbitkan Release
 
@@ -163,5 +152,18 @@ Pilih berkas sesuai perangkat:
 - Tidak yakin: app-universal-release.apk (berjalan di semua, ukuran lebih besar)"
 ```
 
+Lewat browser: halaman **Releases** → *Draft a new release* → isi tag → unggah
+keempat APK dari artifact `app-release`.
+
 Versi (`versionName`/`versionCode`) hanya di-bump atas perintah eksplisit
 (lihat AGENTS.md §4); sesuaikan tag dengan versi di `app/build.gradle.kts`.
+
+## Bila terjadi kesalahan
+
+| Gejala | Sebab | Perbaikan |
+|---|---|---|
+| Job `release` tetap di-skip | `ENABLE_RELEASE_SIGNING` dibuat sebagai Secret, bukan Variable | Pindahkan ke tab **Variables** |
+| `keystore password was incorrect` | `KEYSTORE_PASSWORD`/`KEY_PASSWORD` tertukar | Samakan; keduanya sama bila langkah 1 memakai Enter |
+| `Failed to read key velum` | `KEY_ALIAS` salah ketik | Cek dengan `keytool -list -keystore velum-release.keystore` |
+| APK rilis tidak muncul | base64 rusak/terpotong | Buat ulang `.b64` dengan `-w0`, set ulang Secret |
+| Job gagal di "Verifikasi tanda tangan" | APK tak bertanda tangan / berkunci debug | Secret keystore tidak terbaca; periksa keempat Secret di langkah 2 |
