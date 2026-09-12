@@ -52,14 +52,10 @@ object VelumApi {
 
         val hasil = VelumRegistration.parse(request("POST", "$BASE/reg", body.toString(), null))
 
-        prefs.privateKey = keyPair.privateKey.toBase64()
-        prefs.deviceId = hasil.id
-        prefs.token = hasil.token
-        prefs.addressV4 = hasil.addressV4
-        prefs.addressV6 = hasil.addressV6
-        prefs.peerPublicKey = hasil.peerPublicKey
-        prefs.endpoint = hasil.endpoint
-        prefs.warpEnabled = true // body registrasi memang meminta warp_enabled
+        // Satu transaksi, bukan tujuh tulisan terpisah: proses yang mati di tengah
+        // penulisan dulu bisa meninggalkan kunci privat baru bercampur endpoint lama
+        // (lihat Prefs.saveRegistration).
+        prefs.saveRegistration(hasil, keyPair.privateKey.toBase64())
     }
 
     /**
@@ -153,8 +149,18 @@ object VelumApi {
             // Soket baru untuk setiap uji: jangan pakai koneksi dari sebelum tunnel aktif.
             conn.setRequestProperty("Connection", "close")
             conn.useCaches = false
+            val code = conn.responseCode
+            if (code !in 200..299) throw IOException("HTTP $code")
             val text = conn.inputStream.bufferedReader().use { it.readText() }
-            return VelumFormat.parseTrace(text)
+            val trace = VelumFormat.parseTrace(text)
+            // HTTP 200 belum berarti isinya trace: portal tawanan menjawab 200 dengan HTML.
+            // Dibiarkan, hasilnya "Belum aktif" — menuduh tunnel padahal jaringan yang
+            // meminta login. Dilempar sebagai IOException agar host cadangan dicoba, dan
+            // bila keduanya gagal pengguna melihat alasan yang benar.
+            if (!VelumFormat.isUsable(trace)) {
+                throw IOException("respons bukan keluaran trace (jaringan ini mungkin meminta login)")
+            }
+            return trace
         } finally {
             conn.disconnect()
         }

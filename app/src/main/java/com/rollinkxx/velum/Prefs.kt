@@ -93,16 +93,70 @@ class Prefs(context: Context) {
         get() = !privateKey.isNullOrEmpty() && !addressV4.isNullOrEmpty() &&
             !peerPublicKey.isNullOrEmpty() && !endpoint.isNullOrEmpty()
 
-    /** Membersihkan data registrasi; memo wasUp dipertahankan (niat sambung boot). */
+    /**
+     * Apakah penyimpanan jatuh ke berkas POLOS karena keystore perangkat gagal.
+     *
+     * Fallback itu sengaja ada dan menyelamatkan aplikasi dari tidak bisa dipakai sama
+     * sekali, tetapi konsekuensinya nyata: kunci privat dan token tersimpan TANPA enkripsi.
+     * Pengguna berhak tahu, jadi keadaannya ikut dilaporkan di diagnostik — sebelumnya
+     * hanya tercatat di logcat yang tidak dibaca siapa pun.
+     */
+    val isPlainFallback: Boolean
+        get() = plainFallback
+
+    /**
+     * Menulis seluruh hasil registrasi dalam SATU transaksi.
+     *
+     * Sebelumnya ketujuh bidang ditulis satu per satu lewat `apply()`. Proses yang mati di
+     * tengah penulisan meninggalkan campuran kunci privat BARU dengan endpoint/peer LAMA,
+     * sementara [isRegistered] tetap `true` karena semua bidang terisi — akibatnya
+     * handshake gagal terus-menerus tanpa pesan yang menunjuk penyebabnya, dan satu-satunya
+     * jalan keluar adalah pengguna menemukan tombol "Daftar ulang" sendiri.
+     *
+     * `commit()` dipakai sengaja (bukan `apply()`): SharedPreferences menulis ke berkas
+     * sementara lalu mengganti namanya, sehingga satu `commit` bersifat atomik terhadap
+     * proses yang mati — seluruh bidang masuk, atau tidak sama sekali.
+     */
+    @SuppressLint("ApplySharedPref")
+    fun saveRegistration(r: VelumRegistration.Result, privateKeyBase64: String) {
+        sp.edit()
+            .putString(K_PRIV, privateKeyBase64)
+            .putString(K_ID, r.id)
+            .putString(K_TOKEN, r.token)
+            .putString(K_V4, r.addressV4)
+            // null di sini menghapus kunci lama: alamat IPv6 sesi sebelumnya tidak boleh
+            // tertinggal menempel pada kunci yang baru.
+            .putString(K_V6, r.addressV6)
+            .putString(K_PEER, r.peerPublicKey)
+            .putString(K_ENDPOINT, r.endpoint)
+            .putBoolean(K_WARP, true) // body registrasi memang meminta warp_enabled
+            .commit()
+    }
+
+    /**
+     * Membersihkan data registrasi.
+     *
+     * Dua hal sengaja DIPERTAHANKAN karena keduanya bukan bagian dari registrasi:
+     * - [wasUp]: niat pengguna untuk tersambung saat boot;
+     * - [excludedApps]: pilihan split tunneling milik pengguna. Sebelumnya ikut terhapus,
+     *   sehingga menekan "Daftar ulang" diam-diam menghapus daftar pengecualian yang sudah
+     *   disusun pengguna — dan dialog konfirmasinya tidak mengatakan itu.
+     */
     fun clear() {
         val keepUp = wasUp
+        val keepExcluded = excludedApps
         sp.edit().clear().apply()
         if (keepUp) wasUp = true
+        if (keepExcluded.isNotEmpty()) excludedApps = keepExcluded
     }
 
     companion object {
         @Volatile
         private var instance: Prefs? = null
+
+        /** Terisi bila `open()` jatuh ke penyimpanan polos; dibaca lewat [isPlainFallback]. */
+        @Volatile
+        private var plainFallback = false
 
         /**
          * Satu instance per proses. Membuka prefs terenkripsi itu mahal (baca + dekripsi
@@ -148,7 +202,12 @@ class Prefs(context: Context) {
                 Log.w(TAG, "prefs terenkripsi gagal, fallback polos", e)
                 null
             }
-            if (encrypted == null) return ctx.getSharedPreferences(FILE, Context.MODE_PRIVATE)
+            if (encrypted == null) {
+                // Dicatat agar bisa dilaporkan ke pengguna lewat diagnostik, bukan hanya
+                // ke logcat: kunci privat kini tersimpan tanpa enkripsi.
+                plainFallback = true
+                return ctx.getSharedPreferences(FILE, Context.MODE_PRIVATE)
+            }
             migrateLegacy(ctx, encrypted)
             return encrypted
         }
