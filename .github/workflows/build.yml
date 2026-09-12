@@ -16,10 +16,19 @@ permissions:
   contents: read
 
 jobs:
-  build:
-    name: assembleDebug
+  # Satu job untuk semua verifikasi kode. Sebelumnya assembleDebug, unitTest, dan
+  # lint berjalan sebagai tiga job terpisah yang masing-masing mengulang
+  # checkout + JDK + Android SDK + Gradle (±1,5 menit per job, tiga kali) dan
+  # memakai tiga cache Gradle yang saling terpisah. Digabung, toolchain disiapkan
+  # sekali dan tugas berikutnya memakai ulang cache konfigurasi & build yang panas.
+  #
+  # Urutan sengaja: unit test dulu (paling cepat gagal, paling murah), lalu
+  # assembleDebug (pemblokir utama), lalu lint (advisori, tidak boleh menggagalkan
+  # job — karena itu `continue-on-error` per-step, bukan per-job).
+  verify:
+    name: verifikasi (build, tes, lint)
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@v7
 
@@ -35,57 +44,10 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v6
 
-      - name: Build debug APK
-        run: |
-          set -o pipefail
-          ./gradlew --no-daemon --stacktrace assembleDebug 2>&1 | tee "$RUNNER_TEMP/build.log"
-
-      # Log tidak bisa dibaca dari sandbox agen (EOF): teruskan error ke anotasi.
-      - name: Laporkan error kompilasi sebagai anotasi
-        if: always()
-        run: python3 .github/scripts/anotasikan-log.py "$RUNNER_TEMP/build.log"
-
-      - name: Ringkasan (fallback log)
-        if: always()
-        run: |
-          {
-            echo "## Hasil build"
-            echo "- Status: ${{ job.status }}"
-            if [ -f app/build/outputs/apk/debug/app-debug.apk ]; then
-              echo "- APK: $(du -h app/build/outputs/apk/debug/app-debug.apk | cut -f1)"
-            fi
-          } >> "$GITHUB_STEP_SUMMARY"
-
-      - name: Unggah APK
-        if: success()
-        uses: actions/upload-artifact@v7
-        with:
-          name: app-debug
-          path: app/build/outputs/apk/debug/app-debug.apk
-          if-no-files-found: error
-
-  # Pengujian unit murni JVM (tanpa emulator): logika VelumFormat & keputusan uji.
-  # Pemblokir — mencegah regresi logika seperti false negative "Belum lewat Velum".
-  unitTest:
-    name: unitTest
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    steps:
-      - uses: actions/checkout@v7
-
-      - name: Setup JDK 17
-        uses: actions/setup-java@v5
-        with:
-          distribution: temurin
-          java-version: "17"
-
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v4
-
-      - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v6
-
+      # Dijalankan lebih dulu: paling ringan, dan regresi logika (mis. false
+      # negative "Belum lewat Velum") harus ketahuan sebelum waktu habis di APK.
       - name: Pengujian unit
+        id: unit_test
         run: |
           set -o pipefail
           ./gradlew --no-daemon --stacktrace testDebugUnitTest 2>&1 | tee "$RUNNER_TEMP/test.log"
@@ -95,39 +57,31 @@ jobs:
         if: always()
         run: |
           python3 .github/scripts/anotasikan-tes.py
-          python3 .github/scripts/anotasikan-log.py "$RUNNER_TEMP/test.log"
+          if [ -f "$RUNNER_TEMP/test.log" ]; then
+            python3 .github/scripts/anotasikan-log.py "$RUNNER_TEMP/test.log"
+          fi
 
-      - name: Unggah laporan pengujian
+      - name: Build debug APK
+        if: always() && steps.unit_test.conclusion != 'cancelled'
+        id: assemble
+        run: |
+          set -o pipefail
+          ./gradlew --no-daemon --stacktrace assembleDebug 2>&1 | tee "$RUNNER_TEMP/build.log"
+
+      # Log tidak bisa dibaca dari sandbox agen (EOF): teruskan error ke anotasi.
+      - name: Laporkan error kompilasi sebagai anotasi
         if: always()
-        uses: actions/upload-artifact@v7
-        with:
-          name: unit-test-report
-          path: app/build/reports/tests/testDebugUnitTest
-          if-no-files-found: warn
+        run: |
+          if [ -f "$RUNNER_TEMP/build.log" ]; then
+            python3 .github/scripts/anotasikan-log.py "$RUNNER_TEMP/build.log"
+          fi
 
-  # Pemeriksaan lint Android — ADVISORI (continue-on-error): tidak memblokir merge,
-  # hasilnya dibaca dari artifact laporan bila perlu dibersihkan.
-  lint:
-    name: lint (advisori)
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    continue-on-error: true
-    steps:
-      - uses: actions/checkout@v7
-
-      - name: Setup JDK 17
-        uses: actions/setup-java@v5
-        with:
-          distribution: temurin
-          java-version: "17"
-
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v4
-
-      - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v6
-
-      - name: Lint debug
+      # ADVISORI: temuan lint tidak boleh menggagalkan job (lihat AGENTS.md §5),
+      # tetapi tetap dijaga hijau. continue-on-error dipasang di step ini saja.
+      - name: Lint debug (advisori)
+        id: lint
+        if: always() && steps.assemble.conclusion != 'cancelled'
+        continue-on-error: true
         run: ./gradlew --no-daemon --stacktrace lintDebug
 
       - name: Tampilkan temuan lint
@@ -142,6 +96,37 @@ jobs:
               echo '```'
             } >> "$GITHUB_STEP_SUMMARY"
           fi
+
+      - name: Ringkasan (fallback log)
+        if: always()
+        run: |
+          {
+            echo "## Hasil verifikasi"
+            echo "- Pengujian unit: ${{ steps.unit_test.conclusion }}"
+            echo "- Build debug: ${{ steps.assemble.conclusion }}"
+            echo "- Lint (advisori): ${{ steps.lint.conclusion }}"
+            echo "- Gradle: $(grep -o 'gradle-[0-9.]*-bin' gradle/wrapper/gradle-wrapper.properties || echo '?')"
+            echo "- AGP: $(grep -E '^agp' gradle/libs.versions.toml || echo '?')"
+            if [ -f app/build/outputs/apk/debug/app-debug.apk ]; then
+              echo "- APK: $(du -h app/build/outputs/apk/debug/app-debug.apk | cut -f1)"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Unggah APK
+        if: success()
+        uses: actions/upload-artifact@v7
+        with:
+          name: app-debug
+          path: app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+
+      - name: Unggah laporan pengujian
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: unit-test-report
+          path: app/build/reports/tests/testDebugUnitTest
+          if-no-files-found: warn
 
       - name: Unggah laporan lint
         if: always()
@@ -158,7 +143,7 @@ jobs:
     name: assembleRelease (bertanda tangan)
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    needs: [build, unitTest]
+    needs: [verify]
     if: vars.ENABLE_RELEASE_SIGNING == 'true'
     steps:
       - uses: actions/checkout@v7

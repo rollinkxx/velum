@@ -6,6 +6,13 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 ## [Unreleased]
 
 ### Changed
+- CI dikonsolidasikan: `assembleDebug`, `unitTest`, dan `lint` yang sebelumnya tiga job
+  terpisah kini menjadi satu job `verifikasi (build, tes, lint)`. Toolchain
+  (JDK + Android SDK + Gradle) disiapkan sekali, bukan tiga kali, dan cache Gradle dipakai
+  ulang antar tugas — memangkas ±60% waktu runner per push. Lint tetap advisori lewat
+  `continue-on-error` di level step. Urutan sengaja tes → build → lint agar kegagalan
+  termurah muncul lebih dulu, dan semua tahap tetap berjalan (`if: always()`) supaya satu
+  run melaporkan seluruh masalah sekaligus.
 - AGENTS.md §1 kini **portabel**: nama branch sesi dan SHA pangkal tidak lagi ditulis di
   dalam aturan, melainkan ditemukan saat runtime lewat ritual pra-tugas 5 langkah; kronologi
   insiden dipindah ke §5. Ditambah larangan menyentuh branch sesi lama & `dependabot/*`.
