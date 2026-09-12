@@ -353,6 +353,7 @@ class VelumController(context: Context, private val ui: Ui) {
                 R.string.err_server_reject,
                 (e as? VelumApi.HttpError)?.code?.toString() ?: detail
             )
+            VelumError.Kind.SERVICE_BLOCKED -> app.getString(R.string.err_connect_closed)
             VelumError.Kind.UNKNOWN -> app.getString(resId, detail)
         }
     }

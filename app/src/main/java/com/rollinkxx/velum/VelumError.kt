@@ -20,9 +20,30 @@ object VelumError {
         /** Upstream menolak klien ini — mengulang percuma, butuh pembaruan aplikasi. */
         SERVER_REJECT,
 
+        /**
+         * Sistem menolak/menutup layanan VPN milik aplikasi (bukan salah jaringan).
+         *
+         * Sejak `targetSdk` 36 izin layanan latar depan diperketat, dan Android bisa
+         * menolak `startForeground` atau menutup layanan yang sudah jalan. Petunjuknya
+         * hanya berupa teks dari framework/library, jadi klasifikasi ini bersifat
+         * heuristik — tujuannya mengganti pesan "Kesalahan jaringan" yang menyesatkan
+         * dengan langkah yang benar-benar bisa dicoba pengguna.
+         */
+        SERVICE_BLOCKED,
+
         /** Tidak terklasifikasi — tampilkan pesan bawaan pemanggil. */
         UNKNOWN
     }
+
+    /** Potongan teks (huruf kecil) yang menandai penolakan layanan latar depan/VPN. */
+    private val SERVICE_MARKERS = listOf(
+        "foreground service",
+        "foregroundservice",
+        "specialuse",
+        "startforeground",
+        "background start not allowed",
+        "vpnservice"
+    )
 
     fun kindOf(e: Throwable?): Kind = when (e) {
         null -> Kind.UNKNOWN
@@ -31,6 +52,29 @@ object VelumError {
             if (VelumUpstream.isClientRejected(e.code)) Kind.SERVER_REJECT else Kind.UNKNOWN
         is UnknownHostException, is SocketTimeoutException, is ConnectException -> Kind.NETWORK
         is IOException -> Kind.NETWORK
-        else -> Kind.UNKNOWN
+        else -> if (looksLikeServiceBlock(e)) Kind.SERVICE_BLOCKED else Kind.UNKNOWN
+    }
+
+    /**
+     * Apakah kegagalan tampak berasal dari penolakan layanan (bukan jaringan).
+     * Sengaja hanya melihat tipe/teks, tanpa Android framework, agar bisa diuji unit.
+     */
+    private fun looksLikeServiceBlock(e: Throwable): Boolean {
+        val text = buildString {
+            append(e.javaClass.simpleName)
+            append(' ')
+            append(e.message.orEmpty())
+            var cause = e.cause
+            var depth = 0
+            while (cause != null && depth < 3) { // rantai penyebab dibatasi agar murah
+                append(' ')
+                append(cause.javaClass.simpleName)
+                append(' ')
+                append(cause.message.orEmpty())
+                cause = cause.cause
+                depth++
+            }
+        }.lowercase()
+        return SERVICE_MARKERS.any { it in text }
     }
 }
