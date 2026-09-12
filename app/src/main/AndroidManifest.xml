@@ -60,13 +60,16 @@
             </intent-filter>
         </service>
 
-        <!-- Sambung ulang otomatis setelah boot (hanya bila terakhir UP & izin VPN berlaku). -->
+        <!-- Sambung ulang otomatis setelah boot DAN setelah aplikasi diperbarui (hanya bila
+             terakhir UP & izin VPN berlaku). MY_PACKAGE_REPLACED perlu karena pembaruan
+             mematikan proses, dan proses yang mati berarti tunnel ikut mati. -->
         <receiver
             android:name=".BootReceiver"
             android:enabled="true"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
             </intent-filter>
         </receiver>
 
