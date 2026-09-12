@@ -141,13 +141,20 @@ class Prefs(context: Context) {
      * - [excludedApps]: pilihan split tunneling milik pengguna. Sebelumnya ikut terhapus,
      *   sehingga menekan "Daftar ulang" diam-diam menghapus daftar pengecualian yang sudah
      *   disusun pengguna — dan dialog konfirmasinya tidak mengatakan itu.
+     *
+     * Semuanya ditulis dalam SATU transaksi (`clear()` + kedua `put` + `commit()`), bukan
+     * tiga tulisan terpisah seperti sebelumnya: proses yang mati di antara `clear()` dan
+     * penulisan ulang akan menghapus niat dan pengecualian pengguna — persis kelas
+     * kegagalan yang [saveRegistration] tutup dengan `commit()`.
      */
+    @SuppressLint("ApplySharedPref")
     fun clear() {
         val keepUp = wasUp
         val keepExcluded = excludedApps
-        sp.edit().clear().apply()
-        if (keepUp) wasUp = true
-        if (keepExcluded.isNotEmpty()) excludedApps = keepExcluded
+        val ed = sp.edit().clear()
+        if (keepUp) ed.putBoolean(K_WAS_UP, true)
+        if (keepExcluded.isNotEmpty()) ed.putStringSet(K_EXCLUDED, keepExcluded)
+        ed.commit()
     }
 
     companion object {
@@ -170,6 +177,12 @@ class Prefs(context: Context) {
 
         const val TAG = "Velum"
         const val FILE = "velum"
+        /**
+         * Berkas cadangan bila keystore perangkat gagal. SENGAJA berbeda nama dari [FILE]
+         * supaya store terenkripsi dan store polos tidak pernah berbagi satu berkas —
+         * lihat penjelasan di `open()`.
+         */
+        const val FILE_PLAIN = "velum_plain"
         const val LEGACY_FILE = "warp"
         const val K_PRIV = "private_key"
         const val K_ID = "device_id"
@@ -206,7 +219,24 @@ class Prefs(context: Context) {
                 // Dicatat agar bisa dilaporkan ke pengguna lewat diagnostik, bukan hanya
                 // ke logcat: kunci privat kini tersimpan tanpa enkripsi.
                 plainFallback = true
-                return ctx.getSharedPreferences(FILE, Context.MODE_PRIVATE)
+                // NAMA BERKAS SENGAJA BERBEDA dari store terenkripsi. Sebelumnya fallback
+                // ini memakai `FILE` yang sama, dan itu rusak dua arah:
+                // - `EncryptedSharedPreferences` mengenkripsi NAMA kunci juga
+                //   (`PrefKeyEncryptionScheme.AES256_SIV`), jadi pembacaan polos atas
+                //   berkas terenkripsi melihat ciphertext di bawah nama ciphertext —
+                //   `getString("private_key")` null, `isRegistered` false, dan pengguna
+                //   dipaksa daftar ulang padahal datanya masih ada di berkas itu;
+                // - tulisan polos berikutnya lalu bercampur ke berkas yang sama, sehingga
+                //   bila keystore pulih, `EncryptedSharedPreferences.create` harus
+                //   mendekripsi berkas berisi entri polos → gagal lagi → fallback lagi.
+                // Konsekuensi yang diterima (dan dikorbankan secara sadar): perangkat yang
+                // SUDAH terlanjur jatuh ke fallback sebelum perubahan ini kehilangan data
+                // polosnya di berkas lama dan perlu daftar ulang SEKALI. Tidak ada migrasi
+                // heuristik dari berkas lama, karena membedakan "berkas polos era lama"
+                // dari "berkas terenkripsi" berarti menebak — dan tebakan yang salah di
+                // sini merusak data yang sebenarnya masih bisa dibaca.
+                Log.w(TAG, "penyimpanan polos dipakai: $FILE_PLAIN (kunci privat TIDAK terenkripsi)")
+                return ctx.getSharedPreferences(FILE_PLAIN, Context.MODE_PRIVATE)
             }
             migrateLegacy(ctx, encrypted)
             return encrypted
