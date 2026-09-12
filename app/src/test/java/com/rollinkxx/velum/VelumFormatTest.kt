@@ -102,4 +102,41 @@ class VelumFormatTest {
         assertFalse(VelumFormat.isIpLiteral("162.159.192"))
         assertFalse(VelumFormat.isIpLiteral(""))
     }
+
+    // ---------- ditambahkan 2026-09-13 untuk baris diagnostik baru ----------
+
+    @Test
+    fun formatSeconds_satuDesimalDenganKoma() {
+        assertEquals("0,0 detik", VelumFormat.formatSeconds(0))
+        assertEquals("1,0 detik", VelumFormat.formatSeconds(1_000))
+        assertEquals("2,5 detik", VelumFormat.formatSeconds(2_500))
+        assertEquals("14,2 detik", VelumFormat.formatSeconds(14_200))
+        assertEquals("10,0 detik", VelumFormat.formatSeconds(10_000)) // batas anggaran goAsync
+    }
+
+    @Test
+    fun formatSeconds_negatifDianggapNol() {
+        // Jam perangkat bisa melompat; angka "-3,0 detik" di layar pengguna tidak berarti
+        // apa-apa dan akan terbaca sebagai cacat.
+        assertEquals("0,0 detik", VelumFormat.formatSeconds(-5_000))
+    }
+
+    @Test
+    fun formatAge_satuanNaikOtomatis() {
+        assertEquals("0 detik lalu", VelumFormat.formatAge(0))
+        assertEquals("42 detik lalu", VelumFormat.formatAge(42))
+        assertEquals("59 detik lalu", VelumFormat.formatAge(59))
+        assertEquals("1 menit lalu", VelumFormat.formatAge(60))
+        assertEquals("59 menit lalu", VelumFormat.formatAge(3_599))
+        assertEquals("1 jam lalu", VelumFormat.formatAge(3_600))
+        assertEquals("23 jam lalu", VelumFormat.formatAge(86_399))
+        assertEquals("1 hari lalu", VelumFormat.formatAge(86_400))
+        assertEquals("3 hari lalu", VelumFormat.formatAge(300_000))
+    }
+
+    @Test
+    fun formatAge_negatifDianggapNol() {
+        assertEquals("0 detik lalu", VelumFormat.formatAge(-10))
+    }
+
 }

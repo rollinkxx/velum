@@ -262,7 +262,19 @@ class MainActivity : AppCompatActivity(), VelumController.Ui {
                 // Kejujuran keamanan: bila keystore perangkat gagal dan penyimpanan jatuh
                 // ke berkas polos, pengguna dan penerima laporan berhak tahu — selama ini
                 // keadaan itu hanya tercatat di logcat yang tidak dibaca siapa pun.
-                plaintextFallback = Prefs.of(this).isPlainFallback
+                plaintextFallback = Prefs.of(this).isPlainFallback,
+                // Keadaan internal — ditambahkan 2026-09-13 atas persetujuan maintainer
+                // karena pengujian dilakukan di perangkat TANPA adb. Baris-baris ini yang
+                // mengubah uji konkurensi dan daya tahan proses dari "tidak bisa diperiksa"
+                // menjadi "cukup dilihat". `Process.getStartElapsedRealtime()` ada sejak
+                // API 24 (minSdk repo ini 24), jadi tanpa guard versi.
+                wasUp = Prefs.of(this).wasUp,
+                intentGen = VelumTunnel.currentIntent,
+                monitorActive = ReconnectMonitor.isActive,
+                processAgeSec = (SystemClock.elapsedRealtime() -
+                    android.os.Process.getStartElapsedRealtime()) / 1000,
+                boot = VelumDiagnostics.decodeBoot(Prefs.of(this).bootRecord),
+                nowEpochMs = System.currentTimeMillis()
             )
             val clipboard = getSystemService(android.content.ClipboardManager::class.java)
             clipboard?.setPrimaryClip(

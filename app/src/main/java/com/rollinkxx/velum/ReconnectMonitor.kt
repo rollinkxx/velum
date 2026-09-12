@@ -45,6 +45,16 @@ object ReconnectMonitor {
     @Volatile
     private var bouncing = false
 
+    /**
+     * Apakah pemantau sedang terdaftar pada jaringan default.
+     *
+     * Diekspos untuk diagnostik, bukan untuk logika: maintainer menguji tanpa adb, jadi
+     * "pemantau hidup/mati" harus bisa dilihat di layar. Yang dibaca di sini adalah keadaan
+     * callback yang `@Volatile` — cukup untuk ditampilkan, tetapi TIDAK boleh dipakai
+     * sebagai guard keputusan (bisa berubah segera setelah dibaca).
+     */
+    val isActive: Boolean get() = callback != null
+
     /** Mulai memantau; aman dipanggil berulang. Panggil setelah tersambung. */
     @Synchronized
     fun ensure(context: Context) {

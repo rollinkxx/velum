@@ -88,6 +88,43 @@ class Prefs(context: Context) {
         get() = sp.getBoolean(K_WAS_UP, false)
         set(v) = sp.edit().putBoolean(K_WAS_UP, v).apply()
 
+    /**
+     * Rekaman percobaan sambung ulang otomatis terakhir oleh [BootReceiver], dalam format
+     * [VelumDiagnostics.encodeBoot] (`outcome|durationMs|atEpochMs`); null bila belum pernah.
+     *
+     * Angka inilah satu-satunya bukti berapa lama boot menghabiskan anggaran `goAsync()`,
+     * dan maintainer membacanya dari layar diagnostik karena tidak punya adb.
+     */
+    val bootRecord: String?
+        get() = sp.getString(K_BOOT, null)
+
+    /**
+     * Tulis rekaman boot secara **durabel** (`commit()`).
+     *
+     * HANYA boleh dipanggil dari thread latar: `commit()` menulis ke disk secara sinkron.
+     * Dipakai [BootReceiver] di dalam thread pekerjaannya, tepat sebelum
+     * `PendingResult.finish()` — sesudah itu proses boleh dibunuh sistem kapan saja, dan
+     * `apply()` yang masih mengantre di memori bisa hilang bersama angkanya.
+     */
+    @SuppressLint("ApplySharedPref")
+    fun writeBootRecordDurable(value: String) {
+        sp.edit().putString(K_BOOT, value).commit()
+    }
+
+    /**
+     * Tulis rekaman boot tanpa menahan thread (`apply()`).
+     *
+     * Dipakai pada jalur [BootReceiver] yang berjalan di **main thread** (persetujuan VPN
+     * hilang, tidak ada pekerjaan latar). Rekaman ini murni diagnostik, dan menulis sinkron
+     * di dalam receiver yang berjalan di main thread adalah biaya yang tidak sepadan untuk
+     * satu baris teks. Konsekuensi yang diterima sadar: bila proses dibunuh sebelum tulisan
+     * mendarat, rekaman hilang dan baris `Boot` menunjukkan percobaan sebelumnya atau
+     * "belum ada percobaan" — membingungkan, tetapi tidak merusak apa pun.
+     */
+    fun writeBootRecord(value: String) {
+        sp.edit().putString(K_BOOT, value).apply()
+    }
+
     /** Registrasi dianggap lengkap bila semua bidang inti tersedia. */
     val isRegistered: Boolean
         get() = !privateKey.isNullOrEmpty() && !addressV4.isNullOrEmpty() &&
@@ -197,6 +234,7 @@ class Prefs(context: Context) {
         const val K_LAST_TEST = "last_test"
         const val K_WARP = "warp_enabled"
         const val K_WAS_UP = "was_up"
+        const val K_BOOT = "boot_last"
         const val K_EXCLUDED = "excluded_apps"
 
         private fun open(ctx: Context): SharedPreferences {
