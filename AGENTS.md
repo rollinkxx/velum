@@ -328,11 +328,14 @@ sebelum push.
   konsekuensi: Actions gratis tanpa batas (sebelumnya privat, kuota 2.000 menit/bulan
   dengan spending limit $0), dan seluruh riwayat commit terbaca publik.
   PR #1–#4 dan #6–#12 sudah **merged**; `main` = `48c40c9`.
-- **PR Dependabot tersisa:** hanya **#5** (AGP 8.7.3 → 9.4.0), masih terbuka & CI merah.
-  Patch-nya hanya mengubah satu baris `agp` di katalog, padahal AGP 9 mensyaratkan
-  Gradle ≥ 9.1 (kini terpenuhi lewat #8), **Kotlin/KGP ≥ 2.2.10** karena built-in Kotlin,
-  dan **SDK Build Tools 36** — jadi #5 tidak akan hijau tanpa bump menyertai.
-  Keputusan bump = wewenang maintainer (§4); agen tidak menyentuh branch `dependabot/*` (§1).
+- **PR Dependabot: tidak ada lagi yang terbuka.** #5 (AGP 8.7.3 → 9.4.0) **ditutup**
+  atas perintah maintainer 2026-09-12, setelah isinya diterapkan lebih lengkap di
+  branch sesi (`42b94bb`, CI 34669207614 hijau). Patch #5 hanya mengubah satu baris
+  `agp` di katalog, padahal AGP 9 menghapus API yang dipakai repo ini — lihat blok
+  "Run acuan terkini" di atas untuk daftar migrasi yang wajib menyertainya.
+  Branch `dependabot/gradle/com.android.application-9.4.0` dibiarkan (agen tidak
+  menyentuh branch `dependabot/*`, §1); GitHub membersihkannya sendiri.
+  Bila Dependabot membuka PR AGP serupa lagi, cukup rujuk commit `42b94bb`.
 - Sandbox: tanpa JDK/Gradle/Android SDK, dan **jaringan keluar diblokir**
   (`services.gradle.org`, `repo1.maven.org`, `api.adoptium.net` → SSL_ERROR_SYSCALL),
   sehingga memasang toolchain sendiri pun mustahil — CI benar-benar satu-satunya jalan
