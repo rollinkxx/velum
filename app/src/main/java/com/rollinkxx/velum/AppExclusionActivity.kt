@@ -2,6 +2,7 @@ package com.rollinkxx.velum
 
 import android.content.Intent
 import android.os.Bundle
+import android.util.Log
 import android.widget.Button
 import android.widget.CheckBox
 import android.widget.ImageButton
@@ -9,6 +10,8 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import com.wireguard.android.backend.Tunnel
+import java.util.concurrent.Executors
 import kotlin.math.roundToInt
 
 /**
@@ -27,6 +30,9 @@ class AppExclusionActivity : AppCompatActivity() {
     private lateinit var prefs: Prefs
     private lateinit var list: LinearLayout
     private val boxes = LinkedHashMap<String, CheckBox>()
+
+    /** Menyambungkan ulang tunnel di latar setelah daftar pengecualian berubah. */
+    private val worker = Executors.newSingleThreadExecutor()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -77,10 +83,48 @@ class AppExclusionActivity : AppCompatActivity() {
     private fun dp(value: Int): Int =
         (value * resources.displayMetrics.density).roundToInt()
 
+    /**
+     * Simpan daftar, lalu terapkan SEKARANG bila tunnel sedang naik.
+     *
+     * Daftar pengecualian hanya dibaca ketika tunnel dibangun (`VelumTunnel.buildConfig`),
+     * jadi selama ini perubahan baru berlaku setelah pengguna memutus dan menyambungkan
+     * sendiri — layar memang mengatakan itu, tetapi membebankan pekerjaan yang bisa
+     * dilakukan aplikasi. [VelumTunnel.restart] membuat itu tidak perlu: down+up berjalan
+     * atomik terhadap pelaku lain (ubin, pemantau jaringan) dan membaca ulang niat
+     * pengguna di tengah jalan, jadi ia tidak akan menghidupkan tunnel yang sedang
+     * diminta mati.
+     */
     private fun save() {
-        prefs.excludedApps = boxes.filter { it.value.isChecked }.keys.toSet()
-        Toast.makeText(this, R.string.excluded_saved, Toast.LENGTH_SHORT).show()
+        val before = prefs.excludedApps
+        val after = boxes.filter { it.value.isChecked }.keys.toSet()
+        prefs.excludedApps = after
+        val app = applicationContext
+        if (after == before || VelumTunnel.state != Tunnel.State.UP) {
+            // Tidak ada yang berubah, atau tunnel sedang turun: pengecualian dipakai saat
+            // penyambungan berikutnya, tidak ada yang perlu disambungkan ulang sekarang.
+            Toast.makeText(this, R.string.excluded_saved, Toast.LENGTH_SHORT).show()
+            finish()
+            return
+        }
+        Toast.makeText(this, R.string.excluded_saved_restarting, Toast.LENGTH_SHORT).show()
+        worker.execute {
+            try {
+                VelumTunnel.restart(app, prefs)
+            } catch (e: Exception) {
+                Log.w(TAG, "gagal menyambungkan ulang setelah pengecualian disimpan", e)
+            }
+        }
         finish()
+    }
+
+    /**
+     * `shutdown()`, BUKAN `shutdownNow()`: memotong `restart()` di tengah berarti
+     * membiarkan tunnel dalam keadaan turun padahal pengguna tidak pernah memintanya.
+     * Tugas yang sudah terantre tetap dijalankan sampai selesai.
+     */
+    override fun onDestroy() {
+        worker.shutdown()
+        super.onDestroy()
     }
 
     /** Aplikasi peluncur terurut; Velum sendiri tidak ditawarkan. */
@@ -97,4 +141,8 @@ class AppExclusionActivity : AppCompatActivity() {
     }
 
     private data class AppInfo(val packageName: String, val label: String)
+
+    private companion object {
+        const val TAG = "Velum"
+    }
 }

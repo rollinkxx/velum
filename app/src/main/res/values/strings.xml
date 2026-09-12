@@ -28,8 +28,9 @@
     <string name="sub_copy_diag">Ringkasan tanpa kunci &amp; alamat IP</string>
     <string name="title_excluded">Kecualikan aplikasi</string>
     <string name="btn_save">Simpan</string>
-    <string name="excluded_saved">Daftar pengecualian disimpan. Putuskan lalu Sambungkan agar berlaku.</string>
-    <string name="excluded_hint">Aplikasi yang dicentang dilewati dari tunnel dan memakai jalur internet langsung. Velum sendiri tidak ditawarkan agar pemeriksaan statusnya tetap bermakna. Perubahan berlaku setelah menyambung ulang.</string>
+    <string name="excluded_saved">Daftar pengecualian disimpan.</string>
+    <string name="excluded_saved_restarting">Daftar pengecualian disimpan · menyambungkan ulang…</string>
+    <string name="excluded_hint">Aplikasi yang dicentang dilewati dari tunnel dan memakai jalur internet langsung. Velum sendiri tidak ditawarkan agar pemeriksaan statusnya tetap bermakna. Bila sedang tersambung, tunnel disambungkan ulang sebentar agar perubahan langsung berlaku.</string>
     <string name="excluded_empty">Tidak ada aplikasi yang bisa ditampilkan.</string>
     <string name="tile_label">Velum</string>
     <string name="diag_copied">Ringkasan disalin (tanpa kunci &amp; alamat IP)</string>
