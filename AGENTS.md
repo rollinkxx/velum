@@ -447,28 +447,23 @@ Empat poin di atas WAJIB masuk laporan Fase 1 §6 sebelum minta perintah eksekus
   DNS, tanpa iklan/analitik/akun. UI Bahasa Indonesia.
 - <a id="stack-aktual"></a>**Stack aktual** (dari `gradle/libs.versions.toml`, satu-satunya sumber versi): Gradle
   **9.7.1** (wrapper ter-commit, termasuk `gradle-wrapper.jar`; naik dari 8.9 lewat PR #8),
-  AGP 8.7.3, Kotlin 2.0.21, JDK 17,
-  compileSdk/targetSdk 35, minSdk 24. **Catatan kombinasi:** Gradle 9.x secara resmi hanya
-  diuji dengan AGP 9.0+, dan Kotlin 2.0.21 dijamin penuh sampai Gradle 8.6 — pasangan
-  Gradle 9.7.1 + AGP 8.7.3 + Kotlin 2.0.21 berada di luar matriks resmi ketiganya, namun
-  **terbukti membangun dengan bersih** (run 34660850896: tes, assembleDebug, dan lint
-  semuanya hijau, tanpa satu pun peringatan deprecation Gradle). Statusnya "berfungsi tetapi
-  tidak dijamin upstream": bila kelak muncul kegagalan Gradle yang tidak berhubungan dengan
-  kode aplikasi, curigai pasangan ini lebih dulu.
-  Dependensi runtime hanya `androidx.appcompat` **1.8.0**,
-  `androidx.activity` (Activity Result API), `com.wireguard.android:tunnel` **1.0.20260102**
-  (GoBackend),
-  dan `androidx.security:security-crypto` (Tink, ±1 MB) — tanpa Compose/OkHttp/coroutine demi ukuran
-  APK & RAM kecil. Khusus pengujian (tidak ikut ke APK): `junit` 4.13.2 dan `org.json:json`
-  **20260814**
-  (bawaan `android.jar` berupa rintisan di unit test JVM). `gradle.properties`:
-  configuration-cache & build-cache aktif,
-  `nonTransitiveRClass`. Resource hanya Bahasa Indonesia (`resourceConfigurations += "in"`).
+  AGP **9.4.0**, JDK 17, compileSdk/targetSdk **36**, minSdk 24. **Versi Kotlin tidak ada di
+  katalog** — AGP 9 membawa KGP-nya sendiri (≥ 2.2.10); jangan menambahkannya kembali "supaya
+  eksplisit" (sumber kebenaran kedua yang bisa menyimpang). Syarat AGP 9.4: Gradle ≥ 9.6.0
+  (wrapper 9.7.1) dan JDK ≥ 17 (CI di 17) — pasangan ini **terbukti membangun dengan bersih**
+  (run 34669207614 hijau percobaan pertama setelah bump AGP; seterusnya sampai run 34700716425).
+  Dependensi runtime hanya `androidx.appcompat` **1.8.0**, `androidx.activity` **1.9.3**
+  (Activity Result API), `com.wireguard.android:tunnel` **1.0.20260102** (GoBackend), dan
+  `androidx.security:security-crypto` **1.1.0** (Tink, ±1 MB) — tanpa Compose/OkHttp/coroutine
+  demi ukuran APK & RAM kecil. Khusus pengujian (tidak ikut ke APK): `junit` 4.13.2 dan
+  `org.json:json` **20260814** (bawaan `android.jar` berupa rintisan di unit test JVM).
+  `gradle.properties`: configuration-cache & build-cache aktif, `nonTransitiveRClass`.
+  Resource hanya Bahasa Indonesia (`androidResources.localeFilters += listOf("in")`).
   `android.lint`: `textReport = true` + `textOutput` ke `build/reports/lint-results-debug.txt`
   (laporan HTML tidak terbaca dari sandbox), `abortOnError = true`.
 - <a id="identitas"></a>**Identitas (ADR 002):** `applicationId` = `com.rollinkxx.velum` (debug: suffix `.debug`),
   package Kotlin `com.rollinkxx.velum`, nama aplikasi **Velum**, versi awal `0.1.0`/code 1.
-- <a id="struktur-modul-app"></a>**Struktur modul `app/`** (`app/src/main/java/com/rollinkxx/velum/`, 18 berkas Kotlin):
+- <a id="struktur-modul-app"></a>**Struktur modul `app/`** (`app/src/main/java/com/rollinkxx/velum/`, 20 berkas Kotlin):
   - `MainActivity.kt` — **hanya render**: UI satu layar (View XML), panel info interaktif
     (durasi/endpoint/hasil uji+DC/laju+deteksi basi), izin notifikasi Android 13+ (diminta
     hanya bila perlu, lewat Activity Result API), pintasan pengaturan VPN/Always-on,
@@ -483,30 +478,44 @@ Empat poin di atas WAJIB masuk laporan Fase 1 §6 sebelum minta perintah eksekus
   - `VelumTunnel.kt` — singleton `Tunnel` untuk `GoBackend` (MTU 1280, DNS 1.1.1.1/1.0.0.1,
     AllowedIPs 0.0.0.0/0 + ::/0, keepalive 25) + `traffic()` (rx/tx/handshake), endpoint efektif hasil proba.
   - `Prefs.kt` — penyimpanan terenkripsi (`EncryptedSharedPreferences`, migrasi sekali
-    dari file polos `warp`) + memo `warpEnabled`, `wasUp`, `speedEndpoint` (hasil proba 1 jam).
+    dari file polos `warp`) + memo `warpEnabled`, `wasUp`, `speedEndpoint` (hasil proba 1 jam),
+    `workingEndpoint` (endpoint yang **terbukti** menghasilkan handshake, menang atas perkiraan
+    RTT) dan `lastTest` (hasil uji terakhir, tersandi satu baris) dengan turunan
+    `effectiveEndpoint`. `clear()` mempertahankan memo `wasUp`.
   - `BootReceiver.kt` — sambung ulang setelah boot bila terakhir UP & izin VPN berlaku.
   - `ReconnectMonitor.kt` — pantulan tunnel saat jaringan berganti (backoff+debounce),
     lingkup aplikasi; start/stop dari UI & boot, pulihkan sesi proses lahir ulang.
   - `EndpointProbe.kt` — proba RTT paralel kandidat anycast saat connect & saat pantulan
-    (±6 dtk, cache 1 jam, fail-safe ke endpoint registrasi).
+    (±6 dtk, cache 1 jam, fail-safe ke endpoint registrasi) + `rotate()`: memilih kandidat
+    **berbeda** dari endpoint sekarang saat handshake tidak pernah terjadi (`refresh()` tidak
+    bisa dipakai untuk itu — pemenang RTT-nya sama, jadi masalahnya berulang).
   - `StatusNotifier.kt` — notifikasi persisten status (kanal `status`, IMPORTANCE_LOW).
   - `VelumTileService.kt` — ubin pengaturan cepat (sambung/putus tanpa membuka aplikasi;
     varian `startActivityAndCollapse(PendingIntent)` di API 34+ agar bebas API usang).
   - `AppExclusionActivity.kt` — split tunneling: pilih aplikasi yang **dikecualikan** dari
-    tunnel; daftar dibatasi `<queries>` peluncur (tanpa `QUERY_ALL_PACKAGES`).
+    tunnel; daftar dibatasi `<queries>` peluncur (tanpa `QUERY_ALL_PACKAGES`); bilah atas
+    dengan tombol **Kembali** (`onBackPressedDispatcher`, bukan `onBackPressed` usang) dan
+    keterangan bila daftar aplikasi kosong.
+  - `VelumInsets.kt` — padding bilah sistem untuk tampilan **edge-to-edge** yang dipaksakan
+    sejak `targetSdk` 36; dipakai kedua Activity lewat akar layout (`@+id/root`). Pada
+    perangkat/jendela non-edge-to-edge insets bernilai nol sehingga tidak menggandakan jarak.
   - **Berkas murni (tanpa Android framework) — semuanya teruji unit JVM:**
     `VelumFormat.kt` (parse trace, pemformatan, pemilihan endpoint),
-    `VelumTestDecision.kt` (RETRY/PUBLISH/DROP — mencegah false negative "Belum lewat Velum"),
+    `VelumTestDecision.kt` (RETRY/PUBLISH/PUBLISH_NO_DATA/DROP — handshake jadi syarat;
+    memisahkan keadaan "belum ada data" dari kegagalan jaringan),
+    `VelumTestResult.kt` (hasil uji tersandi satu baris untuk `Prefs.lastTest`),
     `VelumError.kt` (klasifikasi NETWORK vs penolakan klien → pesan spesifik),
     `VelumRegistration.kt` (validasi respons `POST /reg`, port WG 2408),
     `VelumMigration.kt` (rencana migrasi data era polos, konservatif),
     `VelumDiagnostics.kt` (ringkasan gangguan **ramah privasi**: tanpa kunci/IP/token).
-    Uji padanannya di `app/src/test/java/com/rollinkxx/velum/*Test.kt` (6 berkas).
+    Uji padanannya di `app/src/test/java/com/rollinkxx/velum/*Test.kt` (7 berkas;
+    `VelumSetupTest` ikut terhapus bersama fiturnya, lihat jebakan 2026-09-12).
   - `AndroidManifest.xml` — VpnService milik library (`GoBackend$VpnService`) di-merge
     (`tools:node="merge"`) untuk menambah `foregroundServiceType="specialUse"` + property
     subtype `vpn`; receiver boot exported; service ubin QS (`BIND_QUICK_SETTINGS_TILE`);
-    `AppExclusionActivity` (not exported); blok `<queries>` peluncur; izin
-    RECEIVE_BOOT_COMPLETED & POST_NOTIFICATIONS.
+    `AppExclusionActivity` (not exported); blok `<queries>` peluncur + aksi pengaturan
+    `VPN_SETTINGS` (pintasan "Selalu aktif"); izin RECEIVE_BOOT_COMPLETED &
+    POST_NOTIFICATIONS.
   - Tema gelap murni resource (drawable shape/ripple/selector; tanpa font eksternal);
     ikon adaptif vektor + PNG polos untuk API 24–25.
   - Rilis: `signingConfigs.release` membaca env (`KEYSTORE_FILE/PASSWORD/ALIAS/KEY_PASSWORD`);
@@ -546,7 +555,15 @@ Empat poin di atas WAJIB masuk laporan Fase 1 §6 sebelum minta perintah eksekus
   - `.github/dependabot.yml`: ekosistem `gradle` (mingguan) & `github-actions` (bulanan),
     maks. 5 PR, prefix commit `build`/`ci`. Dependabot hanya membuka PR — **manusia yang
     memutuskan**, dan `gradle/libs.versions.toml` tetap satu-satunya sumber versi.
-  - <a id="run-acuan-terkini"></a>**Run acuan terkini:** 34671312706 (`a74c1e7`, **7m19s**, hijau) — **run pertama
+  - <a id="run-acuan-terkini"></a>**Run acuan terkini (branch sesi `arena/01a09481-velum`, 2026-09-12):**
+    34700716425 (`7eff286`, **5m04s**, hijau, dua job) — popup tawaran kesiapan dihapus, uji
+    koneksi diperbaiki (handshake jadi syarat; keadaan "belum ada data" ≠ kegagalan jaringan;
+    endpoint diputar saat handshake tak terjadi; hasil uji disimpan `Prefs.lastTest`; host
+    trace cadangan `one.one.one.one`), ikon emblem, `targetSdk` 36, `VelumInsets`. Artifact:
+    `app-preview`/`app-release` **12,18 MiB** · `app-debug` 26,32 MiB · `mapping-preview`
+    634 KB. Satu run merah di paket yang sama (34700496000) — diagnosisnya ada di daftar
+    jebakan di bawah.
+  - **Run acuan sebelumnya:** 34671312706 (`a74c1e7`, **7m19s**, hijau) — **run pertama
     dengan job rilis benar-benar berjalan**. Maintainer mengisi Secrets keystore
     2026-09-12, jadi `vars.ENABLE_RELEASE_SIGNING` kini `true` dan job `release`
     **tidak lagi di-skip** — perkirakan durasi CI ±7 menit, bukan ±5.
@@ -573,9 +590,12 @@ Empat poin di atas WAJIB masuk laporan Fase 1 §6 sebelum minta perintah eksekus
     - **Versi Kotlin tidak lagi ada di katalog.** AGP membawa KGP-nya sendiri (≥ 2.2.10).
       Jangan menambahkannya kembali "supaya eksplisit" — itu membuat sumber kebenaran
       kedua yang bisa menyimpang dari KGP yang sebenarnya dipakai.
-    - **`targetSdk` tetap 35 secara sengaja**, walau `compileSdk` 36. Menaikkan `targetSdk`
-      mengubah perilaku runtime (izin, layanan latar depan, VPN) dan **butuh izin
-      maintainer + uji perangkat**; itu keputusan produk, bukan pemeliharaan alat bangun.
+    - **`targetSdk` dinaikkan 35 → 36 pada 2026-09-12 atas izin maintainer** (sebelumnya
+      sengaja ditahan 35). Menaikkan `targetSdk` mengubah perilaku runtime (izin, layanan
+      latar depan, VPN) dan **butuh izin maintainer + uji perangkat** — itu keputusan
+      produk, bukan pemeliharaan alat bangun. Konsekuensi yang ditangani serempak:
+      edge-to-edge dipaksakan (`VelumInsets`), predictive back (`onBackPressedDispatcher`),
+      dan klasifikasi penolakan layanan latar depan (`VelumError.SERVICE_BLOCKED`).
     - Syarat versi AGP 9.4: Gradle ≥ 9.6.0 (wrapper di 9.7.1) dan JDK ≥ 17 (CI di 17).
   - **Run acuan varian preview:** 34668310746 (`a0d20fc`, hijau) — build pertama dengan varian
     **preview** (konfigurasi release + R8, ditandatangani kunci debug). Artifact:
@@ -618,7 +638,10 @@ Empat poin di atas WAJIB masuk laporan Fase 1 §6 sebelum minta perintah eksekus
   default branch `main`. **Repo diubah menjadi PUBLIK oleh maintainer 2026-09-12** —
   konsekuensi: Actions gratis tanpa batas (sebelumnya privat, kuota 2.000 menit/bulan
   dengan spending limit $0), dan seluruh riwayat commit terbaca publik.
-  PR #1–#4 dan #6–#12 sudah **merged**; `main` = `48c40c9`.
+  PR #1–#4, #6–#12, dan **#13** sudah **merged**; `main` sebelum PR #14 = `a6c6814`.
+  Seluruh kerja sesi 2026-09-12 (ikon emblem, pantulan 5 percobaan, targetSdk 36,
+  penghapusan popup tawaran, perbaikan uji koneksi, penggantian aturan AGENTS.md) masuk
+  lewat **PR #14**, di-merge atas perintah eksplisit maintainer.
 - **PR Dependabot: tidak ada lagi yang terbuka.** #5 (AGP 8.7.3 → 9.4.0) **ditutup**
   atas perintah maintainer 2026-09-12, setelah isinya diterapkan lebih lengkap di
   branch sesi (`42b94bb`, CI 34669207614 hijau). Patch #5 hanya mengubah satu baris
@@ -729,6 +752,10 @@ Empat poin di atas WAJIB masuk laporan Fase 1 §6 sebelum minta perintah eksekus
   `actions/checkout@v4`, `actions/upload-artifact@v4`, `android-actions/setup-android@v3`,
   `gradle/actions/setup-gradle@v4` dipaksa berjalan di Node 24. Non-pemblokir; menunggu
   keputusan maintainer atas PR Dependabot #6/#7/#10/#11 (TODO No. 23).
+  **Koreksi 2026-09-12:** setelah bump action (checkout@v7, setup-java@v5,
+  setup-android@v4, setup-gradle@v6, upload-artifact@v7) anotasi Node.js **hilang** —
+  verifikasi di run 34700716425: hanya advisory lint yang tersisa (8 usulan KTX
+  `SharedPreferences.edit` di `Prefs.kt`, `GoBackend` static field, `allowBackup` usang).
 - (2026-09-12) **"PR Dependabot hijau" bisa menyesatkan.** Cek CI sebuah PR dijalankan di
   **base saat PR dibuat**, bukan di ujung `main` saat di-merge. Empat PR (#9, #12, #4, #8)
   sama-sama hijau di base `d873f1e`, tetapi kombinasi hasil gabungannya (Gradle 9.7.1 dari
@@ -741,6 +768,34 @@ Empat poin di atas WAJIB masuk laporan Fase 1 §6 sebelum minta perintah eksekus
   yang sudah terbuka ke tunnel). Dampaknya: uji `cdn-cgi/trace` bisa mengembalikan
   `warp=off` meski tunnel benar-benar UP. Wajib: `Connection: close` +
   `http.keepAlive=false`, tunggu `traffic().latestHandshakeMs > 0` sebelum uji.
+- (2026-09-12) **"Tersambung" ≠ handshake terjadi — sumber pesan "Kesalahan jaringan:
+  Unable to resolve host …" yang menyesatkan pengguna.** Bukti perangkat: status
+  "Tersambung", Data ↓ 0 B/s, endpoint 162.159.193.1:2408, plus pesan galat DNS. Sebabnya:
+  versi lama `awaitHandshake()` mengembalikan "siap" hanya karena antarmuka TUN `UP`,
+  sehingga uji `cdn-cgi/trace` menembak keluar sebelum handshake; DNS di dalam tunnel pun
+  tidak bisa dilewati, dan galat DNS itu **gejala**, bukan sebab. Perbaikan (run 34700716425):
+  handshake jadi syarat, keadaan itu dilaporkan sebagai "belum ada data" + saran tindakan
+  (bukan menyalahkan jaringan), dan bila handshake tak pernah terjadi aplikasi memutar
+  endpoint (`EndpointProbe.rotate`) lalu menyambung ulang & menguji sekali lagi. Hasil uji
+  disimpan (`Prefs.lastTest`) supaya baris "Uji terakhir" tidak menggantung di teks sementara
+  saat tampilan dibuat ulang.
+- (2026-09-12, run merah 34700496000) **Merah karena satu asersi, bukan cacat produk.**
+  `VelumDiagnosticsTest` masih menuntut ringkasan diagnosa **8** baris, sedangkan baris
+  "Uji terakhir" yang baru membuatnya **9**; diperbaiki di `2229605`. Pelajaran: menambah
+  baris pada keluaran yang diuji wajib disertai pembaruan asersi jumlah baris — anotasi
+  `anotasikan-tes.py` menunjukkannya persis ("expected:<8> but was:<9>").
+- (2026-09-12) **Berkas workflow baru di branch non-default tidak dijalankan GitHub.**
+  Push yang hanya *menambahkan* `.github/workflows/<baru>.yml` di branch sesi tidak
+  memunculkannya di `gh run list` maupun `gh workflow list` — harness CI sementara di
+  branch sesi tidak berguna; validasi tetap lewat run ujung paket pada workflow yang sudah
+  terdaftar.
+- (2026-09-12) **Keputusan produk: popup tawaran kesiapan dihapus.** `VelumSetup.kt` +
+  `VelumSetupTest.kt`, memo `setupPostponed`, enam string tawaran, dan `<queries>`
+  `IGNORE_BATTERY_OPTIMIZATION_SETTINGS` dihapus atas permintaan maintainer
+  ("notifikasi popup untuk menyuruh vpn agar selalu aktif sebaiknya dihilangkan saja").
+  Yang tersisa: pintasan **"Selalu aktif"** di baris aksi (kueri `VPN_SETTINGS` tetap).
+  Jangan menghidupkan lagi tawaran yang muncul sendiri — bantuan kontekstual tanpa
+  diminta lebih mengganggu daripada berguna.
 
 ## §6 Protokol Android: Presisi & Efisiensi Waktu (aktif 2026-09-11)
 
@@ -755,8 +810,9 @@ Setiap detik pipeline CI mahal dan setiap iterasi yang gagal membuang waktu. §6
    awal respons. **Isi repo selalu menang atas default protokol**: `gradle/libs.versions.toml`
    adalah satu-satunya sumber kebenaran versi (§4). Default protokol (AGP 8.5.2, Gradle 8.7,
    Kotlin 2.0.0, compileSdk/targetSdk 34, minSdk 24, JDK 17, Kotlin DSL, version catalog)
-   hanya dipakai bila katalog belum menetapkannya. Keadaan nyata repo: AGP 8.7.3,
-   Gradle 9.7.1, Kotlin 2.0.21, JDK 17, compileSdk/targetSdk 35, minSdk 24.
+   hanya dipakai bila katalog belum menetapkannya. Keadaan nyata repo: AGP 9.4.0,
+   Gradle 9.7.1, Kotlin dari AGP (tanpa entri katalog), JDK 17, compileSdk/targetSdk 36,
+   minSdk 24.
 3. **Tanpa pertanyaan yang bisa disimpulkan** — jangan tanya hal yang sudah terjawab oleh
    log error, kode yang ada, atau §5.
 4. **Solusi sekali jalan** — sebelum perintah: sajikan RENCANA lengkap sekali jadi
