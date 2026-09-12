@@ -330,7 +330,14 @@ sebelum push.
   - `.github/dependabot.yml`: ekosistem `gradle` (mingguan) & `github-actions` (bulanan),
     maks. 5 PR, prefix commit `build`/`ci`. Dependabot hanya membuka PR — **manusia yang
     memutuskan**, dan `gradle/libs.versions.toml` tetap satu-satunya sumber versi.
-  - **Run acuan terakhir yang hijau (branch sesi `arena/01a09481-velum`):** 34684549219
+  - **Run acuan terkini (branch sesi `arena/01a09481-velum`):** 34700716425
+    (`7eff286`, **5m04s**, hijau) — paket 2026-09-12: popup tawaran dihapus, alur uji
+    diperbaiki (handshake jadi syarat, "belum ada data" ≠ kegagalan jaringan, putar
+    endpoint lalu sambung ulang, `Prefs.lastTest`, host trace cadangan). Kedua job hijau;
+    artifact: `app-preview`/`app-release` **12,18 MiB** · `app-debug` 26,32 MiB ·
+    `mapping-preview` 634 KB. Advisory lint tetap 10 (8 KTX `Prefs.kt`, `GoBackend`
+    static field, `allowBackup`).
+  - **Run hijau sebelumnya (branch sesi `arena/01a09481-velum`):** 34684549219
     (`e0d96c9`, **5m33s**, hijau) — logo emblem + pantulan 5 percobaan (+ tawaran kesiapan,
     yang **kemudian dihapus** pada paket 2026-09-12). Semua tahap lolos (unit test, build
     debug & preview, lint, verifikasi tanda tangan rilis). Artifact: `app-preview`/`app-release` **12,17 MB**
@@ -530,6 +537,14 @@ sebelum push.
   Jangan menyimpulkan "riwayat hilang". Riwayat penuh dibaca lewat
   `gh api "repos/rollinkxx/velum/commits?sha=<branch-atau-sha>"`, isi commit lewat
   `gh api repos/rollinkxx/velum/commits/<sha> --jq '.files[].filename'`.
+- (2026-09-12, run merah 34700496000 — commit `a17e873`) **Merah karena satu asersi, bukan
+  cacat produk.** Job `verifikasi` gugur di "Pengujian unit": `VelumDiagnosticsTest` masih
+  menuntut ringkasan diagnosa **8** baris, sedangkan baris "Uji terakhir" yang baru
+  membuatnya **9**; diperbaiki di `2229605` (asersi 9 + label diratakan ke lebar 12
+  karakter). Karena itu wajar bila run itu memuat commit fitur + dokumen sekaligus.
+  Pelajaran tambahan: push yang **menambahkan** berkas workflow baru di branch non-default
+  **tidak menjalankannya** (tidak muncul di `gh run list` maupun `gh workflow list`) —
+  harness CI sementara di branch sesi tidak berguna; validasi tetap lewat run ujung paket.
 - (2026-09-11, run merah 34601913928 — commit `901e090` `docs: sinkronisasi AGENTS.md`)
   **Satu-satunya run merah yang bukan Dependabot.** Job `unitTest` gugur di langkah
   "Pengujian unit" sementara `assembleDebug` & `lint` hijau; akar masalah: `org.json` di
