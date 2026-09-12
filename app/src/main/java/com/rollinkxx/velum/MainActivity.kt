@@ -168,7 +168,12 @@ class MainActivity : AppCompatActivity(), VelumController.Ui {
         controller.applyCurrentState()
         // Pulihkan tiker & denyut bila tunnel masih UP dari sesi sebelumnya.
         startTicker()
-        if (controller.state == Tunnel.State.UP) startPulse()
+        if (controller.state == Tunnel.State.UP) {
+            startPulse()
+            // Layar ini bisa jadi hasil rotasi atau kembali dari latar, dan pada kedua
+            // kasus itu `onConnectedVisual()` TIDAK dipanggil (tidak ada transisi).
+            resetTrafficBaseline()
+        }
         controller.refreshStateAsync { controller.resumeIfNeeded() }
     }
 
@@ -341,14 +346,8 @@ class MainActivity : AppCompatActivity(), VelumController.Ui {
     }
 
     override fun onConnectedVisual() {
-        lastRxBytes = 0L
-        lastTxBytes = 0L
-        lastPollMs = SystemClock.elapsedRealtime()
         tickCount = 0
-        statsBaseline = true // polling pertama hanya jadi dasar hitungan laju
-        staleTicks = 0
-        staleWarned = false
-        infoData.setText(R.string.value_none)
+        resetTrafficBaseline()
         startTicker()
         startPulse()
         refreshStaticInfo()
@@ -357,6 +356,29 @@ class MainActivity : AppCompatActivity(), VelumController.Ui {
         // atau receiver boot (tanpa Activity sama sekali) tetap punya notifikasi, dan
         // tunnel yang mati di latar tetap dibersihkan — sebelumnya notifikasi "Tersambung"
         // bisa menetap selamanya karena satu-satunya pemanggil `hide()` ada di layar ini.
+    }
+
+    /**
+     * Mengosongkan dasar hitungan laju trafik, sehingga sampel berikutnya hanya menjadi
+     * pembanding dan tidak ditampilkan sebagai laju.
+     *
+     * Wajib dipanggil setiap layar mulai terlihat dengan tunnel UP, bukan hanya saat
+     * transisi DOWN->UP. Sejak `prevState` di controller diawali dari status tunnel yang
+     * sebenarnya (supaya rotasi tidak lagi mereset durasi), layar hasil rotasi TIDAK
+     * menerima `onConnectedVisual()` — jadi `statsBaseline` tetap `false` dan `lastPollMs`
+     * tetap `0`. Sampel pertama lalu menghitung laju terhadap uptime perangkat
+     * (`dtSec = elapsedRealtime / 1000`), hasilnya ≈ 0 B/s selama satu siklus (~5 detik)
+     * sebelum benar sendiri. Kembali dari latar punya cacat yang sama dengan angka yang
+     * berbeda: sampel terakhir sudah tua, jadi selisih byte dibagi rentang yang panjang.
+     */
+    private fun resetTrafficBaseline() {
+        statsBaseline = true // polling pertama hanya jadi dasar hitungan laju
+        lastRxBytes = 0L
+        lastTxBytes = 0L
+        lastPollMs = SystemClock.elapsedRealtime()
+        staleTicks = 0
+        staleWarned = false
+        infoData.setText(R.string.value_none)
     }
 
     override fun onDisconnectedVisual() {
