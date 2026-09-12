@@ -2,7 +2,6 @@ import com.android.build.api.variant.FilterConfiguration.FilterType.ABI
 
 plugins {
     alias(libs.plugins.android.application)
-    alias(libs.plugins.kotlin.android)
 }
 
 android {
@@ -15,8 +14,6 @@ android {
         targetSdk = libs.versions.targetSdk.get().toInt()
         versionCode = 1
         versionName = "0.1.0"
-        // Hanya bahasa Indonesia; resource bahasa lain dari library dibuang agar APK kecil.
-        resourceConfigurations += listOf("in")
     }
 
     signingConfigs {
@@ -88,6 +85,12 @@ android {
 
     // Laporan teks dibutuhkan CI: laporan HTML tidak bisa dibaca dari log,
     // dan artifact tidak bisa diunduh dari sandbox agen (lihat AGENTS.md §5).
+    // Hanya bahasa Indonesia; resource bahasa lain dari library dibuang agar APK
+    // kecil. Menggantikan defaultConfig.resourceConfigurations yang dihapus AGP 9.
+    androidResources {
+        localeFilters += listOf("in")
+    }
+
     lint {
         textReport = true
         textOutput = file("build/reports/lint-results-debug.txt")
@@ -103,9 +106,6 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
-    }
-    kotlinOptions {
-        jvmTarget = "17"
     }
 
     packaging {

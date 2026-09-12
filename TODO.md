@@ -47,3 +47,5 @@
 | 43 | Pemecahan APK per ABI (arm64-v8a, armeabi-v7a, x86_64) + universal, versionCode otomatis per varian | Tinggi | Selesai tervalidasi (CI run 34667447646): APK per-ABI ±5,4 MB debug vs universal 9,6 MB (hemat ±44%) |
 | 44 | Varian preview (R8 + tanda tangan debug) agar APK kecil bisa diuji tanpa keystore; R8 teruji tiap push | Tinggi | Selesai tervalidasi (CI run 34668310746): preview ±2,2 MB vs debug ±5,6 MB |
 | 45 | Aturan R8 bersasaran: Tink protobuf, TileService, BootReceiver, atribut baris untuk stack trace | Tinggi | Selesai tervalidasi (CI run 34668310746), mapping.txt 613 KB diunggah |
+| 46 | Panduan keystore rilis: langkah keytool (komputer & Termux), tabel isian, Secrets vs Variables, verifikasi apksigner | Sedang | Selesai (dokumen); eksekusi menunggu maintainer |
+| 47 | Bump AGP 9.4.0 + migrasi built-in Kotlin, localeFilters, compileSdk 36 | Sedang | Menunggu validasi CI |

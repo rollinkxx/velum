@@ -26,6 +26,21 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
   memakai nilai terendah supaya varian spesifik arsitektur selalu lebih diutamakan.
 
 ### Changed
+- **AGP 8.7.3 → 9.4.0** (PR #5 Dependabot, diterapkan di branch sesi). Bukan
+  sekadar ganti nomor versi — AGP 9 menghapus beberapa API yang dipakai repo ini:
+  - Plugin `org.jetbrains.kotlin.android` **dihapus** dari kedua berkas build.
+    AGP 9 punya Kotlin bawaan; menerapkan plugin lama justru menggagalkan build.
+    Versi Kotlin ikut dihapus dari katalog karena AGP kini membawa KGP-nya sendiri
+    (≥ 2.2.10) — menyimpan versi terpisah hanya menciptakan sumber kebenaran kedua.
+  - `android.kotlinOptions.jvmTarget` dihapus; dengan Kotlin bawaan nilainya
+    mengikuti `compileOptions.targetCompatibility` yang sudah disetel ke 17.
+  - `defaultConfig.resourceConfigurations` → `androidResources.localeFilters`.
+  - `compileSdk` 35 → 36 (AGP 9 mensyaratkan SDK Build Tools 36).
+  - `targetSdk` sengaja **tetap 35**: menaikkannya mengubah perilaku runtime
+    (izin, foreground service, VPN) dan itu keputusan produk, bukan efek samping
+    pembaruan alat bangun.
+
+### Changed
 - CI mengunggah seluruh varian APK (`*.apk`) alih-alih satu berkas bernama tetap, dan step
   summary kini menampilkan tabel ukuran tiap APK sehingga dampak pemecahan terlihat tanpa
   perlu mengunduh artifact.
