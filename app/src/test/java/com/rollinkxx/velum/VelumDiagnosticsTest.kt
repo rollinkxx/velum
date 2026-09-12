@@ -71,4 +71,22 @@ class VelumDiagnosticsTest {
         assertTrue(teks.contains("Durasi      : 00:00"))
         assertEquals(9, teks.trim().lines().size)
     }
+
+    @Test
+    fun penyimpananPolos_dimunculkanSebagaiPeringatan() {
+        val teks = VelumDiagnostics.render(contoh.copy(plaintextFallback = true))
+        assertTrue(teks.contains("Peringatan  : penyimpanan TIDAK terenkripsi"))
+        assertEquals(10, teks.trim().lines().size)
+        // Sisi lainnya dijaga: baris itu hanya muncul bila memang perlu, supaya ringkasan
+        // pada keadaan normal tidak bertambah panjang (asersi 9 baris di atas).
+        assertEquals(9, VelumDiagnostics.render(contoh).trim().lines().size)
+    }
+
+    @Test
+    fun catatanTidakMengklaimHalYangBisaDibantah() {
+        // Regresi: dulu berbunyi "tanpa kunci, identitas perangkat, atau alamat IP" padahal
+        // baris Endpoint di ringkasan yang sama memuat sebuah alamat IP.
+        val teks = VelumDiagnostics.render(contoh)
+        assertTrue(teks.contains("Catatan     : tanpa kunci privat, identitas perangkat, atau alamat IP Anda"))
+    }
 }
