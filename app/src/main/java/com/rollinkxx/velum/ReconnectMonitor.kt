@@ -3,6 +3,7 @@ package com.rollinkxx.velum
 import android.content.Context
 import android.net.ConnectivityManager
 import android.net.Network
+import android.net.NetworkCapabilities
 import android.net.VpnService
 import android.os.SystemClock
 import android.util.Log
@@ -48,8 +49,15 @@ object ReconnectMonitor {
         val app = context.applicationContext
         val cm = app.getSystemService(ConnectivityManager::class.java) ?: return
         val cb = object : ConnectivityManager.NetworkCallback() {
-            override fun onAvailable(network: Network) = scheduleBounce(app, "tersedia")
-            override fun onLost(network: Network) = scheduleBounce(app, "hilang")
+            override fun onAvailable(network: Network) {
+                if (fromOwnTunnel(app, network)) return
+                scheduleBounce(app, "tersedia")
+            }
+
+            override fun onLost(network: Network) {
+                if (fromOwnTunnel(app, network)) return
+                scheduleBounce(app, "hilang")
+            }
         }
         // Abaikan callback lengket awal untuk jaringan yang sedang aktif.
         lastBounceMs = SystemClock.elapsedRealtime()
@@ -73,6 +81,32 @@ object ReconnectMonitor {
         } catch (e: Exception) {
             Log.w(TAG, "gagal melepas network callback", e)
         }
+    }
+
+    /**
+     * Apakah peristiwa jaringan ini berasal dari tunnel Velum sendiri.
+     *
+     * `registerDefaultNetworkCallback` melaporkan jaringan **default**, dan begitu tunnel
+     * naik, jaringan VPN itulah yang menjadi default — jadi kenaikan tunnel memicu
+     * `onAvailable` untuk dirinya sendiri. Bila peristiwa itu ikut memicu pantulan, tunnel
+     * yang baru saja sehat justru dimatikan lagi.
+     *
+     * Celah ini nyata pada satu kondisi spesifik: debounce 3 detik hanya menahan peristiwa
+     * susulan bila pantulan berhasil pada percobaan PERTAMA (jeda 2 detik < 3 detik). Bila
+     * berhasil pada percobaan ke-2 atau ke-3 (jeda 5/10 detik > 3 detik), peristiwa akibat
+     * tunnel sendiri lolos debounce dan memicu pantulan berikutnya.
+     *
+     * Menyaring lewat `TRANSPORT_VPN` benar **terlepas dari apakah skenario itu sudah
+     * pernah terjadi di lapangan**: peristiwa yang disebabkan tunnel ini memang bukan
+     * alasan yang sah untuk memantulkannya. `getNetworkCapabilities(Network)` ada sejak
+     * API 23 dan `TRANSPORT_VPN` sejak API 21 — keduanya di bawah minSdk 24.
+     */
+    private fun fromOwnTunnel(app: Context, network: Network): Boolean = try {
+        app.getSystemService(ConnectivityManager::class.java)
+            ?.getNetworkCapabilities(network)
+            ?.hasTransport(NetworkCapabilities.TRANSPORT_VPN) == true
+    } catch (_: Exception) {
+        false // ragu: perlakukan sebagai peristiwa jaringan biasa
     }
 
     private fun scheduleBounce(app: Context, reason: String) {
@@ -107,6 +141,10 @@ object ReconnectMonitor {
                 // hasil yang masih segar <1 jam, jadi murah di jalur cepat ini).
                 EndpointProbe.refresh(prefs)
                 VelumTunnel.up(app, prefs)
+                // Segarkan penanda waktu SETELAH berhasil, bukan hanya saat menjadwalkan:
+                // peristiwa jaringan susulan yang dipicu oleh kenaikan tunnel ini sendiri
+                // harus tetap tertahan debounce.
+                lastBounceMs = SystemClock.elapsedRealtime()
                 Log.i(TAG, "sambung ulang latar berhasil")
             }
         } catch (e: Exception) {
@@ -130,6 +168,11 @@ object ReconnectMonitor {
                 VelumTunnel.up(app, prefs)
                 VelumTunnel.refreshState(app)
                 if (VelumTunnel.state == Tunnel.State.UP) {
+                    // Sama seperti di `tryUpOnce`: keberhasilan pada percobaan ke-2/ke-3
+                    // terjadi LEBIH dari 3 detik setelah jadwal, jadi tanpa penyegaran ini
+                    // peristiwa jaringan susulan lolos debounce dan memicu pantulan baru
+                    // pada tunnel yang justru baru saja sehat.
+                    lastBounceMs = SystemClock.elapsedRealtime()
                     Log.i(TAG, "pantulan tunnel berhasil")
                     return
                 }
