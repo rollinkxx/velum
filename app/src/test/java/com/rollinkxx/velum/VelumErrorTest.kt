@@ -44,4 +44,30 @@ class VelumErrorTest {
         assertEquals(VelumError.Kind.UNKNOWN, VelumError.kindOf(IllegalStateException("aneh")))
         assertEquals(VelumError.Kind.UNKNOWN, VelumError.kindOf(null))
     }
+
+    @Test
+    fun penolakanLayananLatarDepan_dikenali() {
+        // Bentuk pesan yang mungkin datang dari framework/library pada Android 16+.
+        val contoh = listOf(
+            SecurityException("Starting FGS with type specialUse requires permissions"),
+            IllegalStateException("Context.startForegroundService() did not then call Service.startForeground()"),
+            RuntimeException("Unable to start VpnService"),
+            Exception("background start not allowed: service is not allowed to start")
+        )
+        for (e in contoh) {
+            assertEquals(e.message, VelumError.Kind.SERVICE_BLOCKED, VelumError.kindOf(e))
+        }
+    }
+
+    @Test
+    fun penolakanLayanan_dikenaliLewatPenyebab() {
+        val e = IllegalStateException("gagal menyambung", SecurityException("foreground service denied"))
+        assertEquals(VelumError.Kind.SERVICE_BLOCKED, VelumError.kindOf(e))
+    }
+
+    @Test
+    fun kegagalanJaringan_tidakSalahDiklasifikasikanSebagaiLayanan() {
+        // Pesan jaringan tetap NETWORK walau kebetulan memuat kata umum.
+        assertEquals(VelumError.Kind.NETWORK, VelumError.kindOf(IOException("connection reset")))
+    }
 }

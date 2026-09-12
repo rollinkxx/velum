@@ -42,7 +42,7 @@ object StatusNotifier {
             Notification.Builder(context)
         }
         val notif = builder
-            .setSmallIcon(R.drawable.ic_launcher_foreground)
+            .setSmallIcon(R.drawable.ic_launcher_tile)
             .setContentTitle(context.getString(R.string.app_name))
             .setContentText(detail)
             .setContentIntent(tap)

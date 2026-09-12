@@ -14,7 +14,8 @@ class VelumDiagnosticsTest {
         handshakeAgeSec = 42,
         rxBytes = 1_258_291,
         txBytes = 246_272,
-        connectedSec = 83
+        connectedSec = 83,
+        lastTest = "Aktif · DC SIN · 15:25"
     )
 
     @Test
@@ -25,6 +26,13 @@ class VelumDiagnosticsTest {
         assertTrue(teks.contains("Endpoint    : 162.159.192.1:2408"))
         assertTrue(teks.contains("Handshake   : 42 detik lalu"))
         assertTrue(teks.contains("Durasi      : 01:23"))
+        assertTrue(teks.contains("Uji terakhir: Aktif · DC SIN · 15:25"))
+    }
+
+    @Test
+    fun tanpaHasilUji_ditulisBelumAda() {
+        val teks = VelumDiagnostics.render(contoh.copy(lastTest = null))
+        assertTrue(teks.contains("Uji terakhir: belum ada"))
     }
 
     @Test
@@ -61,6 +69,6 @@ class VelumDiagnosticsTest {
     fun durasiNolMasukAkal() {
         val teks = VelumDiagnostics.render(contoh.copy(connectedSec = 0))
         assertTrue(teks.contains("Durasi      : 00:00"))
-        assertEquals(8, teks.trim().lines().size)
+        assertEquals(9, teks.trim().lines().size)
     }
 }

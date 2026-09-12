@@ -12,29 +12,44 @@
     <string name="btn_disconnect">Putuskan</string>
     <string name="btn_test">Uji koneksi</string>
     <string name="btn_reset">Daftar ulang</string>
+    <string name="btn_back">Kembali</string>
     <string name="btn_cancel">Batal</string>
     <string name="reset_confirm_title">Daftar ulang perangkat?</string>
     <string name="reset_confirm_body">Registrasi perangkat ini dihapus dari server lalu didaftarkan ulang. Sambungan diputus dan Velum tidak akan tersambung otomatis saat boot sampai Anda menekan Sambungkan lagi.</string>
     <string name="cd_status_up">Status: tersambung</string>
     <string name="cd_status_down">Status: terputus</string>
-    <string name="btn_vpn_settings">Selalu aktif (pengaturan sistem)</string>
+    <string name="btn_vpn_settings">Selalu aktif</string>
     <string name="btn_copy_diag">Salin diagnostik</string>
     <string name="btn_exclusions">Kecualikan aplikasi</string>
+    <!-- Subjudul baris aksi: menjelaskan akibat tiap baris sebelum ditekan. -->
+    <string name="sub_reset">Daftarkan ulang perangkat ini</string>
+    <string name="sub_vpn_settings">Pengaturan VPN sistem</string>
+    <string name="sub_exclusions">Lewatkan tunnel untuk aplikasi tertentu</string>
+    <string name="sub_copy_diag">Ringkasan tanpa kunci &amp; alamat IP</string>
     <string name="title_excluded">Kecualikan aplikasi</string>
     <string name="btn_save">Simpan</string>
     <string name="excluded_saved">Daftar pengecualian disimpan. Putuskan lalu Sambungkan agar berlaku.</string>
     <string name="excluded_hint">Aplikasi yang dicentang dilewati dari tunnel dan memakai jalur internet langsung. Velum sendiri tidak ditawarkan agar pemeriksaan statusnya tetap bermakna. Perubahan berlaku setelah menyambung ulang.</string>
+    <string name="excluded_empty">Tidak ada aplikasi yang bisa ditampilkan.</string>
     <string name="tile_label">Velum</string>
     <string name="diag_copied">Ringkasan disalin (tanpa kunci &amp; alamat IP)</string>
     <string name="err_no_settings">Pengaturan VPN tidak tersedia di perangkat ini</string>
     <string name="notif_channel">Status koneksi</string>
     <string name="notif_connected">Tersambung — lalu lintas lewat Velum</string>
+    <string name="test_waiting">Menunggu data…</string>
+    <string name="test_searching">Mencari endpoint lain…</string>
     <string name="test_running">Menguji…</string>
-    <string name="test_on">Velum aktif: lalu lintas lewat Velum</string>
-    <string name="test_off">Velum tidak aktif</string>
-    <string name="test_on_dc">Velum aktif · DC %1$s · %2$s</string>
-    <string name="test_off_time">Belum lewat Velum · %1$s</string>
+    <string name="test_on">Aktif — lalu lintas lewat Velum</string>
+    <string name="test_off">Belum aktif</string>
+    <string name="test_on_dc">Aktif · DC %1$s · %2$s</string>
+    <string name="test_off_time">Belum aktif · %1$s</string>
     <string name="test_failed">Gagal menguji</string>
+    <string name="test_no_data_time">Belum ada data · %1$s</string>
+    <!-- Ditampilkan saat tunnel "tersambung" tetapi tidak ada satu pun data yang lewat
+         (handshake belum terjadi). Sengaja tidak menyebut "kesalahan jaringan": pada
+         keadaan ini galat yang muncul hanyalah gejala, dan menyalahkan jaringan pengguna
+         berkali-kali sudah terbukti menyesatkan. -->
+    <string name="test_no_data_hint">Tunnel tersambung, tetapi belum ada data yang lewat — biasanya jaringan ini tidak meneruskan WARP. Coba Putuskan lalu Sambungkan, atau pindah ke Wi-Fi/jaringan seluler lain.</string>
     <string name="info_duration">Durasi</string>
     <string name="info_endpoint">Endpoint</string>
     <string name="info_last_test">Uji terakhir</string>
@@ -45,8 +60,9 @@
     <string name="err_vpn_denied">Izin VPN ditolak</string>
     <string name="err_register">Registrasi gagal: %1$s</string>
     <string name="err_connect">Gagal menyambung: %1$s</string>
+    <!-- Kegagalan khas Android 16+: sistem menutup/menolak layanan latar depan. -->
+    <string name="err_connect_closed">Sambungan ditutup sistem. Periksa "Always-on VPN" dan blokir koneksi tanpa VPN pada pengaturan VPN, lalu coba lagi.</string>
     <string name="err_network">Kesalahan jaringan: %1$s</string>
     <string name="err_server_reject">Layanan menolak klien ini (HTTP %1$s). Versi Velum perlu diperbarui.</string>
     <string name="reset_done">Registrasi dihapus. Tekan Sambungkan untuk mendaftar ulang.</string>
-    <string name="desc_footer">Hanya tunnel Velum. Tanpa iklan, tanpa pelacakan.</string>
 </resources>

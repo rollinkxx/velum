@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Latar ikon adaptif (kanvas 108x108): kartu gelap bergradien vertikal.
+  Sengaja memakai layer-list berisi <shape> (bukan vektor bergradien) agar tidak
+  butuh atribut aapt dan tampil sama di semua versi Android yang mendukung ikon
+  adaptif (API 26+). Memakai layer-list juga membuat berkas ini aman dipakai
+  ulang sebagai latar varian bulat.
+
+  Pendar emas sengaja TIDAK digambar di sini: efeknya halus di kanvas besar, tapi
+  saat kanvas mengecil (mdpi 108px, launcher memotong ~30%) pendar itu tercampur
+  ke bayangan monogram dan membuat huruf tampak kotor — sudah terlihat pada
+  pratinjau PNG legacy. Latar bersih menghasilkan huruf yang lebih tegas.
+-->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item>
+        <shape android:shape="rectangle">
+            <gradient
+                android:angle="270"
+                android:endColor="@color/icon_bg_bottom"
+                android:startColor="@color/icon_bg_top"
+                android:type="linear" />
+        </shape>
+    </item>
+</layer-list>

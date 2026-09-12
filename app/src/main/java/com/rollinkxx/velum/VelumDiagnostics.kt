@@ -18,7 +18,9 @@ object VelumDiagnostics {
         val rxBytes: Long,
         val txBytes: Long,
         val connectedSec: Long,
-        val excludedApps: List<String> = emptyList()
+        val excludedApps: List<String> = emptyList(),
+        /** Hasil uji terakhir yang sudah siap dibaca (mis. "Aktif · DC SIN · 15:25"). */
+        val lastTest: String? = null
     )
 
     /** Teks ringkasan siap salin. */
@@ -32,6 +34,9 @@ object VelumDiagnostics {
         append("Durasi      : ").append(VelumFormat.formatDuration(s.connectedSec * 1000)).append('\n')
         append("Trafik      : turun ").append(VelumFormat.formatBytes(s.rxBytes))
             .append(" · naik ").append(VelumFormat.formatBytes(s.txBytes)).append('\n')
+        append("Uji terakhir: ").append(
+            if (s.lastTest.isNullOrEmpty()) "belum ada" else s.lastTest
+        ).append('\n')
         append("Dikecualikan: ").append(
             if (s.excludedApps.isEmpty()) "tidak ada" else "${s.excludedApps.size} aplikasi"
         ).append('\n')

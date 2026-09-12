@@ -6,6 +6,15 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 ## [Unreleased]
 
 ### Added
+- **Logo baru bergaya emblem** (arah "A" yang dipilih maintainer): cincin emas tipis
+  mengelilingi monogram "V" — bukan huruf polos tanpa bingkai lagi. Cincin digambar
+  sebagai dua lingkaran (`fillType="evenOdd"`) dengan gradien gading-emas terang di atas
+  lalu amber gelap di bawah, sehingga terbaca sebagai logam, bukan bidang datar.
+  Seluruh bentuk (cincin diameter 64,8 pada kanvas 108) berada di dalam zona aman
+  72x72, jadi topeng peluncur apa pun tidak memotongnya.
+- Blok `<queries>` untuk aksi pengaturan sistem (`VPN_SETTINGS`), supaya resolusi intent
+  tetap berhasil pada API 30+ dengan pembatasan visibilitas paket.
+
 - Varian build **preview**: konfigurasi rilis (R8 + shrink resources) yang ditandatangani
   kunci debug, sehingga APK kecil siap pasang bisa diuji di perangkat nyata tanpa keystore
   rilis. Dibangun di setiap push agar R8 teruji terus-menerus — bukan pertama kali saat
@@ -24,6 +33,20 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
   arsitekturnya sendiri.
 - `versionCode` otomatis per varian (`abiCode * 1000 + versionCode`), dengan APK universal
   memakai nilai terendah supaya varian spesifik arsitektur selalu lebih diutamakan.
+- **Ikon aplikasi baru**: kartu gelap bergradien dengan monogram "V" berlapis emas
+  (champagne → amber, kilau di tepi atas). Ikon adaptif kini punya lapisan **monokrom**
+  sehingga ikut ikon tematik Android 13+, varian bulat tersedia lewat
+  `android:roundIcon`, dan PNG legacy API 24–25 dibangkitkan dari kanvas yang sama
+  sehingga tampil identik di semua versi.
+- Ikon khusus untuk ubin pengaturan cepat dan notifikasi
+  (`drawable/ic_launcher_tile.xml`): glif satu warna yang dipotong rapat, menggantikan
+  ikon adaptif 108x108 yang hurufnya tampak kecil saat diseragamkan sistem.
+- Ikon baris aksi (daur ulang, pengatur, kisi aplikasi, salin) digambar sendiri sebagai
+  vektor sederhana — tanpa pustaka ikon pihak ketiga, demi ukuran APK dan lisensi.
+  Catatan ukuran: PNG legacy baru menambah ±100 KB per APK (ikon lama 115-412 byte
+  karena hanya warna datar; ikon bergradien 3-19 KB x10 berkas) — diukur pada run
+  34681658613: `app-debug` 26,03 -> 26,45 MB, `app-preview`/`app-release` 11,92 -> 12,21 MB.
+
 
 - Verifikasi `apksigner` di job rilis: build digagalkan bila APK ternyata tidak
   bertanda tangan atau memakai kunci debug, dan sidik jari SHA-256 tiap APK dicetak
@@ -32,6 +55,41 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
   gagal memasang.
 
 ### Changed
+- **Pantulan jaringan lebih sabar** ([ReconnectMonitor]): backoff 3 percobaan
+  (2/5/10 dtk) menjadi **5 percobaan (2/5/10/30/60 dtk)**. Jaringan yang baru berganti —
+  habis pindah Wi-Fi, keluar mode pesawat, atau baru menyala setelah boot — sering butuh
+  belasan detik sebelum benar-benar siap diakses; menyerah pada detik ke-17 terlalu cepat.
+  Pantulan tetap dibatalkan begitu pengguna menekan Putuskan.
+- Ikon aplikasi: monogram tanpa bingkai diganti emblem cincin + monogram; palet ikon
+  ikut menyesuaikan (`icon_ring_start`/`icon_ring_end`, `icon_monogram_rim` dihapus karena
+  tidak lagi dipakai). PNG legacy (10 berkas) dibangkitkan ulang dari kanvas yang sama,
+  dan justru **lebih ringan** dari versi sebelumnya (1,9-10,7 KB vs 3,4-19 KB per berkas).
+- Glif ubin pengaturan cepat & ikon notifikasi memakai emblem yang dipotong rapat,
+  menyamakan bahasa visual ikon di layar peluncur, ubin, dan notifikasi.
+
+- Footer "Hanya tunnel Velum. Tanpa iklan, tanpa pelacakan." dihapus dari layar utama
+  beserta string-nya: memakan ruang tanpa menambah informasi, dan justru membuat tata
+  letak melebihi satu layar. Pesan itu tetap hidup di sini (CHANGELOG) dan di ADR.
+- **`targetSdk` 35 → 36 (Android 16)** atas izin maintainer. Konsekuensi yang ikut
+  ditangani dalam perubahan yang sama, bukan ditunda:
+  - **Edge-to-edge dipaksakan** — isi jendela kini berada di bawah bilah status dan
+    bilah navigasi. Kedua layar (utama & pengecualian aplikasi) menerapkan insets
+    bilah sistem sebagai padding akar lewat `VelumInsets.kt`; pada perangkat lama
+    insets bernilai nol sehingga tidak menggandakan jarak.
+  - **Predictive back dipaksakan** — pintasan "Kembali" yang baru memakai
+    `onBackPressedDispatcher`, bukan `onBackPressed()` yang tidak lagi dipanggil.
+  - **Izin layanan latar depan diperketat.** Bila Android menolak/menutup layanan VPN,
+    `VelumError.Kind.SERVICE_BLOCKED` mengenali pola pesannya dan menampilkan langkah
+    pemulihan (periksa Always-on VPN & blokir koneksi tanpa VPN) alih-alih
+    "Kesalahan jaringan" yang menyesatkan. Klasifikasi ini heuristik dan teruji unit.
+- **Baris aksi di layar utama dirancang ulang**: sebelumnya tombol teks polos berwarna
+  pudar, kini kartu berisi empat baris dengan ikon beraksen, judul, subjudul yang
+  menjelaskan akibat tiap aksi, dan penanda panah. Label "Selalu aktif (pengaturan
+  sistem)" dipersingkat menjadi "Selalu aktif" — konteks sistem kini ada di subjudul.
+- **Teks hasil uji memakai istilah "Aktif"** ("Aktif · DC …"), menggantikan
+  "Velum aktif: lalu lintas lewat Velum" yang mengulang nama aplikasi.
+- `docs/rilis-github.md` tidak berubah; panduan tetap berlaku untuk empat berkas APK.
+
 - **AGP 8.7.3 → 9.4.0** (PR #5 Dependabot, diterapkan di branch sesi). Bukan
   sekadar ganti nomor versi — AGP 9 menghapus beberapa API yang dipakai repo ini:
   - Plugin `org.jetbrains.kotlin.android` **dihapus** dari kedua berkas build.
@@ -221,7 +279,64 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
   software VPN dan panduan mereknya melarang pemakaian di nama aplikasi pihak ketiga
   (lihat ADR 002). Penyebutan WARP yang tersisa hanya referensial (endpoint/protokol).
 
+### Removed
+- **Popup tawaran Always-on VPN & bebas optimasi baterai dihapus** atas permintaan
+  maintainer (2026-09-12): tawaran yang muncul sendiri setelah tersambung dinilai
+  mengganggu. Berkas `VelumSetup.kt` + `VelumSetupTest.kt`, memo `setupPostponed`, enam
+  string tawaran, dan `<queries>` `IGNORE_BATTERY_OPTIMIZATION_SETTINGS` ikut dihapus.
+  Pintasan "Selalu aktif" di baris aksi tetap ada sebagai jalan manual ke pengaturan
+  sistem (kueri `VPN_SETTINGS` dipertahankan).
+
 ### Fixed
+- **Baris "Uji terakhir" tidak lagi berhenti di "Menunggu data…" atau menuduh jaringan
+  pengguna.** Bukti perangkat 2026-09-12: status "Tersambung", Data ↓ 0 B/s, endpoint
+  162.159.193.1:2408, dan pesan `Kesalahan jaringan: Unable to resolve host
+  "www.cloudflare.com"` — handshake WireGuard ternyata tidak pernah terjadi, sehingga
+  permintaan uji tidak keluar lewat tunnel dan galat DNS itu hanya gejala. Dua akar yang
+  diperbaiki: (1) `awaitHandshake` menyatakan "siap" hanya karena antarmuka TUN UP,
+  padahal handshake belum tentu ada; (2) hasil uji yang dibatalkan tidak pernah
+  ditampilkan, sehingga teks sementara bisa tertinggal selamanya. Kini handshake menjadi
+  syarat (handshake teramati / belum / tunnel turun), keadaan **belum ada data**
+  dipisahkan dari kegagalan jaringan (`VelumTestResult.Kind.NO_DATA`, disertai saran
+  tindakan: putus-sambung atau ganti jaringan), dan hasil disimpan (`Prefs.lastTest`)
+  sehingga baris itu tetap benar setelah layar dibuat ulang atau aplikasi dijalankan
+  kembali — pembatalan uji kini mengembalikan hasil sah terakhir, bukan menggantung.
+- **Endpoint diputar otomatis saat handshake tidak pernah terjadi.** Sebelumnya uji hanya
+  mengulang permintaan ke endpoint yang sama, sehingga jaringan yang memblokir endpoint
+  WARP tertentu selalu berakhir "gagal". Kini bila handshake tidak terjadi dalam batas
+  tunggu, `EndpointProbe.rotate` memilih kandidat **berbeda** dari yang sedang dipakai
+  (refresh biasa tidak cukup — pemenang RTT-nya sama), tunnel disambung ulang, dan uji
+  diulang sekali. Endpoint yang terbukti menghasilkan handshake dicatat
+  (`Prefs.workingEndpoint`) dan diutamakan pada sambungan berikutnya: bukti nyata
+  mengalahkan perkiraan RTT.
+- Uji trace memakai host cadangan `one.one.one.one` bila `www.cloudflare.com` tidak
+  terjangkau (anggaran total 14 detik, jadi tidak memperpanjang tunggu tanpa batas), teks
+  sementara dibedakan ("Menunggu data…" -> "Menguji…" -> "Mencari endpoint lain…"),
+  dan "Salin diagnostik" memuat baris "Uji terakhir" agar laporan gangguan membawa
+  alasan, bukan hanya keadaan saat itu.
+
+### Fixed
+- **Layar utama tidak lagi terpotong.** Judul "Velum" hilang sebagian di perangkat
+  pengguna: isi layar lebih tinggi dari layar, dan `android:layout_gravity="center_vertical"`
+  pada anak ScrollView menggeser seluruh isi ke atas lalu memotong bagian atas secara
+  permanen (tidak bisa dicapai dengan menggulir). Diperbaiki dengan `fillViewport="true"`
+  + `android:gravity="center_vertical"` **di dalam** LinearLayout isi, dan seluruh tata
+  letak dipadatkan: estimasi tinggi isi turun 808 -> 656 dp (ponsel 873 dp kini lega
+  ~150 dp, tinggi itu diukur dengan `tools/est_layout.py` di sandbox karena Android SDK
+  tidak tersedia). ScrollView tetap ada sebagai cadangan untuk layar sangat pendek atau
+  skala huruf besar — kini tanpa risiko pemotongan.
+
+- Lint dibersihkan agar tidak ada temuan tingkat *error*: `android:tint` diganti
+  `app:tint` pada ikon baris aksi & tombol kembali (wajib di proyek berbasis AppCompat),
+  warna ikon yang ternyata tidak terpakai dihapus, dan struktur layar pengecualian
+  diratakan supaya tidak ada `layout_weight` bersarang (boros pengukuran ganda).
+  Sisa peringatan advisori: usulan KTX `SharedPreferences.edit` di `Prefs.kt` —
+  sengaja tidak diambil karena menambah `androidx.core:core-ktx` ke APK.
+- Layar "Kecualikan aplikasi" kini punya bilah atas dengan tombol **Kembali** di kiri:
+  sebelumnya satu-satunya jalan keluar adalah tombol sistem, sehingga pengguna yang
+  membuka layar ini terasa terjebak. Layar juga menampilkan keterangan bila daftar
+  aplikasi kosong, bukan area yang menggantung.
+
 - Registrasi perangkat kini menyertakan flag `warp_enabled: true` agar akun terdaftar dengan
   WARP penuh (paritas klien resmi). Gejala sebelumnya: `one.one.one.one/help` menampilkan
   "Using DNS over WARP: No" meski tunnel tersambung. Perangkat yang terlanjur terdaftar

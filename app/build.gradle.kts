@@ -11,6 +11,12 @@ android {
     defaultConfig {
         applicationId = "com.rollinkxx.velum"
         minSdk = libs.versions.minSdk.get().toInt()
+        // targetSdk 36 (Android 16) atas izin maintainer: edge-to-edge & predictive
+        // back kini dipaksakan sistem. Keduanya sudah aman di aplikasi ini — akar
+        // layout hanya ScrollView/LinearLayout tanpa padding sistem, dan pintasan
+        // kembali memakai OnBackPressedDispatcher (bukan onBackPressed usang).
+        // Penolakan layanan latar depan yang mungkin muncul diklasifikasi sebagai
+        // VelumError.Kind.SERVICE_BLOCKED dengan pesan pemulihan yang jelas.
         targetSdk = libs.versions.targetSdk.get().toInt()
         versionCode = 1
         versionName = "0.1.0"

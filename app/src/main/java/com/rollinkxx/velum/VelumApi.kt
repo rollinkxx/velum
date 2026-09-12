@@ -1,5 +1,6 @@
 package com.rollinkxx.velum
 
+import android.os.SystemClock
 import com.wireguard.crypto.KeyPair
 import org.json.JSONObject
 import java.io.IOException
@@ -111,10 +112,40 @@ object VelumApi {
         prefs.clear()
     }
 
+    /**
+     * Host uji trace; yang kedua cadangan, karena sebagian jaringan memblokir salah satu
+     * host Cloudflare sehingga uji gagal padahal tunnelnya sehat.
+     */
+    private val TRACE_URLS = listOf(
+        "https://www.cloudflare.com/cdn-cgi/trace",
+        "https://one.one.one.one/cdn-cgi/trace"
+    )
+
+    /** Anggaran total: cadangan tidak boleh menambah waktu tunggu tanpa batas. */
+    private const val TRACE_BUDGET_MS = 14_000L
+
     /** Mengambil dan mem-parse cdn-cgi/trace (mengikuti jalur koneksi saat ini). Blocking. */
     @Throws(IOException::class)
     fun fetchTrace(): VelumFormat.TraceInfo {
-        val conn = (URL("https://www.cloudflare.com/cdn-cgi/trace").openConnection() as HttpURLConnection)
+        val started = SystemClock.elapsedRealtime()
+        var lastError: IOException? = null
+        for (url in TRACE_URLS) {
+            try {
+                return fetchTraceFrom(url)
+            } catch (e: IOException) {
+                lastError = e
+                // Gagal cepat (mis. host diblokir DNS) → masih ada waktu untuk cadangan.
+                // Gagal karena menggantung sampai batas waktu → cadangan hanya menambah
+                // waktu tunggu, jadi dihentikan saja.
+                if (SystemClock.elapsedRealtime() - started > TRACE_BUDGET_MS) break
+            }
+        }
+        throw lastError ?: IOException("uji trace gagal")
+    }
+
+    @Throws(IOException::class)
+    private fun fetchTraceFrom(url: String): VelumFormat.TraceInfo {
+        val conn = (URL(url).openConnection() as HttpURLConnection)
         try {
             conn.connectTimeout = 8000
             conn.readTimeout = 8000
