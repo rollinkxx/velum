@@ -51,7 +51,13 @@ object VelumError {
         is VelumApi.HttpError ->
             if (VelumUpstream.isClientRejected(e.code)) Kind.SERVER_REJECT else Kind.UNKNOWN
         is UnknownHostException, is SocketTimeoutException, is ConnectException -> Kind.NETWORK
-        is IOException -> Kind.NETWORK
+        // Penanda layanan diperiksa SEBELUM memutuskan "ini masalah jaringan".
+        // Penolakan layanan latar depan bisa datang terbungkus IOException (mis. dari
+        // lapisan I/O milik library), dan `is IOException -> NETWORK` yang dievaluasi lebih
+        // dulu membuatnya dilaporkan sebagai "Kesalahan jaringan" — persis pesan
+        // menyesatkan yang klasifikasi ini dibuat untuk mencegahnya. Tiga tipe di baris
+        // atas tetap NETWORK tanpa syarat: ketiganya tidak pernah berarti penolakan layanan.
+        is IOException -> if (looksLikeServiceBlock(e)) Kind.SERVICE_BLOCKED else Kind.NETWORK
         else -> if (looksLikeServiceBlock(e)) Kind.SERVICE_BLOCKED else Kind.UNKNOWN
     }
 
