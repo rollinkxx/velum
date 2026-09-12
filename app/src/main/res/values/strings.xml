@@ -57,5 +57,4 @@
     <string name="err_network">Kesalahan jaringan: %1$s</string>
     <string name="err_server_reject">Layanan menolak klien ini (HTTP %1$s). Versi Velum perlu diperbarui.</string>
     <string name="reset_done">Registrasi dihapus. Tekan Sambungkan untuk mendaftar ulang.</string>
-    <string name="desc_footer">Hanya tunnel Velum. Tanpa iklan, tanpa pelacakan.</string>
 </resources>
