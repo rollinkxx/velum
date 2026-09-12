@@ -37,8 +37,11 @@ android {
     }
 
     // Pemecahan APK per arsitektur. Isi APK ini didominasi pustaka native WireGuard
-    // (satu `.so` per ABI, ±2 MB masing-masing) — bukan kode Kotlin yang hanya ±1.900
-    // baris. R8 tidak menyentuh `.so`, jadi memecah per ABI adalah satu-satunya cara
+    // (satu `.so` per ABI, ±2 MB masing-masing) — bukan kode Kotlin aplikasi, yang
+    // jumlahnya hanya ribuan baris dan kontribusi ukurannya kecil di samping `.so`.
+    // (Angka baris sengaja tidak ditulis di sini: ia berubah setiap rilis dan komentar
+    // yang memuat angka usang lebih menyesatkan daripada komentar tanpa angka.)
+    // R8 tidak menyentuh `.so`, jadi memecah per ABI adalah satu-satunya cara
     // menurunkan ukuran secara berarti: perangkat hanya mengunduh arsitekturnya sendiri.
     //
     // `isUniversalApk = true` tetap dipertahankan: distribusi lewat GitHub Releases

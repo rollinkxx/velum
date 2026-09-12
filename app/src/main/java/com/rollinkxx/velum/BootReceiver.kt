@@ -37,6 +37,22 @@ class BootReceiver : BroadcastReceiver() {
             return
         }
         val pending = goAsync()
+        // RISIKO YANG DIKETAHUI DAN SENGAJA DIPERTAHANKAN (butuh perangkat untuk diputuskan):
+        // `up()` di bawah bisa memakan 2 detik (GoBackend menunggu VpnService) ditambah
+        // hingga 10 x 1 detik retry resolusi DNS (`DNS_RESOLUTION_RETRIES = 10` pada
+        // GoBackend.java:43) bila endpoint berupa nama domain dan DNS belum siap — kondisi
+        // khas saat boot. Totalnya bisa melewati anggaran receiver.
+        //
+        // Alternatif yang tampak lebih bersih — serahkan ke ReconnectMonitor lalu selesai
+        // tanpa menunggu — TIDAK diambil, karena `goAsync()` juga menahan proses tetap
+        // hidup selama pekerjaan berlangsung. Tanpa itu, proses yang baru lahir untuk
+        // broadcast ini bisa dibunuh sebelum tunnel naik, dan kegagalannya sama senyapnya.
+        // Jadi pilihannya bukan "aman vs berisiko", melainkan dua risiko berbeda:
+        // melebihi anggaran receiver, atau kehilangan proses di tengah penyambungan.
+        // Memutuskannya butuh pengukuran di perangkat (lihat docs/uji-perangkat.md),
+        // bukan penalaran dari sandbox. Yang sudah dijaga di sini: kegagalan `up()` tidak
+        // menghalangi `ReconnectMonitor.ensure()`, jadi peristiwa jaringan berikutnya
+        // tetap punya peluang memulihkan tunnel.
         Thread {
             try {
                 VelumTunnel.up(context, prefs)

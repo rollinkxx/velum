@@ -9,8 +9,15 @@ import android.content.Intent
 import android.os.Build
 
 /**
- * Notifikasi persisten status koneksi pada kanal aplikasi sendiri (terpisah dari
- * notifikasi foreground-service milik library WireGuard).
+ * Notifikasi persisten status koneksi pada kanal aplikasi sendiri.
+ *
+ * **Koreksi atas komentar lama di sini:** dulu berkas ini menyebut "terpisah dari
+ * notifikasi foreground-service milik library WireGuard" — library itu tidak memposting
+ * notifikasi apa pun. `GoBackend` tidak pernah memanggil `startForeground` (diperiksa
+ * pada sumber upstream tag `1.0.20260102`), jadi satu-satunya notifikasi lain yang
+ * terlihat pengguna saat tunnel UP adalah milik **sistem** (ikon kunci / notifikasi VPN
+ * aktif), bukan milik library.
+ *
  * Tanpa dependensi: memakai Notification framework bawaan. Izin POST_NOTIFICATIONS
  * (Android 13+) diminta dari MainActivity; bila pengguna menolak, notify() di-skip aman.
  */
