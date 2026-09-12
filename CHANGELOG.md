@@ -24,6 +24,17 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
   arsitekturnya sendiri.
 - `versionCode` otomatis per varian (`abiCode * 1000 + versionCode`), dengan APK universal
   memakai nilai terendah supaya varian spesifik arsitektur selalu lebih diutamakan.
+- **Ikon aplikasi baru**: kartu gelap bergradien dengan monogram "V" berlapis emas
+  (champagne → amber, kilau di tepi atas). Ikon adaptif kini punya lapisan **monokrom**
+  sehingga ikut ikon tematik Android 13+, varian bulat tersedia lewat
+  `android:roundIcon`, dan PNG legacy API 24–25 dibangkitkan dari kanvas yang sama
+  sehingga tampil identik di semua versi.
+- Ikon khusus untuk ubin pengaturan cepat dan notifikasi
+  (`drawable/ic_launcher_tile.xml`): glif satu warna yang dipotong rapat, menggantikan
+  ikon adaptif 108x108 yang hurufnya tampak kecil saat diseragamkan sistem.
+- Ikon baris aksi (daur ulang, pengatur, kisi aplikasi, salin) digambar sendiri sebagai
+  vektor sederhana — tanpa pustaka ikon pihak ketiga, demi ukuran APK dan lisensi.
+
 
 - Verifikasi `apksigner` di job rilis: build digagalkan bila APK ternyata tidak
   bertanda tangan atau memakai kunci debug, dan sidik jari SHA-256 tiap APK dicetak
@@ -32,6 +43,26 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
   gagal memasang.
 
 ### Changed
+- **`targetSdk` 35 → 36 (Android 16)** atas izin maintainer. Konsekuensi yang ikut
+  ditangani dalam perubahan yang sama, bukan ditunda:
+  - **Edge-to-edge dipaksakan** — isi jendela kini berada di bawah bilah status dan
+    bilah navigasi. Kedua layar (utama & pengecualian aplikasi) menerapkan insets
+    bilah sistem sebagai padding akar lewat `VelumInsets.kt`; pada perangkat lama
+    insets bernilai nol sehingga tidak menggandakan jarak.
+  - **Predictive back dipaksakan** — pintasan "Kembali" yang baru memakai
+    `onBackPressedDispatcher`, bukan `onBackPressed()` yang tidak lagi dipanggil.
+  - **Izin layanan latar depan diperketat.** Bila Android menolak/menutup layanan VPN,
+    `VelumError.Kind.SERVICE_BLOCKED` mengenali pola pesannya dan menampilkan langkah
+    pemulihan (periksa Always-on VPN & blokir koneksi tanpa VPN) alih-alih
+    "Kesalahan jaringan" yang menyesatkan. Klasifikasi ini heuristik dan teruji unit.
+- **Baris aksi di layar utama dirancang ulang**: sebelumnya tombol teks polos berwarna
+  pudar, kini kartu berisi empat baris dengan ikon beraksen, judul, subjudul yang
+  menjelaskan akibat tiap aksi, dan penanda panah. Label "Selalu aktif (pengaturan
+  sistem)" dipersingkat menjadi "Selalu aktif" — konteks sistem kini ada di subjudul.
+- **Teks hasil uji memakai istilah "Aktif"** ("Aktif · DC …"), menggantikan
+  "Velum aktif: lalu lintas lewat Velum" yang mengulang nama aplikasi.
+- `docs/rilis-github.md` tidak berubah; panduan tetap berlaku untuk empat berkas APK.
+
 - **AGP 8.7.3 → 9.4.0** (PR #5 Dependabot, diterapkan di branch sesi). Bukan
   sekadar ganti nomor versi — AGP 9 menghapus beberapa API yang dipakai repo ini:
   - Plugin `org.jetbrains.kotlin.android` **dihapus** dari kedua berkas build.
@@ -222,6 +253,11 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
   (lihat ADR 002). Penyebutan WARP yang tersisa hanya referensial (endpoint/protokol).
 
 ### Fixed
+- Layar "Kecualikan aplikasi" kini punya bilah atas dengan tombol **Kembali** di kiri:
+  sebelumnya satu-satunya jalan keluar adalah tombol sistem, sehingga pengguna yang
+  membuka layar ini terasa terjebak. Layar juga menampilkan keterangan bila daftar
+  aplikasi kosong, bukan area yang menggantung.
+
 - Registrasi perangkat kini menyertakan flag `warp_enabled: true` agar akun terdaftar dengan
   WARP penuh (paritas klien resmi). Gejala sebelumnya: `one.one.one.one/help` menampilkan
   "Using DNS over WARP: No" meski tunnel tersambung. Perangkat yang terlanjur terdaftar

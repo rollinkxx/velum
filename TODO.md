@@ -50,3 +50,10 @@
 | 46 | Panduan keystore rilis: langkah keytool (komputer & Termux), tabel isian, Secrets vs Variables, verifikasi apksigner | Sedang | Selesai (dokumen); eksekusi menunggu maintainer |
 | 47 | Bump AGP 9.4.0 + migrasi built-in Kotlin, localeFilters, compileSdk 36 | Sedang | Selesai tervalidasi (CI run 34669207614, hijau percobaan pertama) |
 | 48 | Verifikasi apksigner di CI: tolak APK tak bertanda tangan / berkunci debug, cetak sidik jari SHA-256 | Tinggi | Selesai tervalidasi (CI run 34671312706) |
+| 49 | Sinkronisasi AGENTS.md §5 pasca-merge PR #13: `main` = `a6c6814`, run acuan 34676712159 (6m4s), branch `dependabot/*` sudah bersih, 0 PR/issue/release | Sedang | Selesai (gerbang lokal §3; push dokumen tidak memicu CI) |
+| 50 | Ikon aplikasi baru: kartu gelap + monogram emas, lapisan monokrom (ikon tematik), varian bulat, PNG legacy dibangkitkan serempak | Tinggi | Selesai, menunggu validasi CI |
+| 51 | Ikon khusus ubin pengaturan cepat & notifikasi (glif satu warna dipotong rapat) + ikon baris aksi yang digambar sendiri | Sedang | Selesai, menunggu validasi CI |
+| 52 | Baris aksi layar utama jadi kartu ikon + subjudul; label hasil uji memakai "Aktif"; judul "Selalu aktif" dipersingkat | Sedang | Selesai, menunggu validasi CI |
+| 53 | Tombol Kembali di bilah atas layar Kecualikan aplikasi + keterangan saat daftar kosong | Sedang | Selesai, menunggu validasi CI |
+| 54 | targetSdk 36: penanganan insets edge-to-edge (`VelumInsets`) + klasifikasi penolakan layanan latar depan (`SERVICE_BLOCKED`, teruji unit) | Tinggi | Selesai, menunggu validasi CI — **wajib uji perangkat** lewat APK `app-preview` |
+| 55 | Periksa keselarasan 16 KB page size pustaka native WireGuard (Play menolaknya sejak Nov 2025; distribusi GitHub Releases belum tentu aman di perangkat berpaginasi 16 KB) | Sedang | Belum — butuh perintah maintainer (menyentuh versi dependensi) |

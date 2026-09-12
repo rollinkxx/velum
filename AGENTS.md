@@ -161,24 +161,37 @@ sebelum push.
 - **Identitas permanen**: `applicationId` Android diputuskan SEKALI sebelum publish dan dicatat
   di ADR (termasuk hasil cek tabrakan nama di Play Store). Perubahan setelah publish = aplikasi
   baru.
+- **Aset ikon wajib serempak**: `drawable/ic_launcher_foreground.xml`,
+  `drawable/ic_launcher_monochrome.xml`, `values/ic_launcher_colors.xml`, dan **10 berkas**
+  `mipmap-*/ic_launcher{,_round}.png` (5 densitas) menggambarkan satu desain yang sama. Bila
+  desain ikon diubah, ubah **semuanya** dalam satu commit — jangan pernah menyunting PNG
+  legacy tanpa menyamakan vektornya (perangkat API 24–25 memakai PNG, API 26+ memakai
+  vektor; ketimpangan hanya terlihat di perangkat). PNG legacy dibuat lewat kanvas yang sama
+  (gradien `icon_bg_*`, monogram pada viewport 108, kanvas 48–192 px); `android:roundIcon`
+  wajib menunjuk varian bulat.
+- **Glif ubin/notifikasi**: `drawable/ic_launcher_tile.xml` adalah glif **satu warna yang
+  dipotong rapat** (viewport 46x54) — dipakai ubin pengaturan cepat & ikon kecil notifikasi.
+  Jangan mengarahkan keduanya ke `ic_launcher_foreground.xml`: monogramnya hanya menempati
+  sepertiga kanvas 108x108 sehingga tampak kecil setelah sistem menyeragamkan ukuran.
 - **Artefak referensi terlarang-ubah**: saat ini tidak ada (belum ada snapshot/golden test).
   Jika nanti ditambahkan (mis. Roborazzi), daftar path dan prosedur re-record wajib ditulis di §5.
 
 ## §5 Fakta Proyek
 
-**Keadaan repo (fakta per 2026-09-12, audit ulang setelah 8 PR Dependabot ter-merge):**
+**Keadaan repo (fakta per 2026-09-12, audit ulang setelah PR #13 ter-merge):**
 - Aplikasi Android ringan fungsi **WARP saja** (tunnel WireGuard ke Cloudflare), tanpa mode
   DNS, tanpa iklan/analitik/akun. UI Bahasa Indonesia.
 - **Stack aktual** (dari `gradle/libs.versions.toml`, satu-satunya sumber versi): Gradle
   **9.7.1** (wrapper ter-commit, termasuk `gradle-wrapper.jar`; naik dari 8.9 lewat PR #8),
-  AGP 8.7.3, Kotlin 2.0.21, JDK 17,
-  compileSdk/targetSdk 35, minSdk 24. **Catatan kombinasi:** Gradle 9.x secara resmi hanya
-  diuji dengan AGP 9.0+, dan Kotlin 2.0.21 dijamin penuh sampai Gradle 8.6 — pasangan
-  Gradle 9.7.1 + AGP 8.7.3 + Kotlin 2.0.21 berada di luar matriks resmi ketiganya, namun
-  **terbukti membangun dengan bersih** (run 34660850896: tes, assembleDebug, dan lint
-  semuanya hijau, tanpa satu pun peringatan deprecation Gradle). Statusnya "berfungsi tetapi
-  tidak dijamin upstream": bila kelak muncul kegagalan Gradle yang tidak berhubungan dengan
-  kode aplikasi, curigai pasangan ini lebih dulu.
+  **AGP 9.4.0** (naik dari 8.7.3; Kotlin kini **bawaan AGP ≥ 2.2.10** — versi Kotlin
+  sengaja **tidak ada lagi** di katalog), JDK 17,
+  compileSdk 36, **targetSdk 36** (naik dari 35 atas izin maintainer; lihat blok
+  "Konsekuensi targetSdk 36" di bawah), minSdk 24.
+  **Catatan kombinasi:** sejak AGP 9.4.0 syarat resminya adalah Gradle ≥ 9.6.0 dan JDK ≥ 17
+  — keduanya terpenuhi (wrapper 9.7.1, CI JDK 17), sehingga kombinasi yang dulu berada di
+  luar matriks resmi (Gradle 9.7.1 + AGP 8.7.3 + Kotlin 2.0.21) **sudah tidak berlaku lagi**.
+  Bila kelak muncul kegagalan Gradle yang tidak berhubungan dengan kode aplikasi, curigai
+  AGP 9.x lebih dulu (API-nya banyak berubah; §4 melarang versi di luar katalog).
   Dependensi runtime hanya `androidx.appcompat` **1.8.0**,
   `androidx.activity` (Activity Result API), `com.wireguard.android:tunnel` **1.0.20260102**
   (GoBackend),
@@ -192,7 +205,7 @@ sebelum push.
   (laporan HTML tidak terbaca dari sandbox), `abortOnError = true`.
 - **Identitas (ADR 002):** `applicationId` = `com.rollinkxx.velum` (debug: suffix `.debug`),
   package Kotlin `com.rollinkxx.velum`, nama aplikasi **Velum**, versi awal `0.1.0`/code 1.
-- **Struktur modul `app/`** (`app/src/main/java/com/rollinkxx/velum/`, 18 berkas Kotlin):
+- **Struktur modul `app/`** (`app/src/main/java/com/rollinkxx/velum/`, 19 berkas Kotlin):
   - `MainActivity.kt` — **hanya render**: UI satu layar (View XML), panel info interaktif
     (durasi/endpoint/hasil uji+DC/laju+deteksi basi), izin notifikasi Android 13+ (diminta
     hanya bila perlu, lewat Activity Result API), pintasan pengaturan VPN/Always-on,
@@ -217,7 +230,12 @@ sebelum push.
   - `VelumTileService.kt` — ubin pengaturan cepat (sambung/putus tanpa membuka aplikasi;
     varian `startActivityAndCollapse(PendingIntent)` di API 34+ agar bebas API usang).
   - `AppExclusionActivity.kt` — split tunneling: pilih aplikasi yang **dikecualikan** dari
-    tunnel; daftar dibatasi `<queries>` peluncur (tanpa `QUERY_ALL_PACKAGES`).
+    tunnel; daftar dibatasi `<queries>` peluncur (tanpa `QUERY_ALL_PACKAGES`); bilah atas
+    dengan tombol **Kembali** (`onBackPressedDispatcher`, bukan `onBackPressed` usang) dan
+    keterangan bila daftar aplikasi kosong.
+  - `VelumInsets.kt` — padding bilah sistem untuk tampilan **edge-to-edge** yang dipaksakan
+    sejak `targetSdk` 36; dipanggil dari akar layout (`@+id/root`) kedua activity. Pada
+    perangkat/jendela non-edge-to-edge insets bernilai nol sehingga tidak menggandakan jarak.
   - **Berkas murni (tanpa Android framework) — semuanya teruji unit JVM:**
     `VelumFormat.kt` (parse trace, pemformatan, pemilihan endpoint),
     `VelumTestDecision.kt` (RETRY/PUBLISH/DROP — mencegah false negative "Belum lewat Velum"),
@@ -228,11 +246,19 @@ sebelum push.
     Uji padanannya di `app/src/test/java/com/rollinkxx/velum/*Test.kt` (6 berkas).
   - `AndroidManifest.xml` — VpnService milik library (`GoBackend$VpnService`) di-merge
     (`tools:node="merge"`) untuk menambah `foregroundServiceType="specialUse"` + property
-    subtype `vpn`; receiver boot exported; service ubin QS (`BIND_QUICK_SETTINGS_TILE`);
-    `AppExclusionActivity` (not exported); blok `<queries>` peluncur; izin
+    subtype `vpn`; receiver boot exported; service ubin QS (`BIND_QUICK_SETTINGS_TILE`,
+    ikon `@drawable/ic_launcher_tile`); `AppExclusionActivity` (not exported);
+    `android:icon` + **`android:roundIcon`**; blok `<queries>` peluncur; izin
     RECEIVE_BOOT_COMPLETED & POST_NOTIFICATIONS.
-  - Tema gelap murni resource (drawable shape/ripple/selector; tanpa font eksternal);
-    ikon adaptif vektor + PNG polos untuk API 24–25.
+  - Tema gelap murni resource (drawable shape/ripple/selector; tanpa font eksternal).
+    **Ikon** (diperbarui 2026-09-12): kartu gelap bergradien + monogram "V" emas, dengan
+    lapisan **monokrom** (ikon tematik Android 13+) dan varian **bulat**
+    (`mipmap-anydpi-v26/ic_launcher_round.xml`). PNG legacy API 24–25 (5 densitas,
+    `ic_launcher.png` + `ic_launcher_round.png`) dibangkitkan dari kanvas yang sama sehingga
+    tampil identik dengan vektor adaptif; aturan kesetaraannya ada di §4.
+  - **Ikon baris aksi** (`drawable/ic_back|ic_chevron|ic_refresh|ic_settings|ic_apps|ic_copy.xml`)
+    digambar sendiri sebagai vektor sederhana — **dilarang** menyalin berkas dari pustaka
+    ikon pihak ketiga (lisensi & ukuran); warna diatur lewat `android:tint` di layout.
   - Rilis: `signingConfigs.release` membaca env (`KEYSTORE_FILE/PASSWORD/ALIAS/KEY_PASSWORD`);
     minify+R8 aktif; `proguard-rules.pro` keep `com.wireguard.**`.
   - **Pemecahan APK per ABI** (`splits.abi`, aktif 2026-09-12): `arm64-v8a`, `armeabi-v7a`,
@@ -242,6 +268,31 @@ sebelum push.
     universal tidak diubah sehingga nilainya terendah — varian spesifik selalu menang.
     **Konsekuensi yang mudah terlupa:** nama keluaran bukan lagi `app-debug.apk`/
     `app-release.apk`, jadi setiap path artifact/rilis WAJIB memakai pola `*.apk`.
+- **Konsekuensi targetSdk 36 (diterapkan 2026-09-12, atas izin maintainer):**
+  - **Edge-to-edge dipaksakan** sistem pada Android 16; opt-out tidak tersedia. Akar
+    layout kedua activity diberi `@+id/root` dan padding bilah sistem dipasang lewat
+    `VelumInsets.kt`. Menambah layar baru **wajib** memanggil `VelumInsets.applySystemBars`
+    pada akar layoutnya, jika tidak isinya tertutup bilah status/navigasi.
+  - **Predictive back dipaksakan**: `onBackPressed()` tidak lagi dipanggil dan
+    `KEYCODE_BACK` tidak lagi dikirim. Di repo ini aman (tidak ada pemakaian usang);
+    pintasan kembali baru memakai `onBackPressedDispatcher`. Jangan menambahkan
+    `onBackPressed()` baru.
+  - **Izin layanan latar depan diperketat.** Android dapat menolak `startForeground` atau
+    menutup layanan VPN. `VelumError.Kind.SERVICE_BLOCKED` mengenali pola pesan tersebut
+    (daftar `SERVICE_MARKERS`, termasuk rantai penyebab) dan `VelumController.messageFor`
+    menampilkan `R.string.err_connect_closed` — langkah pemulihannya: periksa Always-on VPN
+    & blokir koneksi tanpa VPN. Klasifikasi ini **heuristik** (menebak dari teks, bukan kode
+    error), karena itu teruji unit di `VelumErrorTest`.
+  - **Yang belum diuji perangkat:** seluruh tiga poin di atas hanya tervalidasi kompilasi
+    oleh CI. Perilaku nyata targetSdk 36 (penolakan FGS, tampilan insets) **wajib** dicoba
+    maintainer lewat APK `app-preview` sebelum dirilis.
+- **16 KB page size (belum ditangani, catatan untuk maintainer):** sejak Android 15 ada
+  perangkat berpaginasi memori 16 KB, dan Play (mulai November 2025, tenggat bergeser ke
+  Mei 2026) menolak unggahan yang pustaka native-nya hanya selaras 4 KB. Velum mengirim
+  `.so` WireGuard jadi hal ini **berpotensi** relevan walau distribusi lewat GitHub Releases
+  (bukan Play). Belum diverifikasi apakah `.so` bawaan `com.wireguard.android:tunnel` sudah
+  selaras 16 KB; cara memeriksa: `check_elf_alignment.sh` / APK Analyzer pada APK rilis, atau
+  bump versi library bila ternyata belum. **Jangan mengubah versi dependensi tanpa perintah.**
 - **CI (`.github/workflows/build.yml`) — 2 job** (dikonsolidasikan 2026-09-12 dari 4 job):
   trigger `push` semua branch (paths-ignore
   `**.md`, `docs/**`) + `workflow_dispatch`; `concurrency: cancel-in-progress` per-ref;
@@ -270,7 +321,15 @@ sebelum push.
   - `.github/dependabot.yml`: ekosistem `gradle` (mingguan) & `github-actions` (bulanan),
     maks. 5 PR, prefix commit `build`/`ci`. Dependabot hanya membuka PR — **manusia yang
     memutuskan**, dan `gradle/libs.versions.toml` tetap satu-satunya sumber versi.
-  - **Run acuan terkini:** 34671312706 (`a74c1e7`, **7m19s**, hijau) — **run pertama
+  - **Run acuan terkini (ujung `main`):** 34676712159 (`a6c6814`, **6m4s**, hijau) —
+    run **pertama yang membangun persis ujung `main` setelah PR terakhir di-merge**;
+    inilah bukti yang menjawab jebakan "PR hijau ≠ ujung `main` hijau" (lihat catatan
+    teknis). Dua job: `verifikasi (build, tes, lint)` 23 step · `assembleRelease
+    (bertanda tangan)` 14 step, keduanya success. Artifact: `app-release` **11,92 MB** ·
+    `app-preview` 11,92 MB · `app-debug` 26,03 MB · `mapping-preview` 0,59 MB ·
+    `unit-test-report` & `lint-report` 0,01 MB. Anotasi: **0 error**, 10 peringatan lint
+    advisori (lihat blok advisory di bawah).
+  - **Run acuan sebelumnya:** 34671312706 (`a74c1e7`, **7m19s**, hijau) — **run pertama
     dengan job rilis benar-benar berjalan**. Maintainer mengisi Secrets keystore
     2026-09-12, jadi `vars.ENABLE_RELEASE_SIGNING` kini `true` dan job `release`
     **tidak lagi di-skip** — perkirakan durasi CI ±7 menit, bukan ±5.
@@ -326,8 +385,12 @@ sebelum push.
   - **Run acuan setelah konsolidasi:** 34660850896 (`f2dae7f`, **4m04s**, 19 step hijau) —
     job tunggal, artifact `app-debug` **10,08 MB** · `unit-test-report` 12,7 KB ·
     `lint-report` 17,6 KB. Sekaligus bukti pertama Gradle 9.7.1 + AGP 8.7.3 bisa dibangun.
-    Anotasi: **0 error**, 10 peringatan lint advisori (GoBackend static field, allowBackup
-    deprecated, ikon peluncur, tawaran versi baru) — tidak ada peringatan Node.js.
+    Anotasi: **0 error**, 10 peringatan lint advisori (saat itu: `SharedPreferences.edit`
+    KTX x3, ukuran teks 10sp, adaptive icon tanpa `monochrome`, dan ikon peluncur yang
+    mengisi seluruh piksel x5). Perubahan 2026-09-12 menyelesaikan tujuh di antaranya —
+    tagline 11sp, lapisan `monochrome` ditambahkan, monogram "V" ditaruh di zona aman
+    72x72 — sehingga **yang diharapkan tersisa hanya `Prefs.kt` `.edit()` x3**. Verifikasi
+    lewat anotasi check-run setelah push, bukan lewat ingatan dokumen ini.
   - **Run hijau terakhir sebelum konsolidasi:** 34658145458 (`7a89e70`, 3m56s) — run
     pertama setelah bump keempat action; **anotasi Node.js 20 hilang** di sini (TODO 23).
   - **Run hijau bersejarah:** 34562586434 (`26104f6`) · 34565410965 (`9f0adb9`) ·
@@ -342,14 +405,17 @@ sebelum push.
   default branch `main`. **Repo diubah menjadi PUBLIK oleh maintainer 2026-09-12** —
   konsekuensi: Actions gratis tanpa batas (sebelumnya privat, kuota 2.000 menit/bulan
   dengan spending limit $0), dan seluruh riwayat commit terbaca publik.
-  PR #1–#4 dan #6–#12 sudah **merged**; `main` = `48c40c9`.
+  PR #1–#4 dan #6–**#13** sudah **merged**; `main` = **`a6c6814`** (merge PR #13,
+  branch `arena/01a0915f-velum`). **Nol PR terbuka, nol issue terbuka, nol release/tag** —
+  langkah terbitkan rilis di `docs/rilis-github.md` belum pernah dijalankan.
 - **PR Dependabot: tidak ada lagi yang terbuka.** #5 (AGP 8.7.3 → 9.4.0) **ditutup**
   atas perintah maintainer 2026-09-12, setelah isinya diterapkan lebih lengkap di
   branch sesi (`42b94bb`, CI 34669207614 hijau). Patch #5 hanya mengubah satu baris
   `agp` di katalog, padahal AGP 9 menghapus API yang dipakai repo ini — lihat blok
   "Run acuan terkini" di atas untuk daftar migrasi yang wajib menyertainya.
-  Branch `dependabot/gradle/com.android.application-9.4.0` dibiarkan (agen tidak
-  menyentuh branch `dependabot/*`, §1); GitHub membersihkannya sendiri.
+  Branch `dependabot/*` **sudah tidak ada** di remote (dibersihkan GitHub setelah PR
+  ditutup/di-merge) — terverifikasi 2026-09-12; yang tersisa hanya `main` + lima
+  `arena/*` milik sesi lama (tidak boleh disentuh, §1).
   Bila Dependabot membuka PR AGP serupa lagi, cukup rujuk commit `42b94bb`.
 - Sandbox: tanpa JDK/Gradle/Android SDK, dan **jaringan keluar diblokir**
   (`services.gradle.org`, `repo1.maven.org`, `api.adoptium.net` → SSL_ERROR_SYSCALL),
@@ -459,6 +525,20 @@ sebelum push.
   #8 + AGP 8.7.3 yang tidak ikut naik) **tidak pernah dibangun sekali pun**. Sebelum
   menyimpulkan `main` sehat setelah beberapa merge beruntun, pastikan ada **satu run di
   ujung `main`** — bukan menjumlahkan status PR.
+- (2026-09-12) **Ikon: tidak ada sumber vektor otomatis untuk PNG legacy.** Desain ikon
+  digambar dua kali — sebagai vektor (API 26+) dan sebagai kanvas raster (API 24-25).
+  Kanvas raster dibuat lewat skrip sekali pakai di sandbox (`python3` + `zlib`, tanpa
+  Pillow) dan **tidak ikut ke repo**; yang tersimpan hanya hasilnya. Konsekuensi: bila
+  monogram/warna ikon diubah, PNG **wajib** dibuat ulang dari kanvas yang sama (atau skrip
+  serupa ditulis ulang), bukan disunting satu per satu. Ketimpangan hanya terlihat di
+  perangkat API 24-25.
+- (2026-09-12) **`strings.xml` pernah ditulis ulang total (bukan ditambal).** Karena sandbox
+  tidak bisa mengompilasi, kesalahan nama resource tidak akan ketahuan sampai CI. Sebelum
+  commit, rujukan diperiksa dengan skrip: kumpulkan semua `R.<tipe>.<nama>` dari `.kt` dan
+  `@<tipe>/<nama>` dari XML, lalu pastikan setiap nama ada di `res/`. **Wajib** diulang
+  setiap kali berkas resource ditulis ulang — termasuk memeriksa `@color/nama` ke
+  `res/color/*.xml` (color-state-list) **dan** `values/*.xml`, karena dua tempat itu mudah
+  terlewat.
 - (2026-09-11) **Jebakan deteksi WARP**: `Tunnel.State.UP` dari `GoBackend` hanya berarti
   antarmuka TUN selesai dibuat, BUKAN handshake selesai; dan `HttpURLConnection` memakai
   ulang soket keep-alive yang dibuat sebelum VPN aktif (Android tidak memindahkan soket
