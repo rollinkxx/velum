@@ -9,6 +9,7 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import kotlin.math.roundToInt
 
 /**
  * Memilih aplikasi yang **dikecualikan** dari tunnel (split tunneling): aplikasi
@@ -44,7 +45,7 @@ class AppExclusionActivity : AppCompatActivity() {
                 setText(R.string.excluded_empty)
                 setTextColor(resources.getColor(R.color.muted, theme))
                 textSize = 13f
-                setPadding(0, 12, 0, 12)
+                setPadding(0, dp(12), 0, dp(12))
             })
         }
         for (app in apps) {
@@ -52,7 +53,7 @@ class AppExclusionActivity : AppCompatActivity() {
                 text = app.label
                 isChecked = app.packageName in excluded
                 setTextColor(warna)
-                setPadding(0, 12, 0, 12)
+                setPadding(0, dp(12), 0, dp(12))
             }
             boxes[app.packageName] = box
             list.addView(box)
@@ -64,6 +65,17 @@ class AppExclusionActivity : AppCompatActivity() {
             onBackPressedDispatcher.onBackPressed()
         }
     }
+
+    /**
+     * dp -> piksel.
+     *
+     * `View.setPadding` menerima **piksel**, dan `12` mentah berarti 12px: di layar 3x
+     * itu hanya 4dp, sehingga jarak antarbaris nyaris hilang di ponsel padat piksel
+     * sementara tetap longgar di ponsel lama. Ukuran visual tidak boleh bergantung pada
+     * kerapatan layar secara kebetulan seperti itu.
+     */
+    private fun dp(value: Int): Int =
+        (value * resources.displayMetrics.density).roundToInt()
 
     private fun save() {
         prefs.excludedApps = boxes.filter { it.value.isChecked }.keys.toSet()
