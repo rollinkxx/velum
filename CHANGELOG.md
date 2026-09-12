@@ -55,6 +55,39 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
   gagal memasang.
 
 ### Changed
+- **Notifikasi status kini mengikuti tunnel, bukan layar.** Sebelumnya `show`/`hide`
+  hanya dipanggil dari callback visual layar utama, sehingga dua keadaan salah terjadi:
+  tunnel yang mati di latar (pantulan menyerah, atau diputus lewat ubin) meninggalkan
+  notifikasi "Tersambung" yang basi selamanya, dan menyambung lewat ubin pengaturan
+  cepat saat aplikasi tertutup tidak memunculkan notifikasi sama sekali. Kini
+  `VelumTunnel.onStateChange` yang mengelolanya — satu titik yang melihat setiap
+  perubahan status, siapa pun pemicunya.
+- **Sambung ulang otomatis setelah aplikasi diperbarui.** Pembaruan mematikan proses,
+  dan proses yang mati berarti tunnel ikut mati; sebelumnya tidak ada yang
+  menyambungkannya kembali sampai jaringan kebetulan berganti atau pengguna membuka
+  aplikasi. `BootReceiver` kini juga menangani `MY_PACKAGE_REPLACED`, dengan guard yang
+  sama seperti saat boot (terakhir UP, sudah terdaftar, persetujuan VPN masih berlaku).
+- **"Daftar ulang" tidak lagi menghapus daftar pengecualian aplikasi.** `Prefs.clear()`
+  mempertahankan `excludedApps` selain `wasUp`: pilihan split tunneling adalah
+  preferensi pengguna, bukan data registrasi, dan dialog konfirmasi tidak pernah
+  mengatakan bahwa daftar itu akan dibuang.
+- **Rotasi layar tidak lagi mereset durasi koneksi atau menjalankan ulang uji.** Durasi
+  disimpan di `VelumTunnel.upSinceElapsedMs` (umur proses) dan status awal controller
+  dibaca dari keadaan tunnel yang sebenarnya, sehingga layar yang baru tidak menganggap
+  "sudah UP sejak tadi" sebagai transisi baru.
+- Diagnostik: kalimat catatan diperjelas menjadi "tanpa kunci privat, identitas
+  perangkat, atau alamat IP **Anda**" (sebelumnya mengklaim tanpa alamat IP padahal
+  baris Endpoint memuat IP PoP Cloudflare), dan memuat baris **Peringatan** bila
+  penyimpanan jatuh ke berkas polos karena keystore perangkat gagal — keadaan yang
+  selama ini hanya tercatat di logcat.
+- `androidx.core` dideklarasikan eksplisit di katalog (versi **1.13.0**): `VelumInsets`
+  memakai `ViewCompat`/`WindowInsetsCompat` secara langsung, tetapi pustakanya selama ini
+  hanya hadir sebagai dependensi transitif. 1.13.0 sengaja dipilih karena itulah versi
+  yang **sudah** terselesaikan di graph — `appcompat:1.8.0` dan `activity:1.9.3` sama-sama
+  menarik `core:1.13.0` (bukti: POM keduanya di Google Maven), sementara
+  `security-crypto:1.1.0` dan `com.wireguard.android:tunnel:1.0.20260102` tidak menarik
+  `core` sama sekali. Jadi classpath, isi APK, dan ukuran APK tidak berubah satu bit pun;
+  yang berubah hanya bahwa repo ini kini menyatakan sendiri apa yang dipakainya.
 - **Pantulan jaringan lebih sabar** ([ReconnectMonitor]): backoff 3 percobaan
   (2/5/10 dtk) menjadi **5 percobaan (2/5/10/30/60 dtk)**. Jaringan yang baru berganti —
   habis pindah Wi-Fi, keluar mode pesawat, atau baru menyala setelah boot — sering butuh
@@ -288,6 +321,53 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
   sistem (kueri `VPN_SETTINGS` dipertahankan).
 
 ### Fixed
+- **UI tidak lagi disentuh dari thread latar.** Jalur ulangan uji menjadwalkan
+  `runTraceTest` lewat `testWorker`, dan dua baris di dalamnya menulis `TextView` tanpa
+  `main.post` — padahal baris lain di berkas yang sama sudah dibungkus dengan benar,
+  jadi ini kelalaian. Tidak crash hanya karena kebetulan: kedua view target berukuran
+  tetap (`0dp`+weight dan `match_parent`), sehingga `checkForRelayout` mengambil jalur
+  `invalidate()` dan tidak memanggil `checkThread()`. Begitu lebarnya diubah jadi
+  `wrap_content`, itu `CalledFromWrongThreadException`. Kini seluruh `ui.*` lewat satu
+  helper `onUi{}` yang menjalankan segera di main thread dan mengantre bila tidak.
+- **Dua executor tidak lagi memperebutkan satu tunnel.** `worker` (Sambung/Putus/Daftar
+  ulang) dan `testWorker` (putar endpoint) sama-sama memanggil `down`/`up`, dan guard
+  `wasUp` di awal rotasi bersifat TOCTOU: pengguna yang menekan Putuskan di antaranya
+  bisa berakhir dengan tunnel **hidup kembali** setelah diminta mati. `up`/`down`/
+  `refreshState`/`restart` kini memakai satu kunci pada `VelumTunnel`, pasangan down+up
+  saat memutar endpoint menjadi `restart()` yang atomik dan membaca ulang niat pengguna
+  di dalam kunci, dan `connect()` hanya menulis `wasUp=true` bila niat itu belum
+  digantikan aksi yang lebih baru.
+- **Rotasi layar tidak lagi menginterupsi pembangunan tunnel.** `onDestroy` memakai
+  `shutdownNow()` yang memotong thread di tengah `VelumTunnel.up()`; diganti `shutdown()`
+  agar operasi VPN yang sudah dimulai selesai. Ditutup pula jalur crash nyata: rotasi
+  saat `refreshStateAsync` berjalan membuat `onDone` memanggil `connect()` pada executor
+  yang sudah mati → `RejectedExecutionException` di main thread.
+- **Executor ubin pengaturan cepat tidak lagi bocor.** `VelumTileService` membuat satu
+  executor per instance tanpa pernah mematikannya, dan thread bawaan `Executors` bersifat
+  non-daemon; karena sistem membuat-membuang TileService berulang kali, threadnya
+  menumpuk dan menahan proses tetap hidup.
+- **Registrasi perangkat ditulis dalam satu transaksi.** Tujuh bidang yang ditulis
+  terpisah lewat `apply()` meninggalkan celah: proses yang mati di tengah penulisan
+  menghasilkan kunci privat baru bercampur endpoint/peer lama sementara `isRegistered`
+  tetap `true`, sehingga handshake gagal terus tanpa pesan yang menunjuk penyebabnya.
+- **Uji trace tidak lagi melaporkan "Belum aktif" untuk portal tawanan.** Portal dan
+  proxy menjawab HTTP 200 berisi HTML, yang diparse menjadi trace kosong lalu dilaporkan
+  seolah tunnelnya tidak bekerja — menuduh tunnel padahal jaringannya yang meminta
+  login. Respons kini diperiksa kode HTTP-nya dan ditolak bila tidak berbentuk trace,
+  sehingga host cadangan dicoba dan pengguna melihat alasan yang benar.
+- `EndpointProbe.rotate()` tidak lagi mengklaim berhasil padahal tidak mengganti apa
+  pun: bila kandidat terpilih bukan literal IPv4, endpoint efektif bisa jatuh kembali
+  ke host yang barusan gagal handshake, dan uji ulang mengulang kegagalan yang sama.
+- Ukuran thread pool proba kini **mengikuti jumlah kandidat** (`CANDIDATES.size + 1`),
+  bukan angka `8` tulisan tangan yang pas-pasan. Menambah satu kandidat saja sebelumnya
+  membuat tugas terakhir mengantre, tak terukur dalam anggaran 6 detik, lalu dibatalkan
+  diam-diam — "endpoint tercepat" dipilih dari data yang tidak lengkap.
+- Penolakan layanan latar depan yang sampai terbungkus `IOException` kini diklasifikasi
+  `SERVICE_BLOCKED`, bukan `NETWORK` — sebelumnya pengguna disuruh memeriksa jaringan
+  yang sehat.
+- Padding daftar "Kecualikan aplikasi" memakai **dp**, bukan piksel mentah: `setPadding(0,
+  12, 0, 12)` berarti 12px, yang di layar 3x hanya 4dp sehingga jarak antarbaris nyaris
+  hilang di ponsel padat piksel.
 - **Baris "Uji terakhir" tidak lagi berhenti di "Menunggu data…" atau menuduh jaringan
   pengguna.** Bukti perangkat 2026-09-12: status "Tersambung", Data ↓ 0 B/s, endpoint
   162.159.193.1:2408, dan pesan `Kesalahan jaringan: Unable to resolve host
