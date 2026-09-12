@@ -11,14 +11,29 @@ import java.io.IOException
 import com.wireguard.android.backend.Tunnel
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
+import java.util.concurrent.RejectedExecutionException
+import java.util.concurrent.atomic.AtomicInteger
 
 /**
  * Orkestrasi koneksi & uji: memutuskan **apa** yang dilakukan, sementara
  * [MainActivity] hanya merender **bagaimana** hasilnya ditampilkan.
  *
- * Pemisahan ini membuat logika tidak ikut mati saat Activity dibuat ulang
- * (rotasi, proses lahir ulang) dan membuat keputusan penting — seperti kapan
- * hasil uji boleh dipercaya — bisa diuji lewat [VelumTestDecision].
+ * **Batas umur kelas ini (jujur, sebelumnya dokumennya mengklaim sebaliknya):**
+ * controller dibuat per-Activity dan dimatikan di `onDestroy`, jadi ia TIDAK bertahan
+ * saat layar dibuat ulang. Yang membuatnya tidak merusak adalah keadaan koneksi tidak
+ * lagi disimpan di sini:
+ * - status & durasi tunnel hidup di [VelumTunnel] (umur proses),
+ * - hasil uji terakhir hidup di [Prefs],
+ * - [prevState] diawali dari status tunnel yang sebenarnya, sehingga layar yang baru
+ *   tidak menganggap "sudah UP sejak tadi" sebagai transisi baru (tidak ada lagi
+ *   durasi yang direset ke 00:00 dan auto-uji yang berjalan ulang tiap rotasi).
+ *
+ * **Aturan thread kelas ini:** tidak ada satu pun `ui.*` yang dipanggil langsung.
+ * Semua lewat [onUi], yang menjalankan segera bila pemanggil sudah di main thread dan
+ * mengantre bila tidak. Alasannya nyata, bukan gaya: jalur ulangan uji memanggil
+ * `runTraceTest` dari `testWorker`, dan dulu baris itu menulis `TextView` dari thread
+ * latar — kebetulan tidak crash hanya karena kedua view targetnya berukuran tetap,
+ * bukan karena benar.
  */
 class VelumController(context: Context, private val ui: Ui) {
 
@@ -50,38 +65,121 @@ class VelumController(context: Context, private val ui: Ui) {
     /** Status tunnel terakhir yang diketahui (sumber: backend WireGuard). */
     val state: Tunnel.State get() = VelumTunnel.state
 
-    private var prevState: Tunnel.State = Tunnel.State.DOWN
-    private var testedSinceUp = false
-    private var testJobId = 0
-    private var pendingTest: Runnable? = null
-    /** Ada uji yang hasilnya belum pernah ditampilkan (dipakai membersihkan baris "Menunggu data…"). */
-    private var testInFlight = false
     /**
-     * Menekan auto-uji selama pemutaran endpoint. Diset/lepas lewat main.post (lihat
+     * Diawali dari status tunnel yang SEBENARNYA, bukan dari `DOWN` tetap.
+     *
+     * Bila layar dibuat ulang saat tunnel masih UP, nilai awal `DOWN` membuat
+     * `applyCurrentState()` melihat transisi DOWN->UP yang tidak pernah terjadi:
+     * durasi direset, auto-uji dijalankan ulang, dan notifikasi diposting lagi.
+     */
+    private var prevState: Tunnel.State = VelumTunnel.state
+
+    private var testedSinceUp = false
+
+    /** Atomik: dinaikkan dari main thread DAN dari `testWorker`, jadi tidak boleh `++` polos. */
+    private val testJobId = AtomicInteger(0)
+
+    @Volatile
+    private var pendingTest: Runnable? = null
+
+    /** Ada uji yang hasilnya belum pernah ditampilkan (dipakai membersihkan baris "Menunggu data…"). */
+    @Volatile
+    private var testInFlight = false
+
+    /**
+     * Menekan auto-uji selama pemutaran endpoint. Diset/lepas lewat [onUi] (lihat
      * [rotateEndpointAndReconnect]) supaya urutannya pasti terhadap applyState.
      */
     @Volatile
     private var testSuppressAuto = false
 
+    /**
+     * Generasi niat pengguna. Setiap aksi (Sambungkan/Putuskan/Daftar ulang) menaikkannya;
+     * pekerjaan latar yang sudah usang melihat generasinya tidak cocok lalu berhenti
+     * SEBELUM mengubah keadaan tunnel.
+     *
+     * Tanpa ini ada race nyata: `disconnect()` menulis `wasUp = false` lalu mengantre
+     * `down()`, sementara `connect()` yang masih berjalan menulis `wasUp = true` setelah
+     * `up()` selesai — hasilnya tunnel mati tetapi tercatat "niat UP", jadi BootReceiver
+     * dan pemantau jaringan menyambungkannya lagi. Hanya dinaikkan dari main thread,
+     * karena semua pemicu aksi berasal dari klik/kallback UI.
+     */
+    @Volatile
+    private var intentGen = 0
+
+    /** Controller sudah dimatikan: jangan sentuh UI, jangan jadwalkan ulangan baru. */
+    @Volatile
+    private var dead = false
+
     init {
         VelumTunnel.listener = { newState -> main.post { applyState(newState) } }
     }
 
+    /**
+     * Melepas semua kaitan. Dipanggil dari `MainActivity.onDestroy`.
+     *
+     * `shutdown()` dipakai, BUKAN `shutdownNow()`: menginterupsi thread yang sedang berada
+     * di dalam `VelumTunnel.up()` berarti memotong pembangunan tunnel di tengah jalan —
+     * lebih berbahaya daripada membiarkan operasi yang sudah dimulai selesai. Hasilnya
+     * sekadar tidak dirender, karena [dead] sudah menutup jalur ke UI.
+     */
     fun destroy() {
+        dead = true
         VelumTunnel.listener = null
         cancelPendingTest()
-        worker.shutdownNow()
-        testWorker.shutdownNow()
+        worker.shutdown()
+        testWorker.shutdown()
     }
+
+    /**
+     * Satu-satunya jalur ke UI: jalankan segera bila sudah di main thread, antre bila tidak.
+     * Membuat kesalahan "menyentuh view dari thread latar" tidak mungkin terulang,
+     * apa pun thread pemanggilnya.
+     */
+    private fun onUi(block: () -> Unit) {
+        if (dead) return
+        if (Looper.myLooper() == Looper.getMainLooper()) block() else main.post { if (!dead) block() }
+    }
+
+    /** Naikkan generasi niat; hanya dipanggil dari main thread. */
+    private fun nextIntent(): Int {
+        intentGen++
+        return intentGen
+    }
+
+    /**
+     * Menyerahkan pekerjaan latar dengan aman.
+     *
+     * `ExecutorService.execute` melempar `RejectedExecutionException` setelah `shutdown()`,
+     * dan itu terjadi di main thread → crash. Jalurnya nyata: rotasi layar saat
+     * [refreshStateAsync] berjalan membuat `onDone` memanggil [connect] pada controller
+     * yang baru saja dimatikan. Jadi penyerahan selalu diperiksa, dan sisa race antara
+     * pemeriksaan dan penyerahan ditelan di sini — bukan dibiarkan jadi crash.
+     */
+    private fun submit(executor: ExecutorService, block: () -> Unit) {
+        if (dead) return
+        try {
+            executor.execute(block)
+        } catch (_: RejectedExecutionException) {
+            Log.i(TAG, "pekerjaan dilewati: controller sudah dimatikan")
+        }
+    }
+
+    /** Apakah pekerjaan dengan generasi [gen] sudah digantikan aksi pengguna yang lebih baru. */
+    private fun stale(gen: Int) = dead || gen != intentGen
 
     // ---------- Status ----------
 
-    /** Terapkan status: efek samping selalu jalan, teks status mengikuti UI. */
+    /**
+     * Terapkan status: efek samping selalu jalan, teks status mengikuti UI.
+     * Selalu dipanggil dari main thread; [onUi] tetap dipakai agar aturan
+     * "tidak ada `ui.*` langsung" berlaku seragam dan tidak bergantung pada ingatan.
+     */
     private fun applyState(newState: Tunnel.State) {
         if (newState != prevState) {
             prevState = newState
             if (newState == Tunnel.State.UP) {
-                ui.onConnectedVisual()
+                onUi { ui.onConnectedVisual() }
                 if (!testedSinceUp && !testSuppressAuto && prefs.isRegistered) {
                     testedSinceUp = true
                     runTraceTest(fromButton = false)
@@ -89,10 +187,10 @@ class VelumController(context: Context, private val ui: Ui) {
             } else {
                 testedSinceUp = false
                 cancelPendingTest()
-                ui.onDisconnectedVisual()
+                onUi { ui.onDisconnectedVisual() }
             }
         }
-        ui.render(newState)
+        onUi { ui.render(newState) }
     }
 
     /** Terapkan status yang diketahui saat ini ke UI (mis. setelah Activity hidup lagi). */
@@ -100,9 +198,10 @@ class VelumController(context: Context, private val ui: Ui) {
 
     /** Sinkronkan status dengan backend di latar, lalu jalankan [onDone] di main thread. */
     fun refreshStateAsync(onDone: () -> Unit) {
-        worker.execute {
+        submit(worker) {
             val s = runCatching { VelumTunnel.refreshState(app) }.getOrDefault(VelumTunnel.state)
             main.post {
+                if (dead) return@post // layar sudah ditutup: jangan sentuh UI, jangan lanjut
                 applyState(s)
                 onDone()
             }
@@ -126,39 +225,47 @@ class VelumController(context: Context, private val ui: Ui) {
     fun vpnIntent(): Intent? = VpnService.prepare(app)
 
     fun connect() {
+        val gen = nextIntent()
         setBusy(true)
-        ui.setMessage("")
-        worker.execute {
+        onUi { ui.setMessage("") }
+        submit(worker) {
             try {
+                if (stale(gen)) return@submit
                 if (prefs.isRegistered && !prefs.warpEnabled) {
                     // Akun era lama tanpa flag WARP: coba sembuhkan otomatis (fail-safe,
                     // kegagalan tidak boleh menghalangi penyambungan).
                     try {
                         VelumApi.ensureWarpEnabled(prefs)
-                        main.post { ui.refreshStaticInfo() }
+                        onUi { ui.refreshStaticInfo() }
                     } catch (e: Exception) {
                         Log.w(TAG, "auto-heal akun gagal, lanjut tanpa heal", e)
                     }
                 }
+                if (stale(gen)) return@submit
                 if (!prefs.isRegistered) {
-                    main.post { ui.setStatusText(R.string.status_registering) }
+                    onUi { ui.setStatusText(R.string.status_registering) }
                     try {
                         registerWithRetry()
                     } catch (e: Exception) {
                         fail(R.string.err_register, e)
-                        return@execute
+                        return@submit
                     }
                 }
-                main.post { ui.setStatusText(R.string.status_probing) }
+                if (stale(gen)) return@submit
+                onUi { ui.setStatusText(R.string.status_probing) }
                 EndpointProbe.refresh(prefs)
-                main.post {
+                if (stale(gen)) return@submit
+                onUi {
                     ui.setStatusText(R.string.status_connecting)
                     ui.refreshStaticInfo()
                 }
                 VelumTunnel.up(app, prefs)
+                // Niat dibaca ulang SETELAH up(): bila pengguna menekan Putuskan selama
+                // penyambungan, jangan menimpa niatnya dan jangan hidupkan pemantau.
+                if (stale(gen)) return@submit
                 prefs.wasUp = true // memo untuk sambung ulang saat boot
                 ReconnectMonitor.ensure(app)
-                main.post { setBusy(false); applyState(VelumTunnel.state) }
+                onUi { setBusy(false); applyState(VelumTunnel.state) }
             } catch (e: Exception) {
                 fail(R.string.err_connect, e)
             }
@@ -188,27 +295,29 @@ class VelumController(context: Context, private val ui: Ui) {
     }
 
     fun disconnect() {
+        nextIntent()
         setBusy(true)
-        ui.setStatusText(R.string.status_disconnecting)
+        onUi { ui.setStatusText(R.string.status_disconnecting) }
         prefs.wasUp = false // putus manual: jangan sambung lagi saat boot
         ReconnectMonitor.stop(app)
-        worker.execute {
+        submit(worker) {
             runCatching { VelumTunnel.down(app) }
-            main.post { setBusy(false); applyState(VelumTunnel.state) }
+            onUi { setBusy(false); applyState(VelumTunnel.state) }
         }
     }
 
     /** Hapus registrasi dan putuskan; UI bertanggung jawab meminta konfirmasi dulu. */
     fun reset() {
         if (busy) return
+        nextIntent()
         setBusy(true)
         cancelPendingTest()
         prefs.wasUp = false // daftar ulang manual = putus permanen: jangan sambung saat boot
         ReconnectMonitor.stop(app)
-        worker.execute {
+        submit(worker) {
             runCatching { VelumTunnel.down(app) }
             VelumApi.unregister(prefs)
-            main.post {
+            onUi {
                 setBusy(false)
                 applyState(Tunnel.State.DOWN)
                 ui.refreshStaticInfo()
@@ -226,9 +335,9 @@ class VelumController(context: Context, private val ui: Ui) {
 
     /** Membaca statistik trafik di latar, lalu menyerahkannya ke [onResult] di main thread. */
     fun runStats(onResult: (VelumTunnel.TrafficStats?) -> Unit) {
-        worker.execute {
+        submit(worker) {
             val stats = VelumTunnel.traffic(app)
-            main.post { onResult(stats) }
+            main.post { if (!dead) onResult(stats) }
         }
     }
 
@@ -243,14 +352,17 @@ class VelumController(context: Context, private val ui: Ui) {
      * lewat WARP — dulu hasilnya "Belum lewat Velum" palsu, sekarang juga diketahui muncul
      * sebagai galat DNS menyesatkan ("Unable to resolve host ...") yang membuat pengguna
      * menyalahkan jaringannya sendiri.
+     *
+     * **Bisa dipanggil dari main thread ATAU dari `testWorker`** (jalur ulangan). Karena
+     * itu setiap sentuhan UI di sini wajib lewat [onUi].
      */
     private fun runTraceTest(fromButton: Boolean, attempt: Int = 0) {
         cancelPendingTest(invalidate = false)
-        val job = ++testJobId
+        val job = testJobId.incrementAndGet()
         testInFlight = true
-        ui.setTestTextRes(R.string.test_waiting)
-        if (fromButton) ui.setMessageRes(R.string.test_waiting)
-        testWorker.execute {
+        onUi { ui.setTestTextRes(R.string.test_waiting) }
+        if (fromButton) onUi { ui.setMessageRes(R.string.test_waiting) }
+        submit(testWorker) {
             val waitMs = if (attempt == 0) HANDSHAKE_WAIT_MS else HANDSHAKE_WAIT_RETRY_MS
             val ready = awaitHandshake(waitMs)
             val tunnelUp = VelumTunnel.state == Tunnel.State.UP
@@ -260,7 +372,7 @@ class VelumController(context: Context, private val ui: Ui) {
             var trace: VelumFormat.TraceInfo? = null
             var error: String? = null
             if (tunnelUp && ready) {
-                main.post { ui.setTestTextRes(R.string.test_running) }
+                onUi { ui.setTestTextRes(R.string.test_running) }
                 try {
                     trace = VelumApi.fetchTrace()
                 } catch (e: Exception) {
@@ -281,6 +393,7 @@ class VelumController(context: Context, private val ui: Ui) {
     private fun awaitHandshake(maxWaitMs: Long): Boolean {
         val deadline = SystemClock.elapsedRealtime() + maxWaitMs
         while (SystemClock.elapsedRealtime() < deadline) {
+            if (dead) return false
             if (VelumTunnel.state != Tunnel.State.UP) return false
             if ((VelumTunnel.traffic(app)?.latestHandshakeMs ?: 0L) > 0L) return true
             try {
@@ -311,7 +424,7 @@ class VelumController(context: Context, private val ui: Ui) {
         fromButton: Boolean,
         attempt: Int
     ) {
-        if (job != testJobId) return // uji ini sudah dibatalkan/diganti uji baru
+        if (job != testJobId.get()) return // uji ini sudah dibatalkan/diganti uji baru
         testInFlight = false
         when (
             VelumTestDecision.decide(
@@ -326,7 +439,9 @@ class VelumController(context: Context, private val ui: Ui) {
             TestAction.RETRY -> {
                 val rotate = !handshakeReady
                 val retry = Runnable {
-                    testWorker.execute {
+                    if (dead) return@Runnable
+                    submit(testWorker) {
+                        if (dead) return@submit
                         // Tanpa handshake, mengulang saja tidak menolong: endpoint lain
                         // dicoba lebih dulu. Ini penambal nyata untuk jaringan yang
                         // memblokir endpoint WARP tertentu.
@@ -340,8 +455,10 @@ class VelumController(context: Context, private val ui: Ui) {
             // Tunnel turun di tengah uji: hasil dibuang, baris uji dikembalikan ke hasil sah
             // terakhir, dan pesan sementara dibersihkan agar tidak tertinggal.
             TestAction.DROP -> {
-                ui.showTest(prefs.lastTest)
-                if (fromButton) ui.setMessage("")
+                onUi {
+                    ui.showTest(prefs.lastTest)
+                    if (fromButton) ui.setMessage("")
+                }
             }
             TestAction.PUBLISH, TestAction.PUBLISH_NO_DATA -> {
                 val result = VelumTestResult.of(
@@ -351,12 +468,14 @@ class VelumController(context: Context, private val ui: Ui) {
                     atEpochMs = System.currentTimeMillis()
                 )
                 prefs.lastTest = result
-                ui.showTest(result)
-                // "Belum ada data" juga diberitahukan saat uji otomatis: pengguna melihat
-                // status "Tersambung" tetapi tidak ada yang berjalan, dan tanpa penjelasan
-                // keadaan itu tampak seperti kegagalan yang tidak bisa ditindaklanjuti.
-                if (fromButton || result.kind == VelumTestResult.Kind.NO_DATA) {
-                    ui.setMessage(messageFor(result))
+                onUi {
+                    ui.showTest(result)
+                    // "Belum ada data" juga diberitahukan saat uji otomatis: pengguna melihat
+                    // status "Tersambung" tetapi tidak ada yang berjalan, dan tanpa penjelasan
+                    // keadaan itu tampak seperti kegagalan yang tidak bisa ditindaklanjuti.
+                    if (fromButton || result.kind == VelumTestResult.Kind.NO_DATA) {
+                        ui.setMessage(messageFor(result))
+                    }
                 }
             }
         }
@@ -375,15 +494,20 @@ class VelumController(context: Context, private val ui: Ui) {
      * Memutar endpoint lalu menyambung ulang: penambal untuk jaringan yang tidak
      * meneruskan endpoint WARP tertentu (antarmuka UP, handshake tidak pernah terjadi).
      *
-     * Auto-uji ditekan SETELAH penerapan statusnya diantre: `main.post` bersifat FIFO, jadi
-     * `testSuppressAuto = true` pasti diproses sebelum applyState(DOWN/UP) dan
-     * `= false` pasti sesudahnya. Tanpa itu, uji akan berjalan dua kali — sekali dari sini,
-     * sekali lagi dari perubahan status.
+     * Berjalan di `testWorker`. Down+up dilakukan lewat [VelumTunnel.restart] supaya
+     * atomik terhadap pelaku lain (layar utama, ubin, pemantau jaringan) — pasangan yang
+     * dipanggil terpisah bisa disela `down` milik pengguna dan berakhir menghidupkan
+     * tunnel yang baru saja diminta mati.
+     *
+     * Auto-uji ditekan SEBELUM operasi ini berjalan dan dilepas sesudahnya, lewat [onUi]
+     * yang mengantre ke main thread secara FIFO: `testSuppressAuto = true` pasti
+     * diproses sebelum applyState(DOWN/UP), dan `= false` pasti sesudahnya. Tanpa itu,
+     * uji akan berjalan dua kali — sekali dari sini, sekali lagi dari perubahan status.
      */
     private fun rotateEndpointAndReconnect() {
         if (!prefs.wasUp || !prefs.isRegistered) return // pengguna memutus di tengah jalan
         val current = prefs.effectiveEndpoint
-        main.post {
+        onUi {
             testSuppressAuto = true
             ui.setTestTextRes(R.string.test_searching)
         }
@@ -392,13 +516,12 @@ class VelumController(context: Context, private val ui: Ui) {
                 Log.w(TAG, "tidak ada endpoint pengganti; uji dilanjutkan dengan endpoint lama")
                 return
             }
-            VelumTunnel.down(app)
-            VelumTunnel.up(app, prefs)
-            main.post { ui.refreshStaticInfo() }
+            VelumTunnel.restart(app, prefs)
+            onUi { ui.refreshStaticInfo() }
         } catch (e: Exception) {
             Log.w(TAG, "putar endpoint & sambung ulang gagal", e)
         } finally {
-            main.post { testSuppressAuto = false }
+            onUi { testSuppressAuto = false }
         }
     }
 
@@ -410,23 +533,23 @@ class VelumController(context: Context, private val ui: Ui) {
      * hasil yang dibatalkan tidak pernah ditampilkan (keluhan nyata di perangkat).
      */
     private fun cancelPendingTest(invalidate: Boolean = true) {
-        if (invalidate) testJobId++
+        if (invalidate) testJobId.incrementAndGet()
         pendingTest?.let { main.removeCallbacks(it) }
         pendingTest = null
         if (invalidate && testInFlight) {
             testInFlight = false
-            ui.showTest(prefs.lastTest)
+            onUi { ui.showTest(prefs.lastTest) }
         }
     }
 
     private fun setBusy(value: Boolean) {
         busy = value
-        ui.setBusy(value)
+        onUi { ui.setBusy(value) }
     }
 
     /** Tampilkan kegagalan dengan pesan yang sesuai jenisnya (bukan sekadar teks exception). */
     private fun fail(resId: Int, e: Exception) {
-        main.post {
+        onUi {
             setBusy(false)
             applyState(VelumTunnel.state)
             ui.setMessage(messageFor(resId, e))
