@@ -72,16 +72,30 @@ class Prefs(context: Context) {
         get() = sp.getBoolean(K_WAS_UP, false)
         set(v) = sp.edit().putBoolean(K_WAS_UP, v).apply()
 
+    /**
+     * Memo: tawaran kesiapan (Always-on VPN & bebas optimasi baterai) sudah ditampilkan
+     * dan ditunda pengguna. Sekali ditolak, tidak ditawarkan lagi.
+     */
+    var setupPostponed: Boolean
+        get() = sp.getBoolean(K_SETUP_POSTPONED, false)
+        set(v) = sp.edit().putBoolean(K_SETUP_POSTPONED, v).apply()
+
     /** Registrasi dianggap lengkap bila semua bidang inti tersedia. */
     val isRegistered: Boolean
         get() = !privateKey.isNullOrEmpty() && !addressV4.isNullOrEmpty() &&
             !peerPublicKey.isNullOrEmpty() && !endpoint.isNullOrEmpty()
 
-    /** Membersihkan data registrasi; memo wasUp dipertahankan (niat sambung boot). */
+    /**
+     * Membersihkan data registrasi. Dua memo **sengaja dipertahankan**: [wasUp]
+     * (niat sambung ulang saat boot) dan [setupPostponed] — menekan Daftar ulang
+     * bukan alasan untuk menanyakan kembali tawaran pengaturan yang sudah ditolak.
+     */
     fun clear() {
         val keepUp = wasUp
+        val keepPostponed = setupPostponed
         sp.edit().clear().apply()
         if (keepUp) wasUp = true
+        if (keepPostponed) setupPostponed = true
     }
 
     companion object {
@@ -112,6 +126,7 @@ class Prefs(context: Context) {
         const val K_SPEED_AT = "speed_at"
         const val K_WARP = "warp_enabled"
         const val K_WAS_UP = "was_up"
+        const val K_SETUP_POSTPONED = "setup_postponed"
         const val K_EXCLUDED = "excluded_apps"
 
         private fun open(ctx: Context): SharedPreferences {

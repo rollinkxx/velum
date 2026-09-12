@@ -21,7 +21,14 @@ import java.util.concurrent.TimeUnit
 object ReconnectMonitor {
     private const val TAG = "Velum"
     private const val DEBOUNCE_MS = 3000L
-    private val BACKOFF_MS = longArrayOf(2000, 5000, 10000)
+
+    /**
+     * Jeda pantulan bertahap. Tiga percobaan cepat saja terlalu mudah menyerah:
+     * jaringan yang baru berganti (habis pindah Wi-Fi, baru keluar dari mode pesawat,
+     * baru menyala setelah boot) sering butuh belasan detik sebelum benar-benar siap.
+     * Pantulan tetap dibatalkan begitu pengguna menekan Putuskan.
+     */
+    private val BACKOFF_MS = longArrayOf(2000, 5000, 10000, 30000, 60000)
 
     private val worker = Executors.newSingleThreadExecutor()
 

@@ -16,6 +16,15 @@
             <action android:name="android.intent.action.MAIN" />
             <category android:name="android.intent.category.LAUNCHER" />
         </intent>
+        <!-- Tawaran kesiapan membuka dua layar pengaturan sistem ini; tanpa deklarasi
+             berikut, resolusi intent bisa gagal pada API 30+ karena pembatasan
+             visibilitas paket (aplikasi tidak "melihat" aplikasi Pengaturan). -->
+        <intent>
+            <action android:name="android.settings.VPN_SETTINGS" />
+        </intent>
+        <intent>
+            <action android:name="android.settings.IGNORE_BATTERY_OPTIMIZATION_SETTINGS" />
+        </intent>
     </queries>
 
     <application

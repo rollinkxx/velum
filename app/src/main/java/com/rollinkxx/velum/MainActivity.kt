@@ -48,6 +48,9 @@ class MainActivity : AppCompatActivity(), VelumController.Ui {
 
     private val main = Handler(Looper.getMainLooper())
 
+    /** Tawaran kesiapan hanya dipertimbangkan sekali per sesi layar. */
+    private var setupOfferShown = false
+
     /** Persetujuan VPN sistem; hasilnya diteruskan ke controller. */
     private val vpnLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
@@ -157,7 +160,12 @@ class MainActivity : AppCompatActivity(), VelumController.Ui {
         // Pulihkan tiker & denyut bila tunnel masih UP dari sesi sebelumnya.
         startTicker()
         if (controller.state == Tunnel.State.UP) startPulse()
-        controller.refreshStateAsync { controller.resumeIfNeeded() }
+        controller.refreshStateAsync {
+            controller.resumeIfNeeded()
+            // Setelah status tersinkron: tawarkan pengaturan yang membuat tunnel
+            // pulih sendiri bila OS membersihkan memori (paling banyak sekali).
+            maybeShowSetupOffer()
+        }
     }
 
     /**
@@ -201,6 +209,59 @@ class MainActivity : AppCompatActivity(), VelumController.Ui {
             .setNegativeButton(R.string.btn_cancel, null)
             .setPositiveButton(R.string.btn_reset) { _, _ -> controller.reset() }
             .show()
+    }
+
+    // ---------- Tawaran kesiapan (Always-on VPN & baterai) ----------
+
+    /**
+     * Menawarkan pengaturan yang menentukan apakah tunnel pulih sendiri setelah OS
+     * mematikan proses aplikasi — sesuatu yang tidak bisa dipaksa oleh aplikasi:
+     * Always-on VPN (+ blokir koneksi tanpa VPN sebagai killswitch) dan pengecualian
+     * dari optimasi baterai.
+     *
+     * Muncul **paling banyak sekali**: setelah pengguna menekan "Nanti saja", memo
+     * [Prefs.setupPostponed] menutup tawaran selamanya — meminta berulang kali untuk
+     * hal yang bukan wewenang aplikasi justru mengganggu, dan semua fitur tetap
+     * berfungsi tanpa pengaturan ini.
+     */
+    private fun maybeShowSetupOffer() {
+        if (setupOfferShown || isFinishing || controller.busy) return
+        val prefs = Prefs.of(this)
+        val offer = VelumSetup.offer(
+            registered = prefs.isRegistered,
+            alwaysOn = VelumSetup.alwaysOnVpnReady(this),
+            batteryUnrestricted = VelumSetup.batteryUnrestricted(this),
+            postponed = prefs.setupPostponed
+        )
+        if (!offer.wanted) return
+        setupOfferShown = true
+        val body = when (offer.reason) {
+            "ready" -> R.string.setup_body_ready
+            VelumSetup.REASON_ALWAYS_ON -> R.string.setup_body_always_on
+            else -> R.string.setup_body_battery
+        }
+        AlertDialog.Builder(this)
+            .setTitle(R.string.setup_title)
+            .setMessage(body)
+            .setNegativeButton(R.string.btn_later) { _, _ -> prefs.setupPostponed = true }
+            .setPositiveButton(R.string.btn_open_settings) { _, _ ->
+                openSetupScreen(offer.reasons.first())
+            }
+            .show()
+    }
+
+    /** Membuka layar pengaturan sistem yang sesuai dengan alasan pertama. */
+    private fun openSetupScreen(reason: String) {
+        val intent = if (reason == VelumSetup.REASON_ALWAYS_ON) {
+            VelumSetup.vpnSettingsIntent()
+        } else {
+            VelumSetup.batterySettingsIntent()
+        }
+        try {
+            startActivity(intent)
+        } catch (e: Exception) {
+            setMessageRes(R.string.err_no_settings)
+        }
     }
 
     /**
