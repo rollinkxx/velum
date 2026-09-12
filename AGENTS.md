@@ -270,7 +270,23 @@ sebelum push.
   - `.github/dependabot.yml`: ekosistem `gradle` (mingguan) & `github-actions` (bulanan),
     maks. 5 PR, prefix commit `build`/`ci`. Dependabot hanya membuka PR — **manusia yang
     memutuskan**, dan `gradle/libs.versions.toml` tetap satu-satunya sumber versi.
-  - **Run acuan terkini:** 34668310746 (`a0d20fc`, hijau) — build pertama dengan varian
+  - **Run acuan terkini:** 34669207614 (`42b94bb`, **5m08s**, hijau **percobaan pertama**)
+    — **AGP 9.4.0**. Artifact: `app-debug` 26,03 MB · `app-preview` **11,93 MB** ·
+    `mapping-preview` 613 KB. Ukuran praktis tidak berubah dari AGP 8.7.3
+    (preview -0,16 MB, debug +0,20 MB); nilai bump ini kepatuhan, bukan performa.
+    - AGP 9 **menghapus** API yang dipakai repo ini, jadi bump versi saja pasti gagal —
+      itu sebab PR #5 Dependabot merah. Yang wajib ikut diubah: hapus plugin
+      `org.jetbrains.kotlin.android` (Kotlin kini bawaan AGP, plugin lama ditolak),
+      hapus `kotlinOptions` (ikut `compileOptions.targetCompatibility`),
+      `resourceConfigurations` → `androidResources.localeFilters`, `compileSdk` ≥ 36.
+    - **Versi Kotlin tidak lagi ada di katalog.** AGP membawa KGP-nya sendiri (≥ 2.2.10).
+      Jangan menambahkannya kembali "supaya eksplisit" — itu membuat sumber kebenaran
+      kedua yang bisa menyimpang dari KGP yang sebenarnya dipakai.
+    - **`targetSdk` tetap 35 secara sengaja**, walau `compileSdk` 36. Menaikkan `targetSdk`
+      mengubah perilaku runtime (izin, layanan latar depan, VPN) dan **butuh izin
+      maintainer + uji perangkat**; itu keputusan produk, bukan pemeliharaan alat bangun.
+    - Syarat versi AGP 9.4: Gradle ≥ 9.6.0 (wrapper di 9.7.1) dan JDK ≥ 17 (CI di 17).
+  - **Run acuan varian preview:** 34668310746 (`a0d20fc`, hijau) — build pertama dengan varian
     **preview** (konfigurasi release + R8, ditandatangani kunci debug). Artifact:
     `app-debug` 25,83 MB · `app-preview` **12,09 MB** · `mapping-preview` 613 KB.
     R8 memangkas **±3,4 MB per APK** (dex+resources), sehingga preview per-ABI **±2,2 MB**
