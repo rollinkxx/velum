@@ -913,6 +913,42 @@ run ujung `main` 34702351553 hijau):**
   `StatusNotifier.show/hide` kembali ke callback visual layar — pola lama itulah penyebab
   dua keadaan salah: notifikasi "Tersambung" basi selamanya ketika tunnel mati di latar,
   dan tidak ada notifikasi sama sekali ketika menyambung lewat ubin dengan aplikasi tertutup.
+- (2026-09-12) **Run acuan branch sesi `arena/01a09664-velum`: `34707253187` HIJAU**
+  (headSha `0ac3b6f`; 15 commit di atas `main` = `93f71b0`). Kedua job sukses di semua
+  langkah — `verifikasi (build, tes, lint)`: Pengujian unit, Build debug APK, Build preview
+  APK (R8 aktif), Lint debug (advisori), unggah APK/mapping/laporan; dan
+  `assembleRelease (bertanda tangan)`: materialisasi keystore dari Secrets, build rilis,
+  **Verifikasi tanda tangan APK rilis**. Sumber: `gh run view 34707253187 --json …`.
+  **Batas bukti:** hijau berarti terkompilasi (3 varian) + unit test lulus + lint tanpa
+  error — **bukan** berarti perilakunya di perangkat benar. Utang uji perangkat: TODO 71.
+- (2026-09-12) **Lint tidak memburuk — dan satu-satunya cara memverifikasinya dari
+  sandbox.** Log run yang *sudah selesai* tidak bisa dibaca: `gh run view <run> --log`
+  menghasilkan 0 baris, `gh run watch` pada run selesai hanya 1 baris, dan artifact
+  `lint-report` tetap gagal diunduh (EOF host blob, lihat entri artifact). **Jalur yang
+  berhasil:** `gh api repos/rollinkxx/velum/actions/runs/<run>/jobs --jq '.jobs[].id'`
+  dilanjutkan `gh api repos/rollinkxx/velum/check-runs/<job_id>/annotations` — anotasi
+  dilayani API GitHub langsung, tidak lewat host blob.
+  Hasil perbandingan run paket (`34707253187`) terhadap baseline ujung `main`
+  (`34702351553`): **identik — 10 anotasi `warning`, 0 `error`**, dengan tiga jenis yang
+  sama persis: 8× "Use the KTX extension function SharedPreferences.edit instead?",
+  1× StaticFieldLeak (referensi statis `GoBackend` yang memegang `Context`), 1×
+  `android:allowBackup` deprecated. Ketiganya pola lama repo, bukan bawaan paket ini.
+  Rincian penjelas: `Prefs.kt` justru **bertambah satu** call site `.edit()`
+  (`saveRegistration`), tetapi hitungan 8 tidak naik menjadi 9 karena pemeriksaan lint itu
+  menyasar pola `edit()…apply()`, sedangkan `saveRegistration` sengaja memakai `.commit()`
+  (tulis sinkron demi atomisitas) — diverifikasi di `Prefs.kt:122-133`.
+  **Catatan metode:** GitHub membatasi/menggabungkan anotasi, jadi 10 ini adalah kebenaran
+  tingkat anotasi, bukan jumlah baris lengkap laporan lint.
+- (2026-09-12) **Ukuran artifact: paket ini menambah ±6,7 KB pada rilis.** Dari
+  `gh api …/actions/runs/<run>/artifacts` (baseline `34702351553` → paket `34707253187`):
+  `app-release` 12.773.630 → 12.780.338 byte (+6.708, ≈ +0,05%); `app-preview` +6.610;
+  `app-debug` +8.914; `mapping-preview` 634.112 → 636.563; `lint-report` 19.681 → 20.186;
+  `unit-test-report` 14.198 → 14.344. Angka ini **ukuran zip artifact**, bukan ukuran byte
+  berkas APK di dalamnya. `[SIMPULAN]` Kenaikan sekecil itu konsisten dengan ±950 baris
+  kode+uji baru dan **tidak** konsisten dengan masuknya satu pustaka baru — mendukung bahwa
+  deklarasi `androidx.core:1.13.0` memang no-op. **Batas bukti:** artifact tidak bisa
+  diunduh, jadi delta tidak dapat dipecah per commit; klaim no-op tetap bertumpu pada bukti
+  POM (entri `androidx.core`), bukan pada pengukuran ukuran ini.
 - (2026-09-12) **Fakta kecil hasil audit yang paling mudah di-regresi:** pool proba
   endpoint harus `CANDIDATES.size + 1` (ukuran pas-pasan membuat kandidat terakhir
   menunggu thread bebas sehingga RTT-nya terukur salah, dan pemilih endpoint jadi bias);
