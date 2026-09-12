@@ -5,7 +5,21 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 
 ## [Unreleased]
 
+### Added
+- Pemecahan APK per arsitektur (ABI split) untuk `arm64-v8a`, `armeabi-v7a`, dan `x86_64`,
+  plus satu APK universal sebagai cadangan. Isi APK didominasi pustaka native WireGuard
+  (satu `.so` per ABI) yang tidak tersentuh R8, sehingga memecah per arsitektur adalah
+  satu-satunya cara menurunkan ukuran unduhan secara berarti — perangkat hanya mengambil
+  arsitekturnya sendiri.
+- `versionCode` otomatis per varian (`abiCode * 1000 + versionCode`), dengan APK universal
+  memakai nilai terendah supaya varian spesifik arsitektur selalu lebih diutamakan.
+
 ### Changed
+- CI mengunggah seluruh varian APK (`*.apk`) alih-alih satu berkas bernama tetap, dan step
+  summary kini menampilkan tabel ukuran tiap APK sehingga dampak pemecahan terlihat tanpa
+  perlu mengunduh artifact.
+- `docs/rilis-github.md`: panduan verifikasi & penerbitan disesuaikan untuk empat berkas APK,
+  lengkap dengan tabel "pilih berkas sesuai perangkat" untuk catatan rilis.
 - CI dikonsolidasikan: `assembleDebug`, `unitTest`, dan `lint` yang sebelumnya tiga job
   terpisah kini menjadi satu job `verifikasi (build, tes, lint)`. Toolchain
   (JDK + Android SDK + Gradle) disiapkan sekali, bukan tiga kali, dan cache Gradle dipakai

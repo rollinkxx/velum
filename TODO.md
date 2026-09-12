@@ -44,3 +44,4 @@
 | 40 | Tinjau PR Dependabot: #4, #6–#12 di-merge maintainer 2026-09-11/12; sisa #5 (AGP 9.4.0) | Sedang | Sebagian selesai; #5 menunggu keputusan maintainer (butuh Kotlin ≥2.2.10 + Build Tools 36) |
 | 41 | Konsolidasi CI: 3 job verifikasi → 1 job (setup toolchain sekali, cache dipakai ulang) | Tinggi | Selesai tervalidasi (CI run 34660850896, 4m04s, 19 step hijau) |
 | 42 | Validasi kombinasi Gradle 9.7.1 (PR #8) + AGP 8.7.3 di ujung `main` — belum pernah dibangun | Tinggi | Selesai tervalidasi (CI run 34660850896): kombinasi TERBUKTI JALAN, APK 10,08 MB |
+| 43 | Pemecahan APK per ABI (arm64-v8a, armeabi-v7a, x86_64) + universal, versionCode otomatis per varian | Tinggi | Selesai, menunggu validasi CI |

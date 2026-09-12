@@ -45,8 +45,21 @@ Atau dorong commit kode apa pun (job rilis ikut berjalan setelah `assembleDebug`
 
 ```sh
 gh run download <id-run> -n app-release
-apksigner verify --print-certs app-release.apk
+ls *.apk   # beberapa berkas: per arsitektur + satu universal
+apksigner verify --print-certs app-arm64-v8a-release.apk
 ```
+
+Sejak pemecahan per ABI diaktifkan, satu build menghasilkan **empat** APK:
+
+| Berkas | Untuk siapa | Perkiraan ukuran |
+|---|---|---|
+| `app-arm64-v8a-release.apk` | Mayoritas ponsel Android modern (64-bit) | paling kecil |
+| `app-armeabi-v7a-release.apk` | Ponsel lama 32-bit | paling kecil |
+| `app-x86_64-release.apk` | Emulator & Chromebook | paling kecil |
+| `app-universal-release.apk` | Cadangan: berjalan di semua arsitektur | terbesar |
+
+`versionCode` tiap berkas sengaja berbeda (`abiCode * 1000 + versionCode`), sedangkan
+universal memakai nilai terendah — supaya APK spesifik arsitektur selalu lebih diutamakan.
 
 `apksigner` ada di Android SDK build-tools. Alternatif cepat: pasang APK di
 perangkat dan pastikan `applicationId` `com.rollinkxx.velum` + versi sesuai.
@@ -54,9 +67,15 @@ perangkat dan pastikan `applicationId` `com.rollinkxx.velum` + versi sesuai.
 ## 5. Terbitkan Release
 
 ```sh
-gh release create v0.1.0 app-release.apk \
+gh release create v0.1.0 *.apk \
   --title "Velum 0.1.0" \
-  --notes "Catatan rilis: salin dari CHANGELOG bagian rilis terkait."
+  --notes "Catatan rilis: salin dari CHANGELOG bagian rilis terkait.
+
+Pilih berkas sesuai perangkat:
+- Ponsel Android modern (mayoritas): app-arm64-v8a-release.apk
+- Ponsel lama 32-bit: app-armeabi-v7a-release.apk
+- Emulator/Chromebook: app-x86_64-release.apk
+- Tidak yakin: app-universal-release.apk (berjalan di semua, ukuran lebih besar)"
 ```
 
 Versi (`versionName`/`versionCode`) hanya di-bump atas perintah eksplisit
