@@ -62,6 +62,19 @@ object VelumFormat {
     fun formatClock(epochMillis: Long): String =
         SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date(epochMillis))
 
+    /**
+     * Apakah hasil parse ini benar-benar berasal dari keluaran `cdn-cgi/trace`.
+     *
+     * Portal tawanan (captive portal) dan halaman galat proxy menjawab HTTP 200 berisi
+     * HTML, yang diparse menjadi tiga bidang kosong. Tanpa pemeriksaan ini keadaan itu
+     * dilaporkan sebagai "Belum aktif" — seolah tunnelnya tidak bekerja, padahal yang
+     * sebenarnya terjadi jaringan ini meminta login lebih dulu. Diagnosis salah arah,
+     * persis kelas masalah yang dulu membuat "Kesalahan jaringan: Unable to resolve host"
+     * menyesatkan pengguna.
+     */
+    fun isUsable(trace: TraceInfo): Boolean =
+        trace.warp.isNotEmpty() || trace.colo.isNotEmpty() || trace.ip.isNotEmpty()
+
     /** Memisahkan host dari "host:port" (aman untuk literal IPv6 dalam kurung siku). */
     fun hostPart(endpoint: String): String {
         if (endpoint.startsWith("[")) return endpoint.substringBefore("]").removePrefix("[")

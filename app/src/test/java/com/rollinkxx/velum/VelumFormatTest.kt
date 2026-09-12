@@ -81,6 +81,21 @@ class VelumFormatTest {
     }
 
     @Test
+    fun isUsable_menolakResponsYangBukanKeluaranTrace() {
+        // Portal tawanan (captive portal) menjawab HTTP 200 dengan HTML. Tanpa penolakan
+        // ini, keadaan itu dilaporkan sebagai "Belum aktif" — menuduh tunnel padahal
+        // jaringannya yang meminta login lebih dulu.
+        assertFalse(VelumFormat.isUsable(VelumFormat.parseTrace("<html><body>Login Wi-Fi</body></html>")))
+        assertFalse(VelumFormat.isUsable(VelumFormat.parseTrace("")))
+        assertFalse(VelumFormat.isUsable(VelumFormat.parseTrace("warp=")))
+        // Satu bidang yang dikenal saja sudah cukup membuktikan ini keluaran trace.
+        assertTrue(VelumFormat.isUsable(VelumFormat.parseTrace("warp=on")))
+        assertTrue(VelumFormat.isUsable(VelumFormat.parseTrace("colo=DPS")))
+        assertTrue(VelumFormat.isUsable(VelumFormat.parseTrace("ip=1.2.3.4")))
+        assertTrue(VelumFormat.isUsable(VelumFormat.parseTrace("warp=off\ncolo=SIN")))
+    }
+
+    @Test
     fun isIpLiteral_hanyaIPv4() {
         assertTrue(VelumFormat.isIpLiteral("162.159.192.1"))
         assertFalse(VelumFormat.isIpLiteral("engage.cloudflareclient.com"))
