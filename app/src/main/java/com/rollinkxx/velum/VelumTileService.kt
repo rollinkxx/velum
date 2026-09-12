@@ -29,6 +29,18 @@ class VelumTileService : TileService() {
         updateTile()
     }
 
+    /**
+     * Menghentikan executor. Tanpa ini setiap instance layanan meninggalkan satu thread
+     * **non-daemon** yang tidak pernah mati — dan sistem membuat-dan-membuang TileService
+     * berulang kali selama pemakaian normal, jadi threadnya menumpuk dan menahan proses
+     * tetap hidup. `shutdown()` (bukan `shutdownNow()`) agar aksi yang sudah berjalan
+     * tidak dipotong di tengah `VelumTunnel.up()`.
+     */
+    override fun onDestroy() {
+        worker.shutdown()
+        super.onDestroy()
+    }
+
     override fun onClick() {
         super.onClick()
         val app = applicationContext
