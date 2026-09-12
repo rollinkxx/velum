@@ -7,6 +7,7 @@ import com.wireguard.android.backend.Tunnel
 import com.wireguard.config.Config
 import com.wireguard.config.Interface
 import com.wireguard.config.Peer
+import java.util.concurrent.atomic.AtomicInteger
 
 /**
  * Pengelola tunnel WARP berbasis WireGuard (GoBackend).
@@ -24,6 +25,11 @@ import com.wireguard.config.Peer
  *   kebocoran niat pengguna, bukan sekadar kosmetik.
  * - [upSinceElapsedMs] dan notifikasi status diperbarui di sini, bukan di Activity:
  *   keduanya wajib mengikuti umur **tunnel** (proses), bukan umur **layar** (Activity).
+ *
+ * **Batas jaminan kunci itu (jangan dilebihkan):** `@Synchronized` hanya membuat
+ * *transisi tunnel* tidak saling menyela. Ia TIDAK melindungi memo niat ([Prefs.wasUp])
+ * maupun hidup/matinya [ReconnectMonitor], karena keduanya ditulis di luar kunci oleh
+ * pelaku yang berbeda. Untuk itu ada [bumpIntent]/[intentStale] — lihat dokumentasinya.
  */
 object VelumTunnel : Tunnel {
     private const val NAME = "velum"
@@ -60,6 +66,39 @@ object VelumTunnel : Tunnel {
     /** Callback UI; dipanggil dari thread backend, penerima harus pindah ke main thread sendiri. */
     @Volatile
     var listener: ((Tunnel.State) -> Unit)? = null
+
+    /**
+     * Generasi niat pengguna, milik **proses** — bukan milik satu layar atau satu pelaku.
+     *
+     * Kunci `@Synchronized` di kelas ini hanya menjamin *transisi tunnel* tidak saling
+     * menyela. Ia tidak melindungi dua hal lain yang juga menentukan hasil akhir:
+     * memo niat ([Prefs.wasUp]) dan hidup/matinya [ReconnectMonitor]. Keduanya ditulis
+     * oleh beberapa pelaku yang tidak saling kenal — layar utama, ubin pengaturan cepat,
+     * receiver boot/pembaruan — dan tanpa penanda urutan ada interleaving yang nyata:
+     *
+     * - pengguna menekan ubin untuk memutus (`wasUp = false`, monitor dimatikan) tepat
+     *   saat `connect()` layar utama berada di ekor pekerjaannya → layar menulis
+     *   `wasUp = true` dan menyalakan monitor lagi → tunnel yang baru dimatikan
+     *   membangkitkan dirinya sendiri pada peristiwa jaringan berikutnya;
+     * - pengguna menekan ubin untuk menyambung (proba endpoint ≤ 6 detik), berubah
+     *   pikiran, lalu menekan Putuskan di aplikasi → `down()` layar selesai lebih dulu,
+     *   kemudian `up()` ubin menuntaskan pekerjaannya → tunnel hidup lagi setelah
+     *   diminta mati.
+     *
+     * Karena itu setiap pelaku menaikkan generasi ini SEBELUM mulai bekerja, menyimpan
+     * angkanya, dan memeriksa [intentStale] sebelum menulis keadaan apa pun. Pelaku yang
+     * lebih baru selalu menang; yang lebih tua berhenti tanpa menyentuh apa pun.
+     */
+    private val intentGen = AtomicInteger(0)
+
+    /** Generasi niat saat ini, tanpa menaikkannya (dipakai pelaku yang tidak membawa niat baru). */
+    val currentIntent: Int get() = intentGen.get()
+
+    /** Menandai niat pengguna yang baru; kembalikan generasi yang harus dipegang pelaku. */
+    fun bumpIntent(): Int = intentGen.incrementAndGet()
+
+    /** Apakah generasi [gen] sudah digantikan pelaku lain yang lebih baru. */
+    fun intentStale(gen: Int): Boolean = intentGen.get() != gen
 
     override fun getName(): String = NAME
 

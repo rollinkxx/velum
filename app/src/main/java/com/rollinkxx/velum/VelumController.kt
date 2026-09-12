@@ -93,19 +93,16 @@ class VelumController(context: Context, private val ui: Ui) {
     @Volatile
     private var testSuppressAuto = false
 
-    /**
-     * Generasi niat pengguna. Setiap aksi (Sambungkan/Putuskan/Daftar ulang) menaikkannya;
-     * pekerjaan latar yang sudah usang melihat generasinya tidak cocok lalu berhenti
-     * SEBELUM mengubah keadaan tunnel.
-     *
-     * Tanpa ini ada race nyata: `disconnect()` menulis `wasUp = false` lalu mengantre
-     * `down()`, sementara `connect()` yang masih berjalan menulis `wasUp = true` setelah
-     * `up()` selesai — hasilnya tunnel mati tetapi tercatat "niat UP", jadi BootReceiver
-     * dan pemantau jaringan menyambungkannya lagi. Hanya dinaikkan dari main thread,
-     * karena semua pemicu aksi berasal dari klik/kallback UI.
+    /*
+     * Generasi niat pengguna TIDAK disimpan di sini lagi: ia milik proses dan dipegang
+     * [VelumTunnel.bumpIntent]/[VelumTunnel.intentStale]. Versi per-controller yang lama
+     * hanya menutup race antar-pekerjaan di dalam satu layar (Sambungkan vs Putuskan vs
+     * Daftar ulang), tetapi tidak terhadap pelaku lain yang ikut menulis `wasUp` dan
+     * hidup/matinya [ReconnectMonitor] — ubin pengaturan cepat dan receiver boot.
+     * Akibatnya nyata: pengguna memutus lewat ubin, lalu ekor `connect()` milik layar
+     * menulis `wasUp = true` dan menyalakan monitor lagi, sehingga tunnel yang baru
+     * dimatikan membangkitkan dirinya sendiri pada peristiwa jaringan berikutnya.
      */
-    @Volatile
-    private var intentGen = 0
 
     /** Controller sudah dimatikan: jangan sentuh UI, jangan jadwalkan ulangan baru. */
     @Volatile
@@ -141,11 +138,13 @@ class VelumController(context: Context, private val ui: Ui) {
         if (Looper.myLooper() == Looper.getMainLooper()) block() else main.post { if (!dead) block() }
     }
 
-    /** Naikkan generasi niat; hanya dipanggil dari main thread. */
-    private fun nextIntent(): Int {
-        intentGen++
-        return intentGen
-    }
+    /**
+     * Menaikkan generasi niat **proses** dan mengembalikan angka yang harus dipegang
+     * pekerjaan latar. Hanya dipanggil dari main thread (semua pemicu aksi berasal dari
+     * klik/kallback UI). Pelaku lain — ubin pengaturan cepat, receiver boot — memakai
+     * pencacah yang sama di [VelumTunnel], jadi urutan niat bersifat global.
+     */
+    private fun nextIntent(): Int = VelumTunnel.bumpIntent()
 
     /**
      * Menyerahkan pekerjaan latar dengan aman.
@@ -165,8 +164,11 @@ class VelumController(context: Context, private val ui: Ui) {
         }
     }
 
-    /** Apakah pekerjaan dengan generasi [gen] sudah digantikan aksi pengguna yang lebih baru. */
-    private fun stale(gen: Int) = dead || gen != intentGen
+    /**
+     * Apakah pekerjaan dengan generasi [gen] sudah digantikan niat yang lebih baru —
+     * dari layar ini maupun dari pelaku lain (ubin pengaturan cepat, receiver boot).
+     */
+    private fun stale(gen: Int) = dead || VelumTunnel.intentStale(gen)
 
     // ---------- Status ----------
 
@@ -513,7 +515,11 @@ class VelumController(context: Context, private val ui: Ui) {
         }
         try {
             if (!EndpointProbe.rotate(prefs, current)) {
-                Log.w(TAG, "tidak ada endpoint pengganti; uji dilanjutkan dengan endpoint lama")
+                // Jujur tentang artinya: rotasi bisa gagal karena tidak ada kandidat lain
+                // yang terukur, ATAU karena host efektif hasilnya sama dengan yang gagal.
+                // Keduanya berarti uji ulang memakai host yang sama — bukan "endpoint lama"
+                // seolah tidak ada yang berubah di Prefs.
+                Log.w(TAG, "endpoint efektif tidak berpindah; uji ulang memakai host yang sama")
                 return
             }
             VelumTunnel.restart(app, prefs)

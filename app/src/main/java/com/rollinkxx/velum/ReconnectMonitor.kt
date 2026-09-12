@@ -15,8 +15,11 @@ import java.util.concurrent.TimeUnit
  * Menjaga tunnel tetap tersambung saat konektivitas berubah (pindah Wi-Fi/data,
  * putus sesaat) dengan memantul tunnel sekali pakai backoff.
  *
- * Lingkup aplikasi, bukan Activity: tetap bekerja walau UI ditutup, karena proses
- * aplikasi dijaga hidup oleh foreground service library selama tunnel UP.
+ * Lingkup aplikasi, bukan Activity: tetap bekerja walau UI ditutup. Yang menahan proses
+ * tetap hidup selama tunnel UP adalah **VPN yang aktif** (VpnService yang sudah
+ * `establish()`), BUKAN layanan latar depan — `GoBackend` tidak pernah memanggil
+ * `startForeground` (diverifikasi pada sumber upstream tag `1.0.20260102`), jadi jangan
+ * menyandarkan penalaran tentang umur proses pada anggapan ada FGS.
  * Aktif hanya bila diniatkan tersambung ([Prefs.wasUp]); putus manual menghentikannya.
  */
 object ReconnectMonitor {
@@ -114,16 +117,26 @@ object ReconnectMonitor {
         if (now - lastBounceMs < DEBOUNCE_MS || bouncing) return
         lastBounceMs = now
         bouncing = true
+        // Pemantau BUKAN pelaku niat: ia menegakkan niat yang sudah ada. Karena itu ia
+        // mengingat generasi saat dijadwalkan (tanpa menaikkannya) dan berhenti begitu
+        // pelaku lain — layar utama, ubin, receiver — menyatakan niat yang lebih baru.
+        // Tanpa ini, pantulan yang sedang berjalan bisa menyalakan tunnel tepat setelah
+        // pengguna memutusnya lewat ubin.
+        val gen = VelumTunnel.currentIntent
         worker.execute {
             try {
                 val prefs = Prefs.of(app)
                 if (!prefs.wasUp || !prefs.isRegistered) return@execute
+                if (VelumTunnel.intentStale(gen)) {
+                    Log.i(TAG, "pantulan jaringan dibatalkan: ada niat pengguna yang lebih baru")
+                    return@execute
+                }
                 if (VelumTunnel.state != Tunnel.State.UP) {
-                    tryUpOnce(app, prefs)
+                    tryUpOnce(app, prefs, gen)
                     return@execute
                 }
                 Log.i(TAG, "jaringan $reason: memantul tunnel")
-                bounceWithBackoff(app, prefs)
+                bounceWithBackoff(app, prefs, gen)
             } finally {
                 bouncing = false
             }
@@ -131,15 +144,22 @@ object ReconnectMonitor {
     }
 
     /** Menyalakan tunnel yang mati padahal diniatkan UP (mis. proses lahir ulang). */
-    private fun tryUpOnce(app: Context, prefs: Prefs) {
+    private fun tryUpOnce(app: Context, prefs: Prefs, gen: Int) {
         if (!Prefs.of(app).wasUp) return // pengguna memutus di tengah jalan
         try {
             VelumTunnel.refreshState(app)
             if (VelumTunnel.state == Tunnel.State.UP) return
+            // Proba endpoint di bawah ini bisa makan ~6 detik; niat pengguna diperiksa
+            // ulang tepat sebelum tunnel disentuh, bukan hanya sebelum proba.
+            if (VelumTunnel.intentStale(gen)) return
             if (VpnService.prepare(app) == null) {
                 // Jaringan baru: endpoint terbaik bisa berubah (refresh() mengabaikan
                 // hasil yang masih segar <1 jam, jadi murah di jalur cepat ini).
                 EndpointProbe.refresh(prefs)
+                if (VelumTunnel.intentStale(gen)) {
+                    Log.i(TAG, "sambung ulang latar dibatalkan: ada niat pengguna yang lebih baru")
+                    return
+                }
                 VelumTunnel.up(app, prefs)
                 // Segarkan penanda waktu SETELAH berhasil, bukan hanya saat menjadwalkan:
                 // peristiwa jaringan susulan yang dipicu oleh kenaikan tunnel ini sendiri
@@ -152,7 +172,7 @@ object ReconnectMonitor {
         }
     }
 
-    private fun bounceWithBackoff(app: Context, prefs: Prefs) {
+    private fun bounceWithBackoff(app: Context, prefs: Prefs, gen: Int) {
         runCatching { VelumTunnel.down(app) }
         for (delay in BACKOFF_MS) {
             try {
@@ -161,10 +181,17 @@ object ReconnectMonitor {
                 return
             }
             if (!Prefs.of(app).wasUp) return // pengguna memutus di tengah pantulan
+            if (VelumTunnel.intentStale(gen)) {
+                Log.i(TAG, "pantulan tunnel dihentikan: ada niat pengguna yang lebih baru")
+                return
+            }
             try {
                 VelumTunnel.refreshState(app)
                 if (VelumTunnel.state == Tunnel.State.UP) return
                 EndpointProbe.refresh(prefs)
+                // Jeda di atas bisa 60 detik: niat yang dibaca sebelum tidur sudah
+                // tidak berarti apa-apa bila pengguna bertindak selama tidur.
+                if (VelumTunnel.intentStale(gen)) return
                 VelumTunnel.up(app, prefs)
                 VelumTunnel.refreshState(app)
                 if (VelumTunnel.state == Tunnel.State.UP) {
