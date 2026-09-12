@@ -144,6 +144,11 @@ dependencies {
     implementation(libs.androidx.appcompat)
     // Dipakai langsung untuk Activity Result API (izin VPN & notifikasi).
     implementation(libs.androidx.activity)
+    // Dipakai langsung oleh VelumInsets (ViewCompat/WindowInsetsCompat). Dideklarasikan
+    // eksplisit supaya tidak bergantung pada salinan transitif dari appcompat/activity —
+    // "deklarasikan apa yang Anda pakai". Versinya 1.13.0, sama dengan yang sudah
+    // terselesaikan di graph, jadi classpath dan isi APK tidak berubah sama sekali.
+    implementation(libs.androidx.core)
     implementation(libs.wireguard.tunnel)
     implementation(libs.androidx.security.crypto)
 
