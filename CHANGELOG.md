@@ -25,6 +25,12 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 - `versionCode` otomatis per varian (`abiCode * 1000 + versionCode`), dengan APK universal
   memakai nilai terendah supaya varian spesifik arsitektur selalu lebih diutamakan.
 
+- Verifikasi `apksigner` di job rilis: build digagalkan bila APK ternyata tidak
+  bertanda tangan atau memakai kunci debug, dan sidik jari SHA-256 tiap APK dicetak
+  ke step summary. Sebelumnya kegagalan penandatanganan lolos diam-diam — Gradle
+  tetap menghasilkan APK dan CI tetap hijau, cacatnya baru ketahuan saat pengguna
+  gagal memasang.
+
 ### Changed
 - **AGP 8.7.3 → 9.4.0** (PR #5 Dependabot, diterapkan di branch sesi). Bukan
   sekadar ganti nomor versi — AGP 9 menghapus beberapa API yang dipakai repo ini:

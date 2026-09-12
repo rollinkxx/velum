@@ -23,7 +23,7 @@
 | 19 | Fix `Prefs.clear()`: pertahankan memo `wasUp` | Sedang | Selesai tervalidasi (CI run 34580968135) |
 | 20 | Enkripsi SharedPreferences (EncryptedSharedPreferences + migrasi) | Tinggi | Selesai tervalidasi (CI run 34581202095) |
 | 21 | Statistik trafik + deteksi tunnel basi | Sedang | Selesai tervalidasi (CI run 34581202095) |
-| 22 | Uji `assembleRelease` bertanda tangan end-to-end (butuh Secrets maintainer) | Sedang | Menunggu Secrets maintainer |
+| 22 | Uji `assembleRelease` bertanda tangan end-to-end (butuh Secrets maintainer) | Sedang | Selesai tervalidasi (CI run 34671312706): job rilis hijau, APK bertanda tangan kunci rilis |
 | 23 | Anotasi advisory Node.js 20 deprecated di runner (actions dipaksa ke Node 24; non-pemblokir, terlihat di run 34581202095) | Rendah | Selesai tervalidasi (CI run 34658145458) — hilang setelah PR #6/#7/#10/#11 di-merge |
 | 24 | Indikator laju kecepatan (KB/s) di baris Data | Tinggi | Selesai tervalidasi (CI run 34586619601) |
 | 25 | Proba endpoint tercepat saat menyambung | Tinggi | Selesai tervalidasi (CI run 34586619601) |
@@ -49,3 +49,4 @@
 | 45 | Aturan R8 bersasaran: Tink protobuf, TileService, BootReceiver, atribut baris untuk stack trace | Tinggi | Selesai tervalidasi (CI run 34668310746), mapping.txt 613 KB diunggah |
 | 46 | Panduan keystore rilis: langkah keytool (komputer & Termux), tabel isian, Secrets vs Variables, verifikasi apksigner | Sedang | Selesai (dokumen); eksekusi menunggu maintainer |
 | 47 | Bump AGP 9.4.0 + migrasi built-in Kotlin, localeFilters, compileSdk 36 | Sedang | Selesai tervalidasi (CI run 34669207614, hijau percobaan pertama) |
+| 48 | Verifikasi apksigner di CI: tolak APK tak bertanda tangan / berkunci debug, cetak sidik jari SHA-256 | Tinggi | Selesai tervalidasi (CI run 34671312706) |

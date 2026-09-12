@@ -270,7 +270,22 @@ sebelum push.
   - `.github/dependabot.yml`: ekosistem `gradle` (mingguan) & `github-actions` (bulanan),
     maks. 5 PR, prefix commit `build`/`ci`. Dependabot hanya membuka PR — **manusia yang
     memutuskan**, dan `gradle/libs.versions.toml` tetap satu-satunya sumber versi.
-  - **Run acuan terkini:** 34669207614 (`42b94bb`, **5m08s**, hijau **percobaan pertama**)
+  - **Run acuan terkini:** 34671312706 (`a74c1e7`, **7m19s**, hijau) — **run pertama
+    dengan job rilis benar-benar berjalan**. Maintainer mengisi Secrets keystore
+    2026-09-12, jadi `vars.ENABLE_RELEASE_SIGNING` kini `true` dan job `release`
+    **tidak lagi di-skip** — perkirakan durasi CI ±7 menit, bukan ±5.
+    Artifact: `app-release` **11,93 MB** (≈2,98 MB per ABI) · `app-preview` 11,93 MB ·
+    `app-debug` 26,03 MB. Rilis vs preview hanya beda **100 byte**: keduanya identik
+    kecuali tanda tangan, yang memang membuktikan preview layak jadi cerminan rilis.
+    - Job rilis kini memverifikasi hasilnya dengan `apksigner`. **Jangan hapus langkah
+      itu**: `signingConfig` hanya terpasang bila `KEYSTORE_FILE` terisi, sehingga
+      Secret yang salah membuat Gradle tetap menghasilkan APK **tanpa tanda tangan**
+      dan CI tetap hijau — kegagalan senyap yang baru ketahuan di tangan pengguna.
+      Langkah itu juga menolak APK berkunci debug (kunci debug seragam di semua mesin,
+      siapa pun bisa menerbitkan "pembaruan" palsu).
+    - Sidik jari SHA-256 tercetak di step summary dan **wajib sama di setiap rilis**;
+      berubah = pengguna lama tidak bisa memperbarui.
+  - **Run acuan AGP 9:** 34669207614 (`42b94bb`, **5m08s**, hijau **percobaan pertama**)
     — **AGP 9.4.0**. Artifact: `app-debug` 26,03 MB · `app-preview` **11,93 MB** ·
     `mapping-preview` 613 KB. Ukuran praktis tidak berubah dari AGP 8.7.3
     (preview -0,16 MB, debug +0,20 MB); nilai bump ini kepatuhan, bukan performa.
