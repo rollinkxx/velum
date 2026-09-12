@@ -324,7 +324,12 @@ sebelum push.
   - `.github/dependabot.yml`: ekosistem `gradle` (mingguan) & `github-actions` (bulanan),
     maks. 5 PR, prefix commit `build`/`ci`. Dependabot hanya membuka PR — **manusia yang
     memutuskan**, dan `gradle/libs.versions.toml` tetap satu-satunya sumber versi.
-  - **Run acuan terkini (branch sesi `arena/01a09481-velum`):** 34681658613
+  - **Run acuan terkini (branch sesi `arena/01a09481-velum`):** 34683624375
+    (`a294f2c`, **5m18s**, hijau) — perbaikan tata letak layar utama (muat satu layar,
+    footer dihapus). Artifact tidak berubah ukurannya dari run sebelumnya
+    (`app-preview`/`app-release` 12,21 MB · `app-debug` 26,45 MB): perubahan hanya di
+    resource layout. Anotasi lint tetap sama seperti daftar di bawah (tanpa temuan baru).
+  - **Run sebelumnya di branch sesi:** 34681658613
     (`4f211ee`, **5m12s**, hijau) — paket ikon baru + baris aksi + targetSdk 36 +
     pembersihan lint. Artifact: `app-release` **12,21 MB** · `app-preview` 12,21 MB ·
     `app-debug` 26,45 MB · `mapping-preview` 0,59 MB. Naik ±0,3 MB dari sebelumnya:
