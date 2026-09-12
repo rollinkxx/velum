@@ -236,21 +236,23 @@ sebelum push.
     tunnel; daftar dibatasi `<queries>` peluncur (tanpa `QUERY_ALL_PACKAGES`); bilah atas
     dengan tombol **Kembali** (`onBackPressedDispatcher`, bukan `onBackPressed` usang) dan
     keterangan bila daftar aplikasi kosong.
-  - `VelumSetup.kt` — kesiapan agar tunnel pulih sendiri: membaca Always-on VPN
-    (lewat refleksi `Settings.Global.ALWAYS_ON_VPN_APP`/`_LOCKDOWN` — dua kunci itu baru
-    jadi konstanta publik di API 26, sedangkan minSdk 24) dan status optimasi baterai,
-    lalu **menawarkan sekali**; keputusan tawaran `offer()` murni & teruji unit.
+  - **Catatan 2026-09-12:** `VelumSetup.kt` (pembaca Always-on VPN + tawaran popup) sudah
+    **dihapus** atas permintaan maintainer; yang tersisa hanya pintasan "Selalu aktif" di
+    baris aksi. Jangan menghidupkan lagi tawaran yang muncul sendiri.
   - `VelumInsets.kt` — padding bilah sistem untuk tampilan **edge-to-edge** yang dipaksakan
     sejak `targetSdk` 36; dipanggil dari akar layout (`@+id/root`) kedua activity. Pada
     perangkat/jendela non-edge-to-edge insets bernilai nol sehingga tidak menggandakan jarak.
   - **Berkas murni (tanpa Android framework) — semuanya teruji unit JVM:**
     `VelumFormat.kt` (parse trace, pemformatan, pemilihan endpoint),
-    `VelumTestDecision.kt` (RETRY/PUBLISH/DROP — mencegah false negative "Belum lewat Velum"),
+    `VelumTestDecision.kt` (RETRY/PUBLISH/PUBLISH_NO_DATA/DROP — handshake jadi syarat;
+    memisahkan "belum ada data" dari kegagalan jaringan),
+    `VelumTestResult.kt` (hasil uji tersandi satu baris untuk `Prefs.lastTest`),
     `VelumError.kt` (klasifikasi NETWORK vs penolakan klien → pesan spesifik),
     `VelumRegistration.kt` (validasi respons `POST /reg`, port WG 2408),
     `VelumMigration.kt` (rencana migrasi data era polos, konservatif),
     `VelumDiagnostics.kt` (ringkasan gangguan **ramah privasi**: tanpa kunci/IP/token).
-    Uji padanannya di `app/src/test/java/com/rollinkxx/velum/*Test.kt` (7 berkas).
+    Uji padanannya di `app/src/test/java/com/rollinkxx/velum/*Test.kt` (7 berkas; uji
+    `VelumSetupTest` ikut terhapus bersama fiturnya).
   - `AndroidManifest.xml` — VpnService milik library (`GoBackend$VpnService`) di-merge
     (`tools:node="merge"`) untuk menambah `foregroundServiceType="specialUse"` + property
     subtype `vpn`; receiver boot exported; service ubin QS (`BIND_QUICK_SETTINGS_TILE`,
@@ -328,10 +330,10 @@ sebelum push.
   - `.github/dependabot.yml`: ekosistem `gradle` (mingguan) & `github-actions` (bulanan),
     maks. 5 PR, prefix commit `build`/`ci`. Dependabot hanya membuka PR — **manusia yang
     memutuskan**, dan `gradle/libs.versions.toml` tetap satu-satunya sumber versi.
-  - **Run acuan terkini (branch sesi `arena/01a09481-velum`):** 34684549219
-    (`e0d96c9`, **5m33s**, hijau) — logo emblem + pantulan 5 percobaan + tawaran kesiapan.
-    Semua tahap lolos (unit test termasuk 8 uji `VelumSetup` baru, build debug & preview,
-    lint, verifikasi tanda tangan rilis). Artifact: `app-preview`/`app-release` **12,17 MB**
+  - **Run acuan terakhir yang hijau (branch sesi `arena/01a09481-velum`):** 34684549219
+    (`e0d96c9`, **5m33s**, hijau) — logo emblem + pantulan 5 percobaan (+ tawaran kesiapan,
+    yang **kemudian dihapus** pada paket 2026-09-12). Semua tahap lolos (unit test, build
+    debug & preview, lint, verifikasi tanda tangan rilis). Artifact: `app-preview`/`app-release` **12,17 MB**
     (turun dari 12,21 MB karena PNG ikon baru lebih ringan) · `app-debug` 26,30 MB.
   - **Run sebelumnya di branch sesi:** 34683624375
     (`a294f2c`, **5m18s**, hijau) — perbaikan tata letak layar utama (muat satu layar,
@@ -419,10 +421,9 @@ sebelum push.
     commit lanjutan. **Pelajaran:** menambah ImageView ber-`tint` atau membungkus
     `layout_weight` di dalam `layout_weight` selalu memicu lint; periksa keduanya
     sebelum push.
-  - **Sisa peringatan lint (run 34684549219, sesudah pembersihan):** 8 usulan KTX
-    `SharedPreferences.edit` pada `Prefs.kt` (bertambah satu karena `setupPostponed`
-    menambah satu pemakaian `edit()`) (sengaja tidak diambil — menuntut
-    dependensi `androidx.core:core-ktx` hanya untuk tiga baris idiom yang sudah benar),
+  - **Sisa peringatan lint (run 34700496000, sesudah pembersihan):** 8 usulan KTX
+    `SharedPreferences.edit` pada `Prefs.kt` (sengaja tidak diambil — menuntut
+    dependensi `androidx.core:core-ktx` hanya untuk idiom yang sudah benar),
     `GoBackend` static field (dari library WireGuard, bukan kode repo), `allowBackup`
     usang, dan tawaran versi `androidx.activity` yang lebih baru. Tiga advisory ikon
     yang dulu muncul (10sp, monokrome, ikon mengisi seluruh piksel) **sudah hilang**.
@@ -575,18 +576,33 @@ sebelum push.
   `res/color/*.xml` (color-state-list) **dan** `values/*.xml`, karena dua tempat itu mudah
   terlewat.
 - (2026-09-12) **Always-on VPN tidak bisa dipastikan dari dalam aplikasi — pakai perangkat
-  uji.** Aplikasi hanya bisa *membaca* (dan itu pun lewat refleksi, lihat `VelumSetup`),
-  tidak bisa menyalakan; jadi tawaran bersifat anjuran dan **wajib diuji di perangkat**:
+  uji.** Aplikasi tidak bisa menyalakannya, dan sejak popup dihapus ia juga tidak lagi
+  membacanya (pembacaan refleksi itu ikut terhapus bersama `VelumSetup`); yang ada hanya
+  pintasan "Selalu aktif" ke pengaturan sistem. Karena itu perilakunya **wajib diuji di
+  perangkat**:
   aktifkan Selalu aktif VPN untuk Velum + opsi Blokir koneksi tanpa VPN, lalu periksa
   dengan `adb shell settings get secure always_on_vpn_app` (harus `com.rollinkxx.velum`
   atau `…preview`/`…debug`) dan `adb shell settings get secure always_on_vpn_lockdown`
   (harus `1`). Uji nyata ketahanannya: buka Velum, nyalakan, lalu `adb shell am force-stop
   com.rollinkxx.velum` — bila Always-on menyala, sistem akan menyalakan VPN kembali
   dalam beberapa detik.
-- (2026-09-12) **Tawaran pengaturan harus sekali saja dan tidak menuduh.** `VelumSetup.offer`
-  sengaja memperlakukan `null` (pembacaan gagal) sebagai "tidak ada masalah", dan memo
-  `setupPostponed` **dipertahankan** oleh `Prefs.clear()` — kalau tidak, menekan Daftar
-  ulang akan memunculkan lagi dialog yang sudah ditolak pengguna.
+- (2026-09-12) **Jangan memasang popup yang muncul sendiri saat tersambung.** Tawaran
+  kesiapan (`VelumSetup` + memo `setupPostponed`) pernah dibuat agar Always-on VPN/baterai
+  diatur sekali, lalu **dibatalkan maintainer**: "notifikasi popup untuk menyuruh vpn agar
+  selalu aktif sebaiknya dihilangkan saja". Pelajarannya: bantuan kontekstual yang muncul
+  tanpa diminta lebih mengganggu daripada berguna.
+- (2026-09-12) **"Tersambung" ≠ handshake terjadi — sumber pesan "Kesalahan jaringan:
+  Unable to resolve host ..." yang menyesatkan.** Bukti perangkat pengguna: status
+  "Tersambung", Data ↓ 0 B/s, endpoint 162.159.193.1:2408, dan pesan galat DNS panjang.
+  Sebabnya: `awaitHandshake()` lama mengembalikan "siap" hanya karena antarmuka TUN `UP`,
+  sehingga uji `cdn-cgi/trace` menembak keluar sebelum handshake; DNS di dalam tunnel tidak
+  bisa dilewati, dan galat DNS adalah **gejala** — bukan sebab. Perbaikan: handshake jadi
+  syarat (tiga keadaan), keadaan itu dilaporkan sebagai "belum ada data" + saran tindakan
+  (bukan menyalahkan jaringan), dan bila handshake tak pernah terjadi aplikasi **memutar
+  endpoint** (`EndpointProbe.rotate` memilih kandidat berbeda dari yang sekarang —
+  `refresh()` tidak cukup karena pemenang RTT-nya sama) lalu menyambung ulang & menguji
+  sekali lagi. Hasil uji disimpan (`Prefs.lastTest`) sehingga baris "Uji terakhir" tidak
+  lagi menggantung di teks sementara saat tampilan dibuat ulang.
 - (2026-09-12) **`layout_gravity="center_vertical"` pada anak ScrollView = konten
   terpotong permanen.** Gejalanya nyata di perangkat pengguna: judul "Velum" hilang
   sebagian di layar (hanya sisa huruf bagian bawah yang terlihat) dan tidak bisa

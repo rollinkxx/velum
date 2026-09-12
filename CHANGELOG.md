@@ -12,18 +12,8 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
   lalu amber gelap di bawah, sehingga terbaca sebagai logam, bukan bidang datar.
   Seluruh bentuk (cincin diameter 64,8 pada kanvas 108) berada di dalam zona aman
   72x72, jadi topeng peluncur apa pun tidak memotongnya.
-- **Tawaran kesiapan sekali saja** (`VelumSetup`): bila Always-on VPN belum diarahkan ke
-  Velum (atau blokir koneksi tanpa VPN belum menyala) dan/atau Velum masih dioptimalkan
-  baterai, aplikasi menawarkan pengaturannya sekali dengan bahasa awam lalu membuka layar
-  pengaturan sistem yang tepat. Ini penambal paling ampuh untuk kelemahan yang tidak bisa
-  diatasi aplikasi sendiri: proses yang dimatikan OS tidak bisa bangkit sendiri.
-  Keputusan tawaran (`VelumSetup.offer`) murni tanpa framework dan teruji unit —
-  termasuk aturan penting bahwa keadaan **"tidak diketahui" tidak pernah dianggap
-  kekurangan**, sehingga tawaran tidak muncul menuduh tanpa dasar.
-- `VelumSetupTest` (8 uji) — berkas uji ke-7.
-- Blok `<queries>` baru untuk dua aksi pengaturan sistem (`VPN_SETTINGS`,
-  `IGNORE_BATTERY_OPTIMIZATION_SETTINGS`), supaya resolusi intent tetap berhasil pada
-  API 30+ dengan pembatasan visibilitas paket.
+- Blok `<queries>` untuk aksi pengaturan sistem (`VPN_SETTINGS`), supaya resolusi intent
+  tetap berhasil pada API 30+ dengan pembatasan visibilitas paket.
 
 - Varian build **preview**: konfigurasi rilis (R8 + shrink resources) yang ditandatangani
   kunci debug, sehingga APK kecil siap pasang bisa diuji di perangkat nyata tanpa keystore
@@ -289,11 +279,43 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
   software VPN dan panduan mereknya melarang pemakaian di nama aplikasi pihak ketiga
   (lihat ADR 002). Penyebutan WARP yang tersisa hanya referensial (endpoint/protokol).
 
-### Fixed
-- Tawaran pengaturan tidak muncul lagi setelah pengguna memilih "Nanti saja": memo
-  `setupPostponed` bertahan bahkan ketika pengguna menekan Daftar ulang (yang membersihkan
-  data registrasi). Sebelumnya `Prefs.clear()` akan menghapus memo semacam itu.
+### Removed
+- **Popup tawaran Always-on VPN & bebas optimasi baterai dihapus** atas permintaan
+  maintainer (2026-09-12): tawaran yang muncul sendiri setelah tersambung dinilai
+  mengganggu. Berkas `VelumSetup.kt` + `VelumSetupTest.kt`, memo `setupPostponed`, enam
+  string tawaran, dan `<queries>` `IGNORE_BATTERY_OPTIMIZATION_SETTINGS` ikut dihapus.
+  Pintasan "Selalu aktif" di baris aksi tetap ada sebagai jalan manual ke pengaturan
+  sistem (kueri `VPN_SETTINGS` dipertahankan).
 
+### Fixed
+- **Baris "Uji terakhir" tidak lagi berhenti di "Menunggu data…" atau menuduh jaringan
+  pengguna.** Bukti perangkat 2026-09-12: status "Tersambung", Data ↓ 0 B/s, endpoint
+  162.159.193.1:2408, dan pesan `Kesalahan jaringan: Unable to resolve host
+  "www.cloudflare.com"` — handshake WireGuard ternyata tidak pernah terjadi, sehingga
+  permintaan uji tidak keluar lewat tunnel dan galat DNS itu hanya gejala. Dua akar yang
+  diperbaiki: (1) `awaitHandshake` menyatakan "siap" hanya karena antarmuka TUN UP,
+  padahal handshake belum tentu ada; (2) hasil uji yang dibatalkan tidak pernah
+  ditampilkan, sehingga teks sementara bisa tertinggal selamanya. Kini handshake menjadi
+  syarat (handshake teramati / belum / tunnel turun), keadaan **belum ada data**
+  dipisahkan dari kegagalan jaringan (`VelumTestResult.Kind.NO_DATA`, disertai saran
+  tindakan: putus-sambung atau ganti jaringan), dan hasil disimpan (`Prefs.lastTest`)
+  sehingga baris itu tetap benar setelah layar dibuat ulang atau aplikasi dijalankan
+  kembali — pembatalan uji kini mengembalikan hasil sah terakhir, bukan menggantung.
+- **Endpoint diputar otomatis saat handshake tidak pernah terjadi.** Sebelumnya uji hanya
+  mengulang permintaan ke endpoint yang sama, sehingga jaringan yang memblokir endpoint
+  WARP tertentu selalu berakhir "gagal". Kini bila handshake tidak terjadi dalam batas
+  tunggu, `EndpointProbe.rotate` memilih kandidat **berbeda** dari yang sedang dipakai
+  (refresh biasa tidak cukup — pemenang RTT-nya sama), tunnel disambung ulang, dan uji
+  diulang sekali. Endpoint yang terbukti menghasilkan handshake dicatat
+  (`Prefs.workingEndpoint`) dan diutamakan pada sambungan berikutnya: bukti nyata
+  mengalahkan perkiraan RTT.
+- Uji trace memakai host cadangan `one.one.one.one` bila `www.cloudflare.com` tidak
+  terjangkau (anggaran total 14 detik, jadi tidak memperpanjang tunggu tanpa batas), teks
+  sementara dibedakan ("Menunggu data…" -> "Menguji…" -> "Mencari endpoint lain…"),
+  dan "Salin diagnostik" memuat baris "Uji terakhir" agar laporan gangguan membawa
+  alasan, bukan hanya keadaan saat itu.
+
+### Fixed
 - **Layar utama tidak lagi terpotong.** Judul "Velum" hilang sebagian di perangkat
   pengguna: isi layar lebih tinggi dari layar, dan `android:layout_gravity="center_vertical"`
   pada anak ScrollView menggeser seluruh isi ke atas lalu memotong bagian atas secara
