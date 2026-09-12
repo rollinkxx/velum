@@ -36,12 +36,20 @@
     <string name="err_no_settings">Pengaturan VPN tidak tersedia di perangkat ini</string>
     <string name="notif_channel">Status koneksi</string>
     <string name="notif_connected">Tersambung — lalu lintas lewat Velum</string>
+    <string name="test_waiting">Menunggu data…</string>
+    <string name="test_searching">Mencari endpoint lain…</string>
     <string name="test_running">Menguji…</string>
     <string name="test_on">Aktif — lalu lintas lewat Velum</string>
     <string name="test_off">Belum aktif</string>
     <string name="test_on_dc">Aktif · DC %1$s · %2$s</string>
     <string name="test_off_time">Belum aktif · %1$s</string>
     <string name="test_failed">Gagal menguji</string>
+    <string name="test_no_data_time">Belum ada data · %1$s</string>
+    <!-- Ditampilkan saat tunnel "tersambung" tetapi tidak ada satu pun data yang lewat
+         (handshake belum terjadi). Sengaja tidak menyebut "kesalahan jaringan": pada
+         keadaan ini galat yang muncul hanyalah gejala, dan menyalahkan jaringan pengguna
+         berkali-kali sudah terbukti menyesatkan. -->
+    <string name="test_no_data_hint">Tunnel tersambung, tetapi belum ada data yang lewat — biasanya jaringan ini tidak meneruskan WARP. Coba Putuskan lalu Sambungkan, atau pindah ke Wi-Fi/jaringan seluler lain.</string>
     <string name="info_duration">Durasi</string>
     <string name="info_endpoint">Endpoint</string>
     <string name="info_last_test">Uji terakhir</string>

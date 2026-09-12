@@ -49,6 +49,37 @@ object EndpointProbe {
     }
 
     /**
+     * Memilih kandidat **berbeda** dari [exclude] sebagai endpoint pengganti.
+     *
+     * `refresh()` tidak bisa dipakai untuk keperluan ini: ia memilih pemenang RTT, dan bila
+     * pemenang itu justru endpoint yang sedang gagal handshake, hasilnya tidak berubah.
+     * Di sini pemenang yang sama dengan endpoint sekarang sengaja dilewati.
+     *
+     * Blocking ≤ ~6 detik. Tidak pernah melempar.
+     *
+     * @return true bila ada pengganti terukur yang sudah dipasang di [Prefs].
+     */
+    fun rotate(prefs: Prefs, exclude: String?): Boolean = try {
+        val current = exclude?.let(VelumFormat::hostPart)
+        val ranked = measure(prefs.endpoint)
+        val next = ranked.firstOrNull { it != current }
+        if (next == null) {
+            Log.w(TAG, "putar endpoint: tidak ada kandidat lain yang terukur")
+            false
+        } else {
+            // Endpoint yang tadinya dianggap terbukti bekerja baru saja gagal handshake.
+            prefs.workingEndpoint = null
+            prefs.speedEndpoint = if (VelumFormat.isIpLiteral(next)) "$next:$WG_PORT" else null
+            prefs.speedEndpointAt = System.currentTimeMillis()
+            Log.i(TAG, "endpoint diputar ke ${prefs.effectiveEndpoint} (${ranked.size} kandidat terukur)")
+            true
+        }
+    } catch (e: Exception) {
+        Log.w(TAG, "putar endpoint gagal", e)
+        false
+    }
+
+    /**
      * Pool bersama bert thread daemon (menganggur → mati sendiri) supaya tidak membuat
      * dan membuang sampai 8 thread setiap kali pengguna menekan Sambungkan.
      */

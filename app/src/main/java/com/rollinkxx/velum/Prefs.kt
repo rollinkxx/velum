@@ -53,9 +53,25 @@ class Prefs(context: Context) {
         get() = sp.getLong(K_SPEED_AT, 0L)
         set(v) = sp.edit().putLong(K_SPEED_AT, v).apply()
 
-    /** Endpoint efektif: hasil proba bila ada, sonst endpoint registrasi. */
+    /**
+     * Endpoint yang **terbukti** menghasilkan handshake di perangkat ini.
+     *
+     * Berbeda dari [speedEndpoint] yang hanya perkiraan urutan RTT, nilai ini bukti nyata;
+     * karena itu diutamakan (bukti > perkiraan). Dikosongkan oleh [EndpointProbe.rotate]
+     * ketika endpoint tersebut justru gagal handshake.
+     */
+    var workingEndpoint: String?
+        get() = sp.getString(K_WORKING_EP, null)
+        set(v) = sp.edit().putString(K_WORKING_EP, v).apply()
+
+    /** Hasil uji trace terakhir (`null` = belum pernah diuji). Bertahan lintas restart. */
+    var lastTest: VelumTestResult?
+        get() = VelumTestResult.decode(sp.getString(K_LAST_TEST, null))
+        set(v) = sp.edit().putString(K_LAST_TEST, v?.encode()).apply()
+
+    /** Endpoint efektif: yang terbukti bekerja, lalu hasil proba, lalu endpoint registrasi. */
     val effectiveEndpoint: String?
-        get() = speedEndpoint ?: endpoint
+        get() = workingEndpoint ?: speedEndpoint ?: endpoint
 
     /** Paket aplikasi yang dikecualikan dari tunnel (split tunneling). */
     var excludedApps: Set<String>
@@ -110,6 +126,8 @@ class Prefs(context: Context) {
         const val K_ENDPOINT = "endpoint"
         const val K_SPEED_EP = "speed_ep"
         const val K_SPEED_AT = "speed_at"
+        const val K_WORKING_EP = "working_ep"
+        const val K_LAST_TEST = "last_test"
         const val K_WARP = "warp_enabled"
         const val K_WAS_UP = "was_up"
         const val K_EXCLUDED = "excluded_apps"

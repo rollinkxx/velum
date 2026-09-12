@@ -29,7 +29,7 @@ class VelumController(context: Context, private val ui: Ui) {
         fun setMessageRes(resId: Int)
         fun setMessage(text: String)
         fun setTestTextRes(resId: Int)
-        fun setTestText(text: String)
+        fun showTest(result: VelumTestResult?)
         fun render(state: Tunnel.State)
         fun onConnectedVisual()
         fun onDisconnectedVisual()
@@ -54,6 +54,14 @@ class VelumController(context: Context, private val ui: Ui) {
     private var testedSinceUp = false
     private var testJobId = 0
     private var pendingTest: Runnable? = null
+    /** Ada uji yang hasilnya belum pernah ditampilkan (dipakai membersihkan baris "Menunggu data…"). */
+    private var testInFlight = false
+    /**
+     * Menekan auto-uji selama pemutaran endpoint. Diset/lepas lewat main.post (lihat
+     * [rotateEndpointAndReconnect]) supaya urutannya pasti terhadap applyState.
+     */
+    @Volatile
+    private var testSuppressAuto = false
 
     init {
         VelumTunnel.listener = { newState -> main.post { applyState(newState) } }
@@ -74,7 +82,7 @@ class VelumController(context: Context, private val ui: Ui) {
             prevState = newState
             if (newState == Tunnel.State.UP) {
                 ui.onConnectedVisual()
-                if (!testedSinceUp && prefs.isRegistered) {
+                if (!testedSinceUp && !testSuppressAuto && prefs.isRegistered) {
                     testedSinceUp = true
                     runTraceTest(fromButton = false)
                 }
@@ -204,7 +212,7 @@ class VelumController(context: Context, private val ui: Ui) {
                 setBusy(false)
                 applyState(Tunnel.State.DOWN)
                 ui.refreshStaticInfo()
-                ui.setTestTextRes(R.string.value_none)
+                ui.showTest(prefs.lastTest) // registrasi dihapus → hasil uji lama ikut hilang
                 ui.setMessageRes(R.string.reset_done)
             }
         }
@@ -231,32 +239,44 @@ class VelumController(context: Context, private val ui: Ui) {
      *
      * Uji SENGAJA tidak langsung menembak jaringan: `State.UP` dari backend hanya berarti
      * antarmuka TUN sudah dibuat, belum tentu handshake WireGuard-nya selesai. Permintaan
-     * yang lewat sebelum handshake (atau memakai soket sisa sesi sebelum VPN aktif) keluar
-     * bukan lewat WARP → `warp=off` → "Belum lewat Velum" palsu.
+     * yang keluar sebelum handshake (atau memakai soket sisa sesi sebelum VPN aktif) tidak
+     * lewat WARP — dulu hasilnya "Belum lewat Velum" palsu, sekarang juga diketahui muncul
+     * sebagai galat DNS menyesatkan ("Unable to resolve host ...") yang membuat pengguna
+     * menyalahkan jaringannya sendiri.
      */
     private fun runTraceTest(fromButton: Boolean, attempt: Int = 0) {
         cancelPendingTest(invalidate = false)
         val job = ++testJobId
-        ui.setTestTextRes(R.string.test_running)
-        if (fromButton) ui.setMessageRes(R.string.test_running)
+        testInFlight = true
+        ui.setTestTextRes(R.string.test_waiting)
+        if (fromButton) ui.setMessageRes(R.string.test_waiting)
         testWorker.execute {
-            val ready = awaitHandshake(HANDSHAKE_WAIT_MS)
+            val waitMs = if (attempt == 0) HANDSHAKE_WAIT_MS else HANDSHAKE_WAIT_RETRY_MS
+            val ready = awaitHandshake(waitMs)
+            val tunnelUp = VelumTunnel.state == Tunnel.State.UP
+            // Handshake = bukti pertama ada data yang benar-benar lewat; hanya sejak itu
+            // endpoint ini layak dicatat sebagai "terbukti bekerja".
+            if (ready) rememberWorkingEndpoint()
             var trace: VelumFormat.TraceInfo? = null
             var error: String? = null
-            if (ready) {
+            if (tunnelUp && ready) {
+                main.post { ui.setTestTextRes(R.string.test_running) }
                 try {
                     trace = VelumApi.fetchTrace()
                 } catch (e: Exception) {
                     error = e.message ?: e.javaClass.simpleName
                 }
             }
-            main.post { publishTestResult(job, trace, error, fromButton, attempt) }
+            main.post { publishTestResult(job, tunnelUp, ready, trace, error, fromButton, attempt) }
         }
     }
 
     /**
-     * Menunggu handshake WireGuard pertama (bukti tunnel benar-benar bisa dilewati) dengan
-     * batas [maxWaitMs]; berhenti lebih awal bila tunnel turun. Blocking — latar saja.
+     * Menunggu handshake WireGuard pertama (bukti tunnel benar-benar bisa dilewati).
+     * Blocking — latar saja.
+     *
+     * Sengaja TIDAK mengembalikan "siap" hanya karena antarmuka UP: itu sumber kegagalan
+     * senyap yang sudah terbukti di lapangan (lihat dokumen kelas ini).
      */
     private fun awaitHandshake(maxWaitMs: Long): Boolean {
         val deadline = SystemClock.elapsedRealtime() + maxWaitMs
@@ -269,22 +289,34 @@ class VelumController(context: Context, private val ui: Ui) {
                 return false
             }
         }
-        return VelumTunnel.state == Tunnel.State.UP
+        return false
+    }
+
+    /** Mencatat endpoint yang terbukti menghasilkan handshake (bukti > perkiraan RTT). */
+    private fun rememberWorkingEndpoint() {
+        val current = prefs.effectiveEndpoint ?: return
+        if (prefs.workingEndpoint != current) {
+            prefs.workingEndpoint = current
+            Log.i(TAG, "endpoint terbukti bekerja: $current")
+        }
     }
 
     /** Menampilkan hasil uji; hasil dari uji yang sudah usang/turun tidak pernah ditulis. */
     private fun publishTestResult(
         job: Int,
+        tunnelUp: Boolean,
+        handshakeReady: Boolean,
         trace: VelumFormat.TraceInfo?,
         error: String?,
         fromButton: Boolean,
         attempt: Int
     ) {
         if (job != testJobId) return // uji ini sudah dibatalkan/diganti uji baru
-        val up = VelumTunnel.state == Tunnel.State.UP
+        testInFlight = false
         when (
             VelumTestDecision.decide(
-                tunnelUp = up,
+                tunnelUp = tunnelUp,
+                handshakeReady = handshakeReady,
                 trace = trace,
                 error = error,
                 attempt = attempt,
@@ -292,43 +324,99 @@ class VelumController(context: Context, private val ui: Ui) {
             )
         ) {
             TestAction.RETRY -> {
-                val retry = Runnable { runTraceTest(fromButton, attempt + 1) }
+                val rotate = !handshakeReady
+                val retry = Runnable {
+                    testWorker.execute {
+                        // Tanpa handshake, mengulang saja tidak menolong: endpoint lain
+                        // dicoba lebih dulu. Ini penambal nyata untuk jaringan yang
+                        // memblokir endpoint WARP tertentu.
+                        if (rotate) rotateEndpointAndReconnect()
+                        runTraceTest(fromButton, attempt + 1)
+                    }
+                }
                 pendingTest = retry
                 main.postDelayed(retry, TEST_RETRY_MS)
             }
+            // Tunnel turun di tengah uji: hasil dibuang, baris uji dikembalikan ke hasil sah
+            // terakhir, dan pesan sementara dibersihkan agar tidak tertinggal.
             TestAction.DROP -> {
-                ui.setTestTextRes(R.string.value_none)
+                ui.showTest(prefs.lastTest)
                 if (fromButton) ui.setMessage("")
             }
-            TestAction.PUBLISH -> {
-                val time = VelumFormat.formatClock(System.currentTimeMillis())
-                val active = trace != null && VelumFormat.isWarpActive(trace)
-                ui.setTestText(
-                    when {
-                        active && trace != null ->
-                            app.getString(R.string.test_on_dc, trace.colo.ifEmpty { "?" }, time)
-                        trace != null -> app.getString(R.string.test_off_time, time)
-                        else -> app.getString(R.string.test_failed)
-                    }
+            TestAction.PUBLISH, TestAction.PUBLISH_NO_DATA -> {
+                val result = VelumTestResult.of(
+                    handshakeReady = handshakeReady,
+                    trace = trace,
+                    error = error,
+                    atEpochMs = System.currentTimeMillis()
                 )
-                if (fromButton) {
-                    ui.setMessage(
-                        when {
-                            active -> app.getString(R.string.test_on)
-                            trace != null -> app.getString(R.string.test_off)
-                            else -> app.getString(R.string.err_network, error ?: "")
-                        }
-                    )
+                prefs.lastTest = result
+                ui.showTest(result)
+                // "Belum ada data" juga diberitahukan saat uji otomatis: pengguna melihat
+                // status "Tersambung" tetapi tidak ada yang berjalan, dan tanpa penjelasan
+                // keadaan itu tampak seperti kegagalan yang tidak bisa ditindaklanjuti.
+                if (fromButton || result.kind == VelumTestResult.Kind.NO_DATA) {
+                    ui.setMessage(messageFor(result))
                 }
             }
         }
     }
 
-    /** Membatalkan uji tertunda; [invalidate] juga membatalkan hasil uji yang sedang jalan. */
+    /** Pesan rincian untuk tombol Uji koneksi; baris "Uji terakhir" memakai data yang sama. */
+    private fun messageFor(result: VelumTestResult): String = when (result.kind) {
+        VelumTestResult.Kind.ACTIVE -> app.getString(R.string.test_on)
+        VelumTestResult.Kind.OFF -> app.getString(R.string.test_off)
+        VelumTestResult.Kind.NO_DATA -> app.getString(R.string.test_no_data_hint)
+        VelumTestResult.Kind.FAILED ->
+            app.getString(R.string.err_network, result.detail ?: "?")
+    }
+
+    /**
+     * Memutar endpoint lalu menyambung ulang: penambal untuk jaringan yang tidak
+     * meneruskan endpoint WARP tertentu (antarmuka UP, handshake tidak pernah terjadi).
+     *
+     * Auto-uji ditekan SETELAH penerapan statusnya diantre: `main.post` bersifat FIFO, jadi
+     * `testSuppressAuto = true` pasti diproses sebelum applyState(DOWN/UP) dan
+     * `= false` pasti sesudahnya. Tanpa itu, uji akan berjalan dua kali — sekali dari sini,
+     * sekali lagi dari perubahan status.
+     */
+    private fun rotateEndpointAndReconnect() {
+        if (!prefs.wasUp || !prefs.isRegistered) return // pengguna memutus di tengah jalan
+        val current = prefs.effectiveEndpoint
+        main.post {
+            testSuppressAuto = true
+            ui.setTestTextRes(R.string.test_searching)
+        }
+        try {
+            if (!EndpointProbe.rotate(prefs, current)) {
+                Log.w(TAG, "tidak ada endpoint pengganti; uji dilanjutkan dengan endpoint lama")
+                return
+            }
+            VelumTunnel.down(app)
+            VelumTunnel.up(app, prefs)
+            main.post { ui.refreshStaticInfo() }
+        } catch (e: Exception) {
+            Log.w(TAG, "putar endpoint & sambung ulang gagal", e)
+        } finally {
+            main.post { testSuppressAuto = false }
+        }
+    }
+
+    /**
+     * Membatalkan uji tertunda; [invalidate] juga membatalkan hasil uji yang sedang jalan.
+     *
+     * Bila ada uji yang batal di tengah jalan, baris "Uji terakhir" dikembalikan ke hasil
+     * sah terakhir — sebelumnya ia bisa tertinggal selamanya di "Menunggu data…" karena
+     * hasil yang dibatalkan tidak pernah ditampilkan (keluhan nyata di perangkat).
+     */
     private fun cancelPendingTest(invalidate: Boolean = true) {
         if (invalidate) testJobId++
         pendingTest?.let { main.removeCallbacks(it) }
         pendingTest = null
+        if (invalidate && testInFlight) {
+            testInFlight = false
+            ui.showTest(prefs.lastTest)
+        }
     }
 
     private fun setBusy(value: Boolean) {
@@ -362,7 +450,12 @@ class VelumController(context: Context, private val ui: Ui) {
         const val TAG = "Velum"
 
         /** Batas menunggu handshake sebelum uji trace dijalankan. */
-        const val HANDSHAKE_WAIT_MS = 6000L
+        const val HANDSHAKE_WAIT_MS = 8000L
+        /**
+         * Percobaan kedua menunggu lebih lama: tunnel baru saja dibangun ulang dengan
+         * endpoint yang berbeda, jadi wajar bila handshake-nya butuh beberapa detik lagi.
+         */
+        const val HANDSHAKE_WAIT_RETRY_MS = 10000L
         const val HANDSHAKE_POLL_MS = 250L
         /** Jeda ulangan bila hasil uji negatif padahal tunnel masih UP. */
         const val TEST_RETRY_MS = 1500L
