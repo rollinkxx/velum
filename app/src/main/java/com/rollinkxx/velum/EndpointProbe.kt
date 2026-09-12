@@ -66,39 +66,51 @@ object EndpointProbe {
      * pemenang itu justru endpoint yang sedang gagal handshake, hasilnya tidak berubah.
      * Di sini pemenang yang sama dengan endpoint sekarang sengaja dilewati.
      *
-     * Blocking ≤ ~6 detik. Tidak pernah melempar.
+     * Keputusannya sendiri ada di [VelumEndpointChoice] (murni, teruji unit); fungsi ini
+     * hanya mengukur, memasang hasilnya ke [Prefs], dan melaporkan apa yang benar-benar
+     * terjadi. Blocking ≤ ~6 detik. Tidak pernah melempar.
      *
-     * @return true bila ada pengganti terukur yang sudah dipasang di [Prefs].
+     * @return true HANYA bila endpoint efektif benar-benar berpindah. `false` berarti uji
+     *   ulang akan memakai host yang sama, dan pemanggil tidak boleh berkata sebaliknya.
      */
-    fun rotate(prefs: Prefs, exclude: String?): Boolean = try {
+    fun rotate(prefs: Prefs, exclude: String?): Boolean {
         val current = exclude?.let(VelumFormat::hostPart)
-        val ranked = measure(prefs.endpoint)
-        val next = ranked.firstOrNull { it != current }
-        if (next == null) {
-            Log.w(TAG, "putar endpoint: tidak ada kandidat lain yang terukur")
-            false
-        } else {
-            // Endpoint yang tadinya dianggap terbukti bekerja baru saja gagal handshake.
+        return try {
+            val ranked = measure(prefs.endpoint)
+            val d = VelumEndpointChoice.rotate(
+                ranked = ranked,
+                currentHost = current,
+                registrationHost = prefs.endpoint?.let(VelumFormat::hostPart),
+                wgPort = WG_PORT
+            )
+            if (d.host == null) {
+                Log.w(TAG, "putar endpoint: tidak ada kandidat lain yang terukur; Prefs tidak disentuh")
+                return false
+            }
+            // Endpoint yang tadinya dianggap terbukti bekerja BARU SAJA gagal handshake,
+            // jadi buktinya dilepas apakah ada pengganti maupun tidak — mempertahankannya
+            // berarti aplikasi terus mengutamakan host yang baru saja terbukti tidak bisa
+            // dipakai. Konsekuensinya (endpoint efektif bisa jatuh ke hasil proba atau ke
+            // endpoint registrasi) sudah dihitung di `d.effectiveHost`, jadi laporannya
+            // tidak pernah mengklaim perpindahan yang tidak terjadi.
             prefs.workingEndpoint = null
-            prefs.speedEndpoint = if (VelumFormat.isIpLiteral(next)) "$next:$WG_PORT" else null
+            prefs.speedEndpoint = d.speedEndpoint
             prefs.speedEndpointAt = System.currentTimeMillis()
-            val installed = prefs.effectiveEndpoint?.let(VelumFormat::hostPart)
-            if (installed == null || installed == current) {
-                // Bisa terjadi bila `next` bukan literal IPv4: speedEndpoint menjadi null
-                // sehingga effectiveEndpoint jatuh ke endpoint registrasi, yang mungkin
-                // justru host yang barusan gagal. Mengembalikan true di sini berarti
-                // mengklaim "endpoint sudah diganti" padahal tidak ada yang berubah, dan
-                // uji ulang lalu mengulang kegagalan yang sama persis.
-                Log.w(TAG, "putar endpoint: hasil ($installed) sama dengan yang gagal; tidak ada pengganti")
+            if (!d.changed) {
+                Log.w(
+                    TAG,
+                    "putar endpoint: tidak ada perpindahan nyata (efektif ${d.effectiveHost} " +
+                        "= yang gagal); bukti endpoint lama tetap dilepas"
+                )
                 false
             } else {
                 Log.i(TAG, "endpoint diputar ke ${prefs.effectiveEndpoint} (${ranked.size} kandidat terukur)")
                 true
             }
+        } catch (e: Exception) {
+            Log.w(TAG, "putar endpoint gagal", e)
+            false
         }
-    } catch (e: Exception) {
-        Log.w(TAG, "putar endpoint gagal", e)
-        false
     }
 
     /**
