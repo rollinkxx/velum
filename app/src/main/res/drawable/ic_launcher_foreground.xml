@@ -1,14 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  Monogram "V" untuk lapisan adaptif (kanvas 108x108).
+  Emblem Velum untuk lapisan adaptif (kanvas 108x108): cincin emas + monogram "V".
 
-  Bentuknya harus identik dengan berkas PNG legacy (mipmap-*/ic_launcher.png):
-  - gradien diagonal champagne -> amber pada badan huruf;
-  - pita kilau terang di tepi atas tiap lengan (kesan cahaya jatuh dari atas).
+  Bentuknya harus identik dengan PNG legacy (mipmap-*/ic_launcher{,_round}.png):
+  - cincin luar 32,4 / dalam 29,6 dari pusat (54,54), gradien gading-emas terang
+    di atas lalu amber gelap di bawah (kesan logam terkena cahaya dari atas);
+  - monogram "V" gradien champagne -> amber.
 
-  Monogram hanya menempati area 35..73 (x) dan 30..76 (y) dari kanvas 108 —
-  di dalam zona aman 72x72 ikon adaptif, sehingga tidak terpotong oleh topeng
-  peluncur mana pun.
+  Seluruh bentuk berada di dalam zona aman 72x72 (cincin diameter 64,8), sehingga
+  topeng peluncur apa pun — bulat, squircle, kotak membulat — tidak memotongnya.
 -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:aapt="http://schemas.android.com/aapt"
@@ -17,52 +17,37 @@
     android:viewportWidth="108"
     android:viewportHeight="108">
 
-    <!-- Badan huruf: gradien champagne (kiri-atas) -> amber (kanan-bawah). -->
-    <path android:pathData="M35,30 L42.6,30 L54,67 L65.4,30 L73,30 L58,76 L50,76 Z">
+    <!-- Cincin: dua lingkaran dengan fillType evenOdd, gradien vertikal. -->
+    <path
+        android:fillType="evenOdd"
+        android:pathData="M54,21.6 a32.4,32.4 0 1,1 -0.01,0 z M54,24.4 a29.6,29.6 0 1,0 0.01,0 z">
         <aapt:attr name="android:fillColor">
             <gradient
-                android:endX="73"
-                android:endY="76"
-                android:startX="35"
-                android:startY="30"
+                android:endY="86.4"
+                android:startY="21.6"
+                android:type="linear">
+                <item
+                    android:color="@color/icon_ring_start"
+                    android:offset="0" />
+                <item
+                    android:color="@color/icon_ring_end"
+                    android:offset="1" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- Monogram "V" di dalam cincin. -->
+    <path android:pathData="M40.5,42 L47.1,42 L54,60 L60.9,42 L67.5,42 L58.5,68 L49.5,68 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:endY="68"
+                android:startY="42"
                 android:type="linear">
                 <item
                     android:color="@color/icon_monogram_start"
                     android:offset="0" />
                 <item
                     android:color="@color/icon_monogram_end"
-                    android:offset="1" />
-            </gradient>
-        </aapt:attr>
-    </path>
-
-    <!-- Kilau tepi atas: memudar ke bawah sehingga menyatu dengan badan huruf. -->
-    <path android:pathData="M35,30 L42.6,30 L42.6,33.4 L35,33.4 Z">
-        <aapt:attr name="android:fillColor">
-            <gradient
-                android:endY="34.2"
-                android:startY="30"
-                android:type="linear">
-                <item
-                    android:color="@color/icon_monogram_rim"
-                    android:offset="0" />
-                <item
-                    android:color="#00FFF8E6"
-                    android:offset="1" />
-            </gradient>
-        </aapt:attr>
-    </path>
-    <path android:pathData="M65.4,30 L73,30 L73,33.4 L65.4,33.4 Z">
-        <aapt:attr name="android:fillColor">
-            <gradient
-                android:endY="34.2"
-                android:startY="30"
-                android:type="linear">
-                <item
-                    android:color="@color/icon_monogram_rim"
-                    android:offset="0" />
-                <item
-                    android:color="#00FFF8E6"
                     android:offset="1" />
             </gradient>
         </aapt:attr>
