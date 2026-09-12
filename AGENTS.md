@@ -865,22 +865,45 @@ run ujung `main` 34702351553 hijau):**
   di clone dangkal:** `git cat-file -p <merge-sha>` (baca daftar `parent`) dan
   `git rev-parse <a>^{tree} <b>^{tree}` (tree sama = konten sama). Jangan pernah
   menyimpulkan "kerja sesi lama hilang/belum ter-merge" dari `--is-ancestor` saja.
-- (2026-09-12, paket perbaikan kedua) **Workspace bisa di-clone ulang di tengah sesi, dan
-  HEAD kembali ke basis sementara berkas kerja bertahan.** Ditemukan saat `git diff --stat`
-  menampilkan berkas yang tidak disentuh sesi itu (`VelumApi.kt`, `themes.xml`,
-  `libs.versions.toml`, …). Penyebabnya: `.git` dibuat ulang — `git reflog` hanya berisi dua
-  entri (`clone` + `checkout`) dan seluruh 17 commit sesi lenyap dari object store
-  (`git cat-file -t <sha>` → `fatal: could not get object info`), sementara **isi berkas
-  tetap utuh** dan branch di remote masih memegang ujung pekerjaan. Jangan menyimpulkan
+- (2026-09-12, paket perbaikan kedua) **Sandbox bisa di-provision ulang antar-giliran: `.git`
+  lahir baru (shallow, refspec hanya `main`) sementara berkas kerja dipulihkan dari snapshot,
+  sehingga HEAD kembali ke basis dan commit sesi sebelumnya lenyap dari object store lokal.**
+  Ditemukan saat `git diff --stat` menampilkan berkas yang tidak disentuh giliran itu
+  (`VelumApi.kt`, `themes.xml`, `libs.versions.toml`, …).
+
+  **Mekanisme yang terbukti dari mtime** (bukan dugaan) — urutannya ~2 detik:
+  `22:19:56` clone shallow (`.git/shallow` berisi batas `93f71b0`; refspec
+  `+refs/heads/main:refs/remotes/origin/main` saja, jadi branch sesi **tidak** ikut
+  di-fetch) → `22:19:57` `checkout -b <branch-sesi>` dari ujung `main` + hook `commit-msg`
+  dipasang platform → `22:19:58` restorasi snapshot menimpa berkas yang **isinya berbeda**
+  dari hasil checkout (berkas yang identik tidak ditulis ulang, mtime-nya tetap `22:19:56`).
+  Akibatnya `.git` "baru lahir" sedangkan isi berkas = ujung pekerjaan giliran sebelumnya:
+  git melaporkan seluruh commit itu sebagai "perubahan belum di-commit".
+
+  **Cara memastikan dalam 30 detik:** `git reflog` (hanya `clone` + `checkout` = provision
+  ulang) · `git cat-file -t <sha-commit-sendiri>` (`fatal: could not get object info` =
+  object store kosong) · `cat .git/shallow` + `git config --get-all remote.origin.fetch`
+  (batas & refspec) · `stat -c '%y' <berkas-yang-diubah-giliran-lalu>` vs
+  `stat -c '%y' .git/packed-refs` (mtime berkas ≈ 1–2 detik SETELAH clone = datang dari
+  snapshot) · `git diff --quiet <sha-remote> -- <berkas>` (identik dengan ujung remote =
+  isi berkas selamat).
+
+  Gejala ini **bukan** disebabkan aturan atau isi repo: nol `git clone`/`rm -rf .git` di
+  kode, skrip, maupun workflow; CI berjalan di runner GitHub dan tidak bisa menyentuh
+  sandbox; satu-satunya hook di `.git/hooks` dipasang platform saat provision (repo tidak
+  melacak hook apa pun). Yang belum bisa diamati dari dalam sandbox hanyalah **alasan**
+  platform me-recycle sandbox itu (jeda antar-giliran pada kasus ini: ~5 jam). Jangan menyimpulkan
   "pekerjaan hilang", dan jangan `git add -A && commit` di atas keadaan itu (akan membuat
   satu commit raksasa yang menelan 17 commit sebelumnya). **Pemulihannya tiga langkah:**
   `git fetch origin <branch-sesi>` → `git diff --name-only FETCH_HEAD` (daftar harus persis
   = berkas yang diubah sesi berjalan; bila ada berkas tak dikenal, berhenti dan periksa)
   → `git reset --mixed FETCH_HEAD` (memindah HEAD+indeks, **tidak** menyentuh working tree).
   Verifikasi setelahnya: `git rev-parse HEAD` == `git ls-remote origin <branch-sesi>`.
-  **Pelajaran umum:** sebelum sesi commit apa pun, pastikan `HEAD` == ujung remote;
-  `git status` yang tiba-tiba menampilkan puluhan berkas "modified" adalah tanda keadaan
-  repo, bukan tanda pekerjaan Anda.
+  **Pelajaran umum:** sebelum mulai commit apa pun di sebuah giliran, pastikan
+  `HEAD` == ujung remote (`git ls-remote origin <branch-sesi>`). `git status` yang tiba-tiba
+  menampilkan puluhan berkas "modified" adalah tanda **keadaan repo**, bukan tanda pekerjaan
+  Anda — dan jangan dilaporkan ke maintainer sebagai "insiden di tengah pekerjaan" sebelum
+  mtime-nya diperiksa, karena kejadiannya berlangsung sebelum perintah pertama giliran itu.
 - (2026-09-12, pasca-audit menyeluruh) **Tiga invariant konkurensi baru — wajib dijaga,
   jangan di-"sederhanakan" kembali.**
   1. **Semua sentuhan UI lewat `VelumController.onUi{}`**; tidak boleh ada pemanggilan
