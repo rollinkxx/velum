@@ -76,6 +76,24 @@ jobs:
             python3 .github/scripts/anotasikan-log.py "$RUNNER_TEMP/build.log"
           fi
 
+      # Varian preview = konfigurasi rilis (R8 + shrink) dengan tanda tangan debug.
+      # Menjalankannya di setiap push membuat R8 teruji terus-menerus: bila sebuah
+      # dependensi baru butuh aturan keep, kegagalannya muncul di sini — bukan nanti
+      # saat rilis publik, ketika pengguna yang menemukannya.
+      - name: Build preview APK (R8 aktif)
+        if: always() && steps.assemble.conclusion != 'cancelled'
+        id: preview
+        run: |
+          set -o pipefail
+          ./gradlew --no-daemon --stacktrace assemblePreview 2>&1 | tee "$RUNNER_TEMP/preview.log"
+
+      - name: Laporkan error preview sebagai anotasi
+        if: always()
+        run: |
+          if [ -f "$RUNNER_TEMP/preview.log" ]; then
+            python3 .github/scripts/anotasikan-log.py "$RUNNER_TEMP/preview.log"
+          fi
+
       # ADVISORI: temuan lint tidak boleh menggagalkan job (lihat AGENTS.md §5),
       # tetapi tetap dijaga hijau. continue-on-error dipasang di step ini saja.
       - name: Lint debug (advisori)
@@ -104,20 +122,24 @@ jobs:
             echo "## Hasil verifikasi"
             echo "- Pengujian unit: ${{ steps.unit_test.conclusion }}"
             echo "- Build debug: ${{ steps.assemble.conclusion }}"
+            echo "- Build preview (R8): ${{ steps.preview.conclusion }}"
             echo "- Lint (advisori): ${{ steps.lint.conclusion }}"
             echo "- Gradle: $(grep -o 'gradle-[0-9.]*-bin' gradle/wrapper/gradle-wrapper.properties || echo '?')"
             echo "- AGP: $(grep -E '^agp' gradle/libs.versions.toml || echo '?')"
             # Pemecahan per ABI menghasilkan beberapa APK; daftarkan semuanya beserta
             # ukurannya supaya dampak pemecahan terlihat langsung tanpa mengunduh artifact
             # (artifact tidak bisa diunduh dari sandbox agen, lihat AGENTS.md §5).
-            if compgen -G "app/build/outputs/apk/debug/*.apk" > /dev/null; then
-              echo ""
-              echo "| APK | Ukuran |"
-              echo "|---|---|"
-              for f in app/build/outputs/apk/debug/*.apk; do
-                echo "| $(basename "$f") | $(du -h "$f" | cut -f1) |"
-              done
-            fi
+            # Debug & preview disandingkan agar dampak R8 terbaca sebagai angka.
+            echo ""
+            echo "| APK | Varian | Ukuran |"
+            echo "|---|---|---|"
+            for v in debug preview; do
+              if compgen -G "app/build/outputs/apk/$v/*.apk" > /dev/null; then
+                for f in app/build/outputs/apk/$v/*.apk; do
+                  echo "| $(basename "$f") | $v | $(du -h "$f" | cut -f1) |"
+                done
+              fi
+            done
           } >> "$GITHUB_STEP_SUMMARY"
 
       # Semua varian ABI diunggah dalam satu artifact. Nama berkas kini mengandung ABI
@@ -129,6 +151,26 @@ jobs:
           name: app-debug
           path: app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
+
+      # APK siap pasang untuk uji coba di perangkat nyata: sudah diperkecil R8 seperti
+      # rilis, tetapi bertanda tangan kunci debug sehingga tidak butuh keystore.
+      - name: Unggah APK preview
+        if: success()
+        uses: actions/upload-artifact@v7
+        with:
+          name: app-preview
+          path: app/build/outputs/apk/preview/*.apk
+          if-no-files-found: error
+
+      # mapping.txt diperlukan untuk memulihkan laporan crash dari APK yang diperkecil;
+      # tanpa berkas ini, stack trace preview/rilis tidak terbaca.
+      - name: Unggah mapping R8
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: mapping-preview
+          path: app/build/outputs/mapping/preview/mapping.txt
+          if-no-files-found: warn
 
       - name: Unggah laporan pengujian
         if: always()

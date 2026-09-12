@@ -62,6 +62,25 @@ android {
             }
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
+        // Varian uji coba: SAMA dengan release (R8 + shrink resources aktif) tetapi
+        // ditandatangani kunci debug bawaan, sehingga bisa langsung dipasang tanpa
+        // keystore rilis. Tujuannya menutup celah "yang diuji bukan yang dibagikan":
+        // tanpa ini, R8 baru berjalan pertama kali saat rilis publik — padahal R8 bisa
+        // membuang kode yang ternyata dipakai (mis. Tink pada EncryptedSharedPreferences),
+        // dan kegagalannya muncul saat runtime, bukan saat kompilasi.
+        //
+        // `initWith(release)` membuat varian ini selalu mengikuti perubahan pada release;
+        // tidak ada konfigurasi yang perlu disalin ulang dan tidak bisa menyimpang.
+        create("preview") {
+            initWith(getByName("release"))
+            applicationIdSuffix = ".preview"
+            versionNameSuffix = "-preview"
+            // Kunci debug bawaan Android: selalu tersedia, tidak perlu Secrets.
+            signingConfig = signingConfigs.getByName("debug")
+            // Sengaja tidak debuggable supaya perilakunya sedekat mungkin dengan rilis.
+            isDebuggable = false
+        }
+
         debug {
             applicationIdSuffix = ".debug"
         }

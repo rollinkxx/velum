@@ -6,6 +6,17 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 ## [Unreleased]
 
 ### Added
+- Varian build **preview**: konfigurasi rilis (R8 + shrink resources) yang ditandatangani
+  kunci debug, sehingga APK kecil siap pasang bisa diuji di perangkat nyata tanpa keystore
+  rilis. Dibangun di setiap push agar R8 teruji terus-menerus — bukan pertama kali saat
+  rilis publik. Memakai `applicationIdSuffix = ".preview"` sehingga bisa dipasang
+  berdampingan dengan varian debug.
+- Aturan R8 diperluas dari 2 menjadi beberapa aturan bersasaran: field protobuf Tink
+  (mencegah crash `EncryptedSharedPreferences` saat runtime — kegagalan senyap yang hanya
+  muncul pada build yang diperkecil), `VelumTileService`, `BootReceiver`, serta
+  `SourceFile`/`LineNumberTable` agar laporan crash tetap terbaca.
+- CI mengunggah artifact `app-preview` dan `mapping-preview` (`mapping.txt` untuk
+  memulihkan stack trace), dan step summary menyandingkan ukuran debug vs preview.
 - Pemecahan APK per arsitektur (ABI split) untuk `arm64-v8a`, `armeabi-v7a`, dan `x86_64`,
   plus satu APK universal sebagai cadangan. Isi APK didominasi pustaka native WireGuard
   (satu `.so` per ABI) yang tidak tersentuh R8, sehingga memecah per arsitektur adalah
