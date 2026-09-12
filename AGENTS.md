@@ -472,7 +472,7 @@ run ujung `main` 34702351553 hijau):**
   (laporan HTML tidak terbaca dari sandbox), `abortOnError = true`.
 - <a id="identitas"></a>**Identitas (ADR 002):** `applicationId` = `com.rollinkxx.velum` (debug: suffix `.debug`),
   package Kotlin `com.rollinkxx.velum`, nama aplikasi **Velum**, versi awal `0.1.0`/code 1.
-- <a id="struktur-modul-app"></a>**Struktur modul `app/`** (`app/src/main/java/com/rollinkxx/velum/`, 20 berkas Kotlin):
+- <a id="struktur-modul-app"></a>**Struktur modul `app/`** (`app/src/main/java/com/rollinkxx/velum/`, 21 berkas Kotlin):
   - `MainActivity.kt` — **hanya render**: UI satu layar (View XML), panel info interaktif
     (durasi/endpoint/hasil uji+DC/laju+deteksi basi), izin notifikasi Android 13+ (diminta
     hanya bila perlu, lewat Activity Result API), pintasan pengaturan VPN/Always-on,
@@ -517,11 +517,20 @@ run ujung `main` 34702351553 hijau):**
     `VelumRegistration.kt` (validasi respons `POST /reg`, port WG 2408),
     `VelumMigration.kt` (rencana migrasi data era polos, konservatif),
     `VelumDiagnostics.kt` (ringkasan gangguan **ramah privasi**: tanpa kunci/IP/token).
-    Uji padanannya di `app/src/test/java/com/rollinkxx/velum/*Test.kt` (7 berkas;
+    `VelumEndpointChoice.kt` (keputusan rotasi endpoint sebagai fungsi murni — sengaja
+    dipisah dari `EndpointProbe` yang mengukur lewat soket, supaya logikanya teruji di JVM
+    tanpa perangkat; 9 kasus uji termasuk regresi "pemenang bukan-IP sama dengan endpoint
+    gagal → tidak ada perpindahan").
+    Uji padanannya di `app/src/test/java/com/rollinkxx/velum/*Test.kt` (8 berkas;
     `VelumSetupTest` ikut terhapus bersama fiturnya, lihat jebakan 2026-09-12).
   - `AndroidManifest.xml` — VpnService milik library (`GoBackend$VpnService`) di-merge
-    (`tools:node="merge"`) untuk menambah `foregroundServiceType="specialUse"` + property
-    subtype `vpn`; receiver boot exported; service ubin QS (`BIND_QUICK_SETTINGS_TILE`);
+    (`tools:node="merge"`), **tanpa** `foregroundServiceType` dan tanpa izin
+    `FOREGROUND_SERVICE*`: tidak ada satu pun pemanggilan `startForeground()` di aplikasi
+    ini maupun di `GoBackend.java` upstream (tag 1.0.20260102), dan sistem hanya memeriksa
+    tipe saat `startForeground()` dipanggil — jadi deklarasi itu inert (dihapus di audit
+    ulang; bila kelak dibutuhkan, tipe yang benar untuk VPN adalah `systemExempted`,
+    alasannya tertulis di manifest). Yang menahan proses selama tunnel UP adalah VPN yang
+    aktif. Receiver boot exported; service ubin QS (`BIND_QUICK_SETTINGS_TILE`);
     `AppExclusionActivity` (not exported); blok `<queries>` peluncur + aksi pengaturan
     `VPN_SETTINGS` (pintasan "Selalu aktif"); izin RECEIVE_BOOT_COMPLETED &
     POST_NOTIFICATIONS.
@@ -856,6 +865,22 @@ run ujung `main` 34702351553 hijau):**
   di clone dangkal:** `git cat-file -p <merge-sha>` (baca daftar `parent`) dan
   `git rev-parse <a>^{tree} <b>^{tree}` (tree sama = konten sama). Jangan pernah
   menyimpulkan "kerja sesi lama hilang/belum ter-merge" dari `--is-ancestor` saja.
+- (2026-09-12, paket perbaikan kedua) **Workspace bisa di-clone ulang di tengah sesi, dan
+  HEAD kembali ke basis sementara berkas kerja bertahan.** Ditemukan saat `git diff --stat`
+  menampilkan berkas yang tidak disentuh sesi itu (`VelumApi.kt`, `themes.xml`,
+  `libs.versions.toml`, …). Penyebabnya: `.git` dibuat ulang — `git reflog` hanya berisi dua
+  entri (`clone` + `checkout`) dan seluruh 17 commit sesi lenyap dari object store
+  (`git cat-file -t <sha>` → `fatal: could not get object info`), sementara **isi berkas
+  tetap utuh** dan branch di remote masih memegang ujung pekerjaan. Jangan menyimpulkan
+  "pekerjaan hilang", dan jangan `git add -A && commit` di atas keadaan itu (akan membuat
+  satu commit raksasa yang menelan 17 commit sebelumnya). **Pemulihannya tiga langkah:**
+  `git fetch origin <branch-sesi>` → `git diff --name-only FETCH_HEAD` (daftar harus persis
+  = berkas yang diubah sesi berjalan; bila ada berkas tak dikenal, berhenti dan periksa)
+  → `git reset --mixed FETCH_HEAD` (memindah HEAD+indeks, **tidak** menyentuh working tree).
+  Verifikasi setelahnya: `git rev-parse HEAD` == `git ls-remote origin <branch-sesi>`.
+  **Pelajaran umum:** sebelum sesi commit apa pun, pastikan `HEAD` == ujung remote;
+  `git status` yang tiba-tiba menampilkan puluhan berkas "modified" adalah tanda keadaan
+  repo, bukan tanda pekerjaan Anda.
 - (2026-09-12, pasca-audit menyeluruh) **Tiga invariant konkurensi baru — wajib dijaga,
   jangan di-"sederhanakan" kembali.**
   1. **Semua sentuhan UI lewat `VelumController.onUi{}`**; tidak boleh ada pemanggilan
@@ -865,13 +890,30 @@ run ujung `main` 34702351553 hijau):**
      kebetulan: kedua view target berukuran tetap (`0dp`+weight dan `match_parent`),
      sehingga `View.checkForRelayout` mengambil jalur `invalidate()` dan tidak memanggil
      `checkThread()`. Mengubah lebarnya jadi `wrap_content` = `CalledFromWrongThreadException`.
-  2. **`VelumTunnel` satu-satunya titik serialisasi tunnel** (`@Synchronized` pada
-     `up`/`down`/`restart`/`refreshState`) plus `intentGen` yang membaca ulang niat
-     pengguna. Dua executor hidup berdampingan dan **boleh** berjalan paralel —
-     keamanannya datang dari kunci ini, bukan dari asumsi "tidak akan bersamaan".
-     Pasangan down+up wajib lewat `restart()` yang atomik, jangan dipanggil terpisah
-     (guard `wasUp` di awal rotasi bersifat TOCTOU: Putuskan di antaranya dulu bisa
-     berakhir dengan tunnel hidup kembali setelah diminta mati).
+  2. **`VelumTunnel` satu-satunya titik serialisasi *transisi tunnel*** (`@Synchronized`
+     pada `up`/`down`/`restart`/`refreshState`). Dua executor hidup berdampingan dan
+     **boleh** berjalan paralel — transisinya tidak saling menyela karena kunci ini, bukan
+     karena asumsi "tidak akan bersamaan". Pasangan down+up wajib lewat `restart()` yang
+     atomik, jangan dipanggil terpisah (guard `wasUp` di awal rotasi bersifat TOCTOU:
+     Putuskan di antaranya dulu bisa berakhir dengan tunnel hidup kembali setelah diminta
+     mati).
+
+     **Batas kunci itu — koreksi atas klaim yang pernah tertulis di sini.** Kunci
+     `@Synchronized` TIDAK melindungi dua hal lain yang juga menentukan hasil akhir: memo
+     niat (`Prefs.wasUp`) dan hidup/matinya `ReconnectMonitor`. Keduanya ditulis **di luar**
+     kunci, oleh pelaku yang berbeda (layar, ubin, receiver boot, pemantau), sehingga
+     interleaving tetap mungkin walau setiap transisi tunnel sudah serial. Versi bagian ini
+     sebelumnya menyebut "keamanannya datang dari kunci ini" tanpa batas — itu melebihkan
+     jaminan yang ada, dan cacat yang sebenarnya (temuan A2 audit ulang) justru bersembunyi
+     di belakang kalimat tersebut. Yang menutupnya adalah **generasi niat lintas pelaku**:
+     `VelumTunnel.bumpIntent()` / `intentStale(gen)` / `currentIntent`. Setiap pelaku yang
+     membawa niat baru menaikkan generasi SEBELUM bekerja, menyimpan angkanya, dan
+     memeriksa `intentStale` tepat sebelum menulis keadaan apa pun — termasuk sesudah jeda
+     panjang (proba endpoint ~6 detik, backoff sampai 60 detik). Pelaku yang menegakkan niat
+     yang sudah ada (`ReconnectMonitor`) membaca `currentIntent` tanpa menaikkannya.
+     Jangan mengembalikan generasi ini menjadi field privat satu kelas: itu persis keadaan
+     sebelum perbaikan, ketika ubin dan layar saling menimpa `wasUp` dan tunnel yang baru
+     dimatikan membangkitkan dirinya sendiri.
   3. **Durasi koneksi milik tunnel (`VelumTunnel.upSinceElapsedMs`), bukan layar.**
      Jangan mengembalikan jam `connectedSinceMs` ke Activity: manifest tanpa
      `configChanges`, jadi layar dibuat ulang setiap rotasi dan jam milik layar mulai
