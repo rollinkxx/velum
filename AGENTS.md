@@ -1,4 +1,4 @@
-# AGENTS.md — Panduan Wajib Sesi Agen (repo `rollinkxx/velum`)
+# AGENTS.md — Panduan Wajib Sesi Agen (repo `velum-tunnel/velum`)
 
 Dokumen ini mengikat setiap agen coding yang bekerja di repo ini. Isinya diturunkan dari
 keadaan repo yang nyata dan dari kesepakatan dengan maintainer. Bagian yang bertanda
@@ -486,8 +486,11 @@ final** untuk kompilasi. Mitigasi wajib sebelum push:
        untuk KTX `SharedPreferences` (hasil 2026-09-13: 18 → 20, +2, keduanya dari fungsi
        penulis rekaman boot yang baru — delta yang bisa dijelaskan). Delta yang **tidak**
        bisa dijelaskan dari diff = selidiki sebelum push.
-    b. **Ukuran artifact `lint-report`** sebagai sinyal kasar (20.206 → 20.478 byte pada
-       perubahan yang sama) — tersedia lewat API artifact walau isinya tidak bisa diunduh.
+    b. **Ukuran artifact `lint-report`** sebagai sinyal kasar — tersedia lewat API
+       artifact walau isinya tidak bisa diunduh. *Yang normatif adalah metodenya, bukan
+       angkanya*: "20.206 → 20.478 byte" hanyalah contoh pada perubahan 2026-09-13, dan
+       ukuran hari ini 19.681 byte (`93f71b0`) → 20.479 byte (`4cca724`). Jangan
+       menjadikan angka contoh sebagai ambang.
     c. **Anotasi check-run** hanya sah selama totalnya **di bawah 10** per tingkat; pada
        atau di atas 10, angka itu bukan jumlah sebenarnya.
     d. **Laporan lint penuh hanya terbaca di mesin maintainer.** Unduhan artifact dan log
@@ -611,6 +614,13 @@ Empat poin di atas WAJIB masuk laporan Fase 1 §6 sebelum minta perintah eksekus
   gunakan status `Superseded by NNN`.
 - **Versi** (`versionName`/`versionCode`): bump HANYA atas permintaan eksplisit maintainer,
   tidak otomatis per PR.
+- **Gerbang pra-rilis (ditambahkan 2026-09-13):** sebelum menerbitkan rilis, pastikan
+  artefak yang dipakai berasal dari run yang `head_sha`-nya **sama dengan ujung `main` saat
+  ini** (`gh api repos/<owner>/<repo>/actions/runs/<id>` → `.head_sha`), bukan dari run
+  historis yang pernah tercatat di dokumen. Tanpa pemeriksaan ini artefak usang bisa
+  diterbitkan: TODO 57 sempat menunjuk `app-release` dari run 34702351553 (`93f71b0`)
+  padahal `main` sudah di `4cca724` — artefak itu belum memuat PR #15 & #16, keduanya
+  menyentuh runtime.
 - **Sumber kebenaran dependensi**: `gradle/libs.versions.toml`. Dilarang hardcode versi di
   `build.gradle.kts` mana pun. Versi Gradle wrapper hanya di
   `gradle/wrapper/gradle-wrapper.properties`.
@@ -632,8 +642,9 @@ Empat poin di atas WAJIB masuk laporan Fase 1 §6 sebelum minta perintah eksekus
 [CI](#ci-github-workflowsbuildyml) · [Run acuan](#run-acuan-terkini) ·
 [Jebakan](#catatan-teknis-penting-jebakan)
 
-**Keadaan repo (fakta per 2026-09-12, disinkronkan pasca-merge PR #14 — `main` = `93f71b0`,
-run ujung `main` 34702351553 hijau):**
+**Keadaan repo (fakta per 2026-09-13, disinkronkan pasca-merge PR #16 — `main` = `4cca724`,
+run ujung `main` 34743255110 hijau. Entri bertanggal lama di bawah sengaja dipertahankan
+sebagai riwayat):**
 - Aplikasi Android ringan fungsi **WARP saja** (tunnel WireGuard ke Cloudflare), tanpa mode
   DNS, tanpa iklan/analitik/akun. UI Bahasa Indonesia.
 - <a id="stack-aktual"></a>**Stack aktual** (dari `gradle/libs.versions.toml`, satu-satunya sumber versi): Gradle
@@ -855,16 +866,21 @@ run ujung `main` 34702351553 hijau):**
   - Durasi normal ≈ 2,5–4 menit. Artifact `app-debug` ≈ **10,07 MB** (4 ABI native WireGuard,
     belum minify; release memakai minify+shrink), `unit-test-report` ≈ 11 KB,
     `lint-report` ≈ 18 KB.
-- Remote: `https://github.com/rollinkxx/velum.git` (di-rename dari `warp` 2026-09-11),
+- Remote: `https://github.com/velum-tunnel/velum.git` (pemilik berpindah dari
+  `rollinkxx` ke organisasi `velum-tunnel` — nama repo `velum` tetap; sebelumnya
+  di-rename dari `warp` 2026-09-11),
   default branch `main`. **Repo diubah menjadi PUBLIK oleh maintainer 2026-09-12** —
   konsekuensi: Actions gratis tanpa batas (sebelumnya privat, kuota 2.000 menit/bulan
   dengan spending limit $0), dan seluruh riwayat commit terbaca publik.
-  PR #1–#4, #6–#12, #13, dan **#14** sudah **merged**; `main` = **`93f71b0`** (merge commit
-  PR #14, ber-parent `a6c6814` + `ae8d73f`; di-merge atas perintah eksplisit maintainer
-  2026-09-12 15:28 UTC). Seluruh kerja sesi 2026-09-12 (ikon emblem, pantulan 5 percobaan,
-  targetSdk 36, penghapusan popup tawaran, perbaikan uji koneksi, penggantian aturan
-  AGENTS.md) masuk lewat **PR #14**.
-  **Keadaan per 2026-09-12 pasca-merge: 0 PR terbuka, 0 issue terbuka, 0 tag, 0 release**
+  PR #1–#4, #6–#12, #13, #14, **#15** dan **#16** sudah **merged**; `main` = **`4cca724`**
+  (squash-merge PR #16, ber-induk tunggal `fc17261`; PR #15 = `fc17261`, ber-induk
+  `93f71b0`). Seluruh kerja sesi 2026-09-12 (ikon emblem, pantulan 5 percobaan, targetSdk
+  36, penghapusan popup tawaran, perbaikan uji koneksi, penggantian aturan AGENTS.md)
+  masuk lewat **PR #14**; PR #15 berisi audit konkurensi + baris diagnostik layar-saja, dan
+  PR #16 berisi perbaikan Data, Kecualikan Aplikasi, Selalu Aktif, dan tampilan layar utama.
+  **Keadaan per 2026-09-13: 2 PR Dependabot terbuka (#17 `setup-java` 5→6, #18
+  `androidx.core` 1.13.0→1.19.0), 0 issue, 0 tag, 0 release** (diverifikasi ulang:
+  `gh api repos/velum-tunnel/velum/tags` → 0, `.../releases` → 0)
   (`gh api repos/…/git/refs/tags` → HTTP 404 karena namespace tag benar-benar kosong).
   Ketiadaan rilis itu bukan kelalaian yang bisa dibereskan agen dari sandbox — lihat
   jebakan "artifact CI tidak bisa diunduh" di bawah.
@@ -876,10 +892,12 @@ run ujung `main` 34702351553 hijau):**
   Branch `dependabot/gradle/com.android.application-9.4.0` dibiarkan (agen tidak
   menyentuh branch `dependabot/*`, §1); GitHub membersihkannya sendiri.
   Bila Dependabot membuka PR AGP serupa lagi, cukup rujuk commit `42b94bb`.
-- Sandbox: tanpa JDK/Gradle/Android SDK, dan **jaringan keluar diblokir**
+- Sandbox: tanpa JDK/Gradle/Android SDK, dan **host build/Maven diblokir**
   (`services.gradle.org`, `repo1.maven.org`, `api.adoptium.net` → SSL_ERROR_SYSCALL),
   sehingga memasang toolchain sendiri pun mustahil — CI benar-benar satu-satunya jalan
-  build. `gh` terautentikasi tetapi **tanpa izin `workflow_dispatch`** (HTTP 403) dan tanpa
+  build. **Jangan baca ini sebagai "semua jaringan mati"**: `api.github.com` menjawab
+  HTTP 200 dan CLI `gh` berfungsi normal (diverifikasi ulang 2026-09-13) — `gh api`
+  justru satu-satunya alat diagnosis yang hidup. `gh` terautentikasi tetapi **tanpa izin `workflow_dispatch`** (HTTP 403) dan tanpa
   akses billing/permissions; satu-satunya cara memicu CI dari sandbox adalah **push**.
   Clone **dangkal** (`git log` hanya memuat 1 commit) dengan refspec fetch terbatas.
 - Dokumen: `README.md` (pointer), `CONTRIBUTING.md` (pointer ke dokumen ini), `CHANGELOG.md`,
@@ -942,8 +960,8 @@ run ujung `main` 34702351553 hijau):**
   kode 1, hanya mencetak peringatan "Projects (classic) is being deprecated"), dan
   perubahannya **tidak diterapkan walau tanpa pesan error**. Pakai REST API sebagai
   gantinya:
-  `gh api -X PATCH repos/rollinkxx/velum/pulls/<n> -f title="<judul>"` dan
-  `gh api -X PATCH repos/rollinkxx/velum/pulls/<n> -F body=@/tmp/body.md` (isi panjang
+  `gh api -X PATCH repos/velum-tunnel/velum/pulls/<n> -f title="<judul>"` dan
+  `gh api -X PATCH repos/velum-tunnel/velum/pulls/<n> -F body=@/tmp/body.md` (isi panjang
   lewat berkas sementara di luar repo). Selalu verifikasi dengan
   `gh pr view <n> --json title,body`.
 - (2026-09-11) Lampiran gambar yang dikirim pengguna TIDAK bisa dibaca dari sandbox:
@@ -951,8 +969,8 @@ run ujung `main` 34702351553 hijau):**
 - (2026-09-12) **Clone sandbox itu dangkal** (`git rev-parse --is-shallow-repository` →
   `true`): `git log` hanya memperlihatkan **1 commit** dan `git branch -r` hanya `origin/main`.
   Jangan menyimpulkan "riwayat hilang". Riwayat penuh dibaca lewat
-  `gh api "repos/rollinkxx/velum/commits?sha=<branch-atau-sha>"`, isi commit lewat
-  `gh api repos/rollinkxx/velum/commits/<sha> --jq '.files[].filename'`.
+  `gh api "repos/velum-tunnel/velum/commits?sha=<branch-atau-sha>"`, isi commit lewat
+  `gh api repos/velum-tunnel/velum/commits/<sha> --jq '.files[].filename'`.
 - (2026-09-11, run merah 34601913928 — commit `901e090` `docs: sinkronisasi AGENTS.md`)
   **Satu-satunya run merah yang bukan Dependabot.** Job `unitTest` gugur di langkah
   "Pengujian unit" sementara `assembleDebug` & `lint` hijau; akar masalah: `org.json` di
@@ -1099,6 +1117,15 @@ run ujung `main` 34702351553 hijau):**
   membersihkannya lewat squash/rebase adalah keputusan merge, bukan keputusan agen. Jangan
   menulis ulang pesan commit demi menghapusnya: itu melanggar §4 dan menghapus jejak
   asal-usul pekerjaan (lihat TODO 81).
+
+  **Koreksi 2026-09-13 (bukti, bukan dugaan): squash-merge bukan cara MEMBERSIHKAN
+  trailer — ia justru SUMBERnya.** GitHub menambahkan `Co-authored-by` untuk setiap
+  penulis saat PR di-squash. Bukti: `4cca724` (squash-merge PR #16, ber-induk tunggal
+  `fc17261`) memuat trailer `rollinkxx` **dan** `arena-agent`, sementara `fc17261`
+  (PR #15) bersih. Karena itu "bersihkan lewat squash" tidak bisa bekerja; yang tersedia
+  adalah: hapus trailer secara manual di kotak pesan squash saat merge, pakai
+  rebase-merge, atau terima trailernya dan hapus TODO 81. Mempertahankan aturan yang
+  tidak bisa dipatuhi lebih merugikan daripada aturan yang realistis.
 - (2026-09-12, paket perbaikan kedua) **Sandbox bisa di-provision ulang antar-giliran: `.git`
   lahir baru (shallow, refspec hanya `main`) sementara berkas kerja dipulihkan dari snapshot,
   sehingga HEAD kembali ke basis dan commit sesi sebelumnya lenyap dari object store lokal.**
@@ -1233,8 +1260,8 @@ run ujung `main` 34702351553 hijau):**
   sandbox.** Log run yang *sudah selesai* tidak bisa dibaca: `gh run view <run> --log`
   menghasilkan 0 baris, `gh run watch` pada run selesai hanya 1 baris, dan artifact
   `lint-report` tetap gagal diunduh (EOF host blob, lihat entri artifact). **Jalur yang
-  berhasil:** `gh api repos/rollinkxx/velum/actions/runs/<run>/jobs --jq '.jobs[].id'`
-  dilanjutkan `gh api repos/rollinkxx/velum/check-runs/<job_id>/annotations` — anotasi
+  berhasil:** `gh api repos/velum-tunnel/velum/actions/runs/<run>/jobs --jq '.jobs[].id'`
+  dilanjutkan `gh api repos/velum-tunnel/velum/check-runs/<job_id>/annotations` — anotasi
   dilayani API GitHub langsung, tidak lewat host blob.
   Hasil perbandingan run paket (`34707253187`) terhadap baseline ujung `main`
   (`34702351553`): **identik — 10 anotasi `warning`, 0 `error`**, dengan tiga jenis yang
@@ -1279,6 +1306,30 @@ run ujung `main` 34702351553 hijau):**
   `@hide` dan melempar `SecurityException` untuk aplikasi biasa. Karena itu baris
   "Selalu aktif" menampilkan keadaan nyata saat tersambung dan fallback teks netral saat
   tidak terbaca — tidak menebak.
+
+- **(2026-09-13, audit forensik) Repo berpindah pemilik: `rollinkxx/velum` →
+  `velum-tunnel/velum`.** Diverifikasi tiga arah: `git remote -v` →
+  `https://github.com/velum-tunnel/velum.git`, `gh repo view --json nameWithOwner` →
+  `velum-tunnel/velum`, dan `gh api repos/rollinkxx/velum --jq .full_name` →
+  `velum-tunnel/velum` (redirect masih aktif). Karena redirect itulah gejalanya senyap —
+  perintah lama tidak pernah gagal. `applicationId` dan package Kotlin **tetap**
+  `com.rollinkxx.velum` (identitas permanen, ADR 002).
+- **(2026-09-13, audit forensik) Artefak rilis yang dirujuk TODO 57 sudah kedaluwarsa.**
+  TODO 57 menunjuk `app-release` 12.773.630 byte pada run 34702351553 (`93f71b0`), padahal
+  run 34743255110 di ujung `main` (`4cca724`) memuat `app-release` **12.803.980 byte**,
+  `app-preview` 12.803.882, `app-debug` 27.649.923, `mapping-preview` 643.492,
+  `lint-report` 20.479, `unit-test-report` 17.323 — semuanya kadaluarsa 2026-12-12.
+  Artefak lama itu **belum memuat PR #15 dan #16**, keduanya menyentuh runtime.
+- **(2026-09-13) Verifikasi ulang kondisi sandbox.** `java`/`javac`/`gradle`/`kotlinc`
+  tidak ada, `ANDROID_HOME` & `ANDROID_SDK_ROOT` kosong, modul python `yaml` tidak
+  terpasang (`tomllib` ada) — seluruh klaim §3 tentang ketiadaan toolchain **masih
+  berlaku**. Yang perlu diluruskan: yang diblokir adalah host build/Maven, bukan semua
+  jaringan (`api.github.com` → HTTP 200).
+- **(2026-09-13) Branch sesi tidak punya upstream.** `git rev-parse @{u}` → *fatal: no
+  upstream configured*. Artinya `git status` **tidak pernah** memperingatkan bila HEAD
+  tertinggal dari remote, dan `git branch -r` tidak bisa dipakai sebagai cermin keadaan
+  (refspec fetch terbatas). Gerbang 0 (§3) adalah satu-satunya penjaganya. Klon juga
+  sedalam satu commit: `.git/shallow` = ujung `main`, refspec hanya `main`, ±130 objek.
 
 ## §6 Protokol Android: Presisi & Efisiensi Waktu (aktif 2026-09-11)
 
@@ -1483,7 +1534,7 @@ disiplin.
 
 ## §10 Meta-Aturan
 
-- **Aturan (§0–§4, §6–§9, §11)** hanya boleh diubah atas perintah eksplisit
+- **Aturan (§0–§4, §6–§12)** hanya boleh diubah atas perintah eksplisit
   maintainer dengan frasa "ubah aturan …". Agen tidak boleh "memperbaiki"
   aturan atas inisiatif sendiri walau merasa ada yang kurang. Bila agen
   melihat celah aturan: laporkan sebagai temuan (mode `ANALISIS`), jangan
@@ -1761,7 +1812,10 @@ menyebut tingkatnya:
    Bila sebuah uji V1 gagal, agen yang wajib menerjemahkan gejalanya ke dugaan penyebab —
    bukan meminta maintainer mendiagnosis.
 4. **Status TODO tidak boleh naik menjadi `Selesai tervalidasi` untuk perubahan runtime
-   tanpa baris ledger.** Aturan ini mengikat **agen**, bukan membebani maintainer: bila
+   tanpa baris ledger yang VONISNYA `LULUS`.** *(Diperjelas 2026-09-13: redaksi lama hanya
+   menuntut "ada baris", sehingga TODO 103 sempat bertanda `Selesai tervalidasi` padahal
+   uji perangkatnya H5 berstatus `TIDAK SESUAI HARAPAN`. Baris yang vonisnya belum lulus
+   menuntut kalimat batas bukti.)* Aturan ini mengikat **agen**, bukan membebani maintainer: bila
    sebuah perubahan runtime tidak punya padanan uji V1, agenlah yang harus membuatnya
    (lihat "Kewajiban mengubah V3 menjadi V1"), dan bila itu pun tidak mungkin, statusnya
    ditulis `tidak terverifikasi — hanya nalar` beserta risikonya, **bukan** dilempar
