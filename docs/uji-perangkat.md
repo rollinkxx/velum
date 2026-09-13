@@ -11,7 +11,7 @@ perangkat saja**. Tidak ada perintah `adb`, tidak ada logcat, tidak ada `dumpsys
   Isinya kini mencakup keadaan internal yang dulu hanya ada di logcat:
 
   ```
-  Velum 0.5.0
+  Velum 0.1.0
   Status      : Tersambung
   Endpoint    : 162.159.192.1:2408
   Handshake   : 42 detik lalu
@@ -33,6 +33,63 @@ perangkat saja**. Tidak ada perintah `adb`, tidak ada logcat, tidak ada `dumpsys
   itu) dan tempel apa adanya, ditambah satu kalimat apa yang Anda lihat di layar. Jangan
   dirangkum menjadi "berhasil" atau "lancar" — ringkasan tidak bisa dipakai memutuskan apa
   pun (AGENTS.md §12 butir 3).
+
+---
+
+## Sebelum memasang
+
+Semua fakta di bawah dibaca dari `app/build.gradle.kts` dan `.github/workflows/build.yml`,
+bukan diperkirakan.
+
+**1. Versi tidak membedakan build.** `versionName` masih `0.1.0` dan `versionCode` dasar
+`1` — §4 menetapkan bump versi hanya atas permintaan maintainer, jadi **angka versi tidak
+akan berubah** antar-build selama semua perbaikan ini. Akibat praktis: Anda tidak bisa
+memastikan "ini build baru" dari versi.
+
+**2. Cara memastikan yang terpasang adalah build baru:** buka Diagnostik dan periksa ada
+tidaknya empat baris baru — `Niat`, `Pemantau`, `Proses`, `Boot`. Bila baris itu tidak ada,
+yang terpasang adalah build lama; jangan lanjut menguji, karena hasilnya akan menggambarkan
+kode yang sudah tidak ada.
+
+**3. Pilih berkas APK yang tepat.** Artifact `app-release` memuat **empat** APK (tiga
+pemecahan arsitektur + satu universal, karena `isUniversalApk = true`), dan tiap
+arsitektur punya `versionCode` sendiri (rumus `abiCode * 1000 + versionCode dasar`):
+
+| Berkas | versionCode | Untuk |
+|---|---|---|
+| `app-arm64-v8a-release.apk` | 3001 | **Hampir semua ponsel Android 14 — pilih ini** |
+| `app-armeabi-v7a-release.apk` | 1001 | Perangkat 32-bit lama |
+| `app-x86_64-release.apk` | 2001 | Emulator / Chromebook |
+| `app-universal-release.apk` | 1 | Semua arsitektur, ukuran terbesar |
+
+**Jangan berpindah arsitektur setelah terpasang.** APK universal sengaja diberi
+`versionCode` paling rendah (1), jadi memasang universal di atas arm64-v8a (3001) akan
+ditolak sebagai *downgrade*. Pakai `arm64-v8a` terus.
+
+**4. Bila pemasangan ditolak** ("aplikasi tidak dipasang" / tanda tangan tidak cocok):
+itu berarti build lama di perangkat ditandatangani kunci yang berbeda. Satu-satunya jalan
+adalah **hapus pemasangan dulu** — dan itu menghapus registrasi serta daftar pengecualian,
+jadi Anda harus daftar ulang. `Niat` dan pengecualian memang dipertahankan oleh
+`Prefs.clear()`, tetapi penghapusan pemasangan dari sistem menghapus seluruh penyimpanan.
+
+**5. Yang diperiksa pertama kali setelah terpasang: baris `Peringatan`.** R8 aktif pada
+release (`isMinifyEnabled` + `isShrinkResources`), dan R8 baru benar-benar teruji saat
+runtime — ia bisa membuang kode yang ternyata dipakai (misalnya Tink di balik
+`EncryptedSharedPreferences`). Bila baris `Peringatan : penyimpanan TIDAK terenkripsi`
+muncul padahal perangkat Anda normal, itu tanda R8 merusak jalur kripto, bukan keystore
+perangkat yang rusak. Laporkan segera; itu alasan varian `preview` ada di repo ini.
+
+**6. Alternatif bila release bermasalah:** artifact `app-preview` isinya **sama** dengan
+release (R8 + shrink, `isDebuggable = false`, `initWith(release)`) tetapi ditandatangani
+kunci debug dan punya `applicationIdSuffix .preview` — jadi bisa dipasang berdampingan
+tanpa bentrok tanda tangan, dan `mapping.txt`-nya diunggah (release **tidak** mengunggah
+mapping, sehingga crash pada release tidak bisa diurai). Konsekuensinya: aplikasi terpisah,
+registrasi terpisah, dan tunnel-nya sendiri.
+
+**7. Tempat mengunduh:** halaman run CI
+`https://github.com/rollinkxx/velum/actions/runs/34725480643` → bagian **Artifacts**.
+Agen tidak bisa mengunduh artifact dari sandbox (sudah diverifikasi gagal dua kali, EOF ke
+blob storage), jadi pengunduhan hanya bisa dari browser Anda.
 
 ---
 
