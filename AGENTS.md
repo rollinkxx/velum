@@ -326,20 +326,38 @@ hasil perintah berbeda, **hasil perintah yang benar**.
 
 ## §3 Gerbang Kualitas Pra-Commit
 
-**Gerbang 0 — WAJIB dijalankan sebelum apa pun di sebuah giliran (ditambahkan
-2026-09-13 setelah insiden TODO 79):**
+**Gerbang 0 — WAJIB dijalankan sebelum SETIAP `git commit`, bukan sekali per giliran
+(ditambahkan 2026-09-13 setelah insiden TODO 79; diperketat hari yang sama setelah
+aturan ini dilanggar sendiri — TODO 96):**
 
 ```bash
-git rev-parse HEAD                                  # ujung lokal
-git ls-remote origin <branch-sesi> | cut -f1        # ujung remote
+git rev-parse HEAD && git ls-remote origin <branch-sesi> | cut -f1
 ```
 
-Keduanya **harus sama** (atau lokal = remote + commit giliran ini). Bila berbeda,
-atau bila `git status` tiba-tiba menampilkan puluhan berkas "modified" yang tidak
-disentuh giliran ini: **berhenti, jangan commit apa pun**, jalankan prosedur
+Keduanya **harus sama** (atau lokal = remote + commit yang baru dibuat giliran ini).
+Bila berbeda, atau bila `git status` tiba-tiba menampilkan puluhan berkas "modified"
+yang tidak disentuh giliran ini: **berhenti, jangan commit apa pun**, jalankan prosedur
 pemulihan di §5 (fetch → verifikasi `diff --name-only FETCH_HEAD` → `reset --mixed`).
-`git add -A` di atas keadaan itu menelan seluruh riwayat sesi menjadi satu commit
-raksasa dan tidak bisa dibatalkan sesudah ter-push.
+
+**Kenapa "setiap commit", bukan "setiap giliran":** sandbox terbukti bisa di-provision
+ulang **di tengah giliran yang sama**, bukan hanya di antaranya. Pada kejadian kedua
+(2026-09-13 01:40 UTC, hanya ~40 menit setelah provision sebelumnya) agen sudah
+melakukan belasan perintah sebelum commit, lalu commit itu berinduk `93f71b0` (basis)
+alih-alih ujung remote — push ditolak non-fast-forward dan commitnya yatim. Gerbang ini
+ada persis untuk itu, dan **tidak dijalankan**, jadi ia tidak menangkap apa pun.
+Pelaksanaannya: tempelkan pemeriksaan ini dalam perintah yang sama dengan `git add`/
+`git commit`, jangan mengandalkan ingatan di awal giliran.
+
+**Dilarang `git push --force` ke branch sesi sebagai jalan pintas pemulihan.** Push yang
+ditolak non-fast-forward adalah **pengaman yang sedang bekerja**, bukan rintangan: ia
+berarti induk commit Anda salah. Paksa-dorong dalam keadaan itu menimpa ujung remote
+dengan riwayat yang kehilangan seluruh commit sebelumnya, dan tidak bisa dibatalkan
+dari sandbox.
+
+**Penegakan dari sisi repo tidak mungkin.** Hook git dan `core.hooksPath` ikut lenyap saat
+provision ulang (`.git` dibuat baru), jadi gerbang ini prosedural, bukan mekanis. Yang
+mekanis hanyalah penolakan non-fast-forward dari server — alasan lain mengapa ia tidak
+boleh dipaksa.
 
 **Kondisi sandbox saat ini (fakta, diverifikasi 2026-09-11):** tidak ada `java`, `gradle`,
 Android SDK (`ANDROID_HOME` kosong); modul python `yaml` juga tidak terpasang. Artinya
@@ -1037,7 +1055,16 @@ run ujung `main` 34702351553 hijau):**
   kode, skrip, maupun workflow; CI berjalan di runner GitHub dan tidak bisa menyentuh
   sandbox; satu-satunya hook di `.git/hooks` dipasang platform saat provision (repo tidak
   melacak hook apa pun). Yang belum bisa diamati dari dalam sandbox hanyalah **alasan**
-  platform me-recycle sandbox itu (jeda antar-giliran pada kasus ini: ~5 jam). Jangan menyimpulkan
+  platform me-recycle sandbox itu.
+
+  **Terulang, dan lebih sering dari dugaan.** Kejadian pertama 2026-09-12 22:19 UTC
+  (jeda ~5 jam antar-giliran). Kejadian kedua 2026-09-13 01:40 UTC — hanya **~40 menit**
+  kemudian, dan **di tengah giliran yang sedang berjalan**: belasan perintah sudah
+  dijalankan, berkas sudah diedit, lalu commit dibuat berinduk basis `93f71b0` sehingga
+  push ditolak non-fast-forward. Kesimpulan yang berubah karena kejadian kedua: provision
+  ulang **tidak** hanya terjadi di batas giliran, jadi Gerbang 0 (§3) wajib dijalankan
+  sebelum **setiap** commit, bukan sekali di awal giliran. Pada kejadian kedua gerbang itu
+  tidak dijalankan dan karenanya tidak menangkap apa pun (TODO 96). Jangan menyimpulkan
   "pekerjaan hilang", dan jangan `git add -A && commit` di atas keadaan itu (akan membuat
   satu commit raksasa yang menelan 17 commit sebelumnya). **Pemulihannya tiga langkah:**
   `git fetch origin <branch-sesi>` → `git diff --name-only FETCH_HEAD` (daftar harus persis
