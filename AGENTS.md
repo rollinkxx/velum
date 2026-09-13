@@ -632,8 +632,8 @@ Empat poin di atas WAJIB masuk laporan Fase 1 §6 sebelum minta perintah eksekus
 [CI](#ci-github-workflowsbuildyml) · [Run acuan](#run-acuan-terkini) ·
 [Jebakan](#catatan-teknis-penting-jebakan)
 
-**Keadaan repo (fakta per 2026-09-12, disinkronkan pasca-merge PR #14 — `main` = `93f71b0`,
-run ujung `main` 34702351553 hijau):**
+**Keadaan repo (fakta per 2026-09-13, disinkronkan pasca-merge PR #16 — `main` = `4cca724`,
+run ujung `main` 34743255110 (`build`, hijau, 5m18s) + 34743255117 (`dokumen`, hijau, 6 dtk)):**
 - Aplikasi Android ringan fungsi **WARP saja** (tunnel WireGuard ke Cloudflare), tanpa mode
   DNS, tanpa iklan/analitik/akun. UI Bahasa Indonesia.
 - <a id="stack-aktual"></a>**Stack aktual** (dari `gradle/libs.versions.toml`, satu-satunya sumber versi): Gradle
@@ -642,8 +642,8 @@ run ujung `main` 34702351553 hijau):**
   katalog** — AGP 9 membawa KGP-nya sendiri (≥ 2.2.10); jangan menambahkannya kembali "supaya
   eksplisit" (sumber kebenaran kedua yang bisa menyimpang). Syarat AGP 9.4: Gradle ≥ 9.6.0
   (wrapper 9.7.1) dan JDK ≥ 17 (CI di 17) — pasangan ini **terbukti membangun dengan bersih**
-  (run 34669207614 hijau percobaan pertama setelah bump AGP; seterusnya sampai run 34702351553
-  di ujung `main` pasca-merge PR #14).
+  (run 34669207614 hijau percobaan pertama setelah bump AGP; seterusnya sampai run 34743255110
+  di ujung `main` pasca-merge PR #16).
   Dependensi runtime hanya `androidx.appcompat` **1.8.0**, `androidx.activity` **1.9.3**
   (Activity Result API), `androidx.core` **1.13.0** (dideklarasikan 2026-09-12 karena
   `VelumInsets` memakainya langsung — sebelumnya transitif, lihat jebakan 2026-09-12),
@@ -763,9 +763,19 @@ run ujung `main` 34702351553 hijau):**
   - `.github/dependabot.yml`: ekosistem `gradle` (mingguan) & `github-actions` (bulanan),
     maks. 5 PR, prefix commit `build`/`ci`. Dependabot hanya membuka PR — **manusia yang
     memutuskan**, dan `gradle/libs.versions.toml` tetap satu-satunya sumber versi.
-  - <a id="run-acuan-terkini"></a>**Run acuan terkini (ujung `main`, 2026-09-12):**
-    34702351553 (`93f71b0`, hijau, **dua job**) — run pertama di ujung `main` setelah
-    PR #14 di-merge, sehingga memenuhi syarat di jebakan "PR Dependabot hijau bisa
+  - <a id="run-acuan-terkini"></a>**Run acuan terkini (ujung `main`, 2026-09-13):**
+    34743255110 (`4cca724`, hijau, **5m18s**, dua job — `verifikasi (build, tes, lint)` 23
+    langkah & `assembleRelease (bertanda tangan)` 14 langkah) + 34743255117 (`4cca724`,
+    hijau, **6 detik**, job `konsistensi dokumen` 5 langkah) — run pertama di ujung `main`
+    setelah PR #16 di-merge. Artifact run build: `app-release` **12.803.980 byte** ·
+    `app-preview` 12.803.882 byte (**beda 98 byte** dari rilis, tanda tangan saja) ·
+    `app-debug` 27.649.923 byte · `mapping-preview` 643.492 byte · `unit-test-report`
+    17.323 byte · `lint-report` 20.479 byte. Dibanding ujung `main` sebelumnya
+    (34702351553): rilis 12.773.630 → 12.803.980 byte (+30.350) — konsisten dengan 23
+    commit PR #16 (`VelumRate.kt` + uji barunya, layout layar utama).
+  - **Run acuan ujung `main` sebelumnya:** 34702351553 (`93f71b0`, 2026-09-12, hijau,
+    **dua job**) — run pertama di ujung `main` setelah PR #14 di-merge, sehingga memenuhi
+    syarat di jebakan "PR Dependabot hijau bisa
     menyesatkan": kesehatan `main` dibuktikan oleh satu run di ujungnya, bukan oleh
     penjumlahan status PR. Job rilis tetap berjalan (kunci penandatanganan sudah
     dikonfigurasi maintainer sejak 2026-09-12).
@@ -859,12 +869,20 @@ run ujung `main` 34702351553 hijau):**
   default branch `main`. **Repo diubah menjadi PUBLIK oleh maintainer 2026-09-12** —
   konsekuensi: Actions gratis tanpa batas (sebelumnya privat, kuota 2.000 menit/bulan
   dengan spending limit $0), dan seluruh riwayat commit terbaca publik.
-  PR #1–#4, #6–#12, #13, dan **#14** sudah **merged**; `main` = **`93f71b0`** (merge commit
-  PR #14, ber-parent `a6c6814` + `ae8d73f`; di-merge atas perintah eksplisit maintainer
-  2026-09-12 15:28 UTC). Seluruh kerja sesi 2026-09-12 (ikon emblem, pantulan 5 percobaan,
+  PR #1–#4, #6–#12, #13, #14, **#15**, dan **#16** sudah **merged**; `main` = **`4cca724`**.
+  PR #14 di-merge 2026-09-12 15:28 UTC sebagai merge commit (ber-parent `a6c6814` +
+  `ae8d73f`), dan seluruh kerja sesi 2026-09-12 (ikon emblem, pantulan 5 percobaan,
   targetSdk 36, penghapusan popup tawaran, perbaikan uji koneksi, penggantian aturan
-  AGENTS.md) masuk lewat **PR #14**.
-  **Keadaan per 2026-09-12 pasca-merge: 0 PR terbuka, 0 issue terbuka, 0 tag, 0 release**
+  AGENTS.md) masuk lewatnya. Dua PR berikutnya di-**squash** (parent tunggal, pesan
+  ringkasan): **#15** (`arena/01a09664-velum` → `fc17261`, 2026-09-13 02:25:56 UTC,
+  44 commit, +3.240/−180, 33 berkas — audit konkurensi + aturan §11/§12 + workflow
+  `dokumen.yml`) dan **#16** (`arena/01a098b1-velum` → `4cca724`, 2026-09-13 06:38:45 UTC,
+  23 commit, +521/−134, 14 berkas — `VelumRate` (laju trafik jendela geser), pengelompokan
+  aplikasi yang dikecualikan, subjudul "Selalu aktif" sinkron, tampilan layar utama).
+  Squash itulah cara yang memenuhi keputusan maintainer "trailer dibersihkan saat merge"
+  (TODO 81/99).
+  **Keadaan per 2026-09-13 pasca-merge (diperiksa ulang): 0 PR terbuka, 0 issue terbuka,
+  0 tag, 0 release**
   (`gh api repos/…/git/refs/tags` → HTTP 404 karena namespace tag benar-benar kosong).
   Ketiadaan rilis itu bukan kelalaian yang bisa dibereskan agen dari sandbox — lihat
   jebakan "artifact CI tidak bisa diunduh" di bawah.
@@ -1279,6 +1297,32 @@ run ujung `main` 34702351553 hijau):**
   `@hide` dan melempar `SecurityException` untuk aplikasi biasa. Karena itu baris
   "Selalu aktif" menampilkan keadaan nyata saat tersambung dan fallback teks netral saat
   tidak terbaca — tidak menebak.
+- (2026-09-13) **Branch sesi bisa dicabangkan dari commit SEBELUM ujung `main` — dan itu
+  bukan kerusakan.** Sesi `arena/01a09973-velum` lahir dengan `HEAD = fc17261`, padahal
+  `main` sudah `4cca724` (satu commit lebih maju: squash PR #16). Yang terlihat dari dalam
+  sandbox: `git status` bersih, `git ls-remote origin refs/heads/<branch-sesi>` **kosong**
+  (branch sesi belum pernah di-push), dan tidak ada commit sesi yang hilang — jadi tidak ada
+  yang rusak; yang salah hanya titik mulai. **Jangan tentukan kekerabatan lewat
+  `git merge-base --is-ancestor`** (di clone dangkal ia melaporkan "bukan ancestor" palsu,
+  lihat entri 2026-09-12); pakai objeknya langsung — `git cat-file -p 4cca724` mencetak
+  `parent fc17261…` dan `gh api repos/…/commits/4cca724` mencatat parent yang sama.
+  `git reflog` (dua entri saja: `clone` di `4cca724`, lalu `checkout -b` di `fc17261`)
+  menunjukkan urutannya; alasan platform memilih basis itu belum bisa diamati dari sandbox.
+  **Prosedur memajukan basis — hanya sah bila branch sesi belum punya commit di remote:**
+  1. prasyarat: `git status --porcelain -uall` kosong **dan** `git stash list` kosong;
+  2. `git fetch origin '+refs/heads/main:refs/remotes/origin/main'`;
+  3. `git diff --name-only HEAD FETCH_HEAD` → bandingkan dengan daftar berkas yang
+     diharapkan (di sini **14 berkas, persis PR #16**); ada satu berkas di luar dugaan =
+     **berhenti**;
+  4. `git reset --hard FETCH_HEAD`, lalu verifikasi `git rev-parse HEAD` ==
+     `git ls-remote origin refs/heads/main`.
+  **Jangan** memakai `merge --ff-only` (ancestry terpotong shallow bisa menolaknya palsu)
+  dan **jangan** push setelah langkah ini tanpa pekerjaan nyata — push = 1 run CI (§2).
+  Bila sandbox ter-provision ulang sesudahnya, gejalanya berbeda dari insiden 2026-09-12:
+  `git status` menampilkan **tepat 14 berkas PR #16 sebagai modified** (berkas kerja dari
+  snapshot sudah memuat konten `main`, sementara `.git` kembali ke `fc17261`); pemulihannya
+  sama seperti prosedur §5, tetapi berujung ke `FETCH_HEAD` (= `main`), bukan ke ujung
+  branch sesi.
 
 ## §6 Protokol Android: Presisi & Efisiensi Waktu (aktif 2026-09-11)
 
