@@ -1330,6 +1330,27 @@ run ujung `main` 34743255110 (`build`, hijau, 5m18s) + 34743255117 (`dokumen`, h
   snapshot sudah memuat konten `main`, sementara `.git` kembali ke `fc17261`); pemulihannya
   sama seperti prosedur §5, tetapi berujung ke `FETCH_HEAD` (= `main`), bukan ke ujung
   branch sesi.
+- (2026-09-13) **`singleLine="true"` MEMATIKAN auto-size — judul jadi "Vel…".** Ini regresi
+  agen sendiri sesaat setelah batas auto-size judul dinaikkan 80sp → 106sp (TODO 108/110).
+  Rantai sebabnya terbukti dari sumber upstream, bukan dugaan:
+  1. `android:singleLine="true"` → `TextView.applySingleLine()` memanggil `setLines(1)`
+     **dan `setHorizontallyScrolling(true)`** (`aosp-mirror/platform_frameworks_base`,
+     `core/java/android/widget/TextView.java:12391-12396`).
+  2. AppCompat lalu menghitung lebar tersedia untuk auto-size sebagai **`VERY_WIDE`**
+     untuk view yang horizontally scrollable, bukan lebar view
+     (`androidx/androidx`, `appcompat/appcompat/src/main/java/androidx/appcompat/widget/
+     AppCompatTextViewAutoSizeHelper.java:584-587`).
+  3. Akibatnya **setiap** kandidat ukuran dianggap "muat": batas atas (106sp) selalu
+     dipilih, teks meluber melewati lebar area isi, lalu terpotong. Pada 80sp cacat ini
+     tidak pernah terlihat karena teksnya memang muat — inilah sebabnya ia lolos dari
+     semua gate sebelumnya (dan dari simulasi numerik yang hanya menguji aritmetika
+     lebar, bukan perilaku auto-size).
+  **Aturan:** untuk judul satu baris ber-auto-size, pakai **`maxLines="1"` saja** —
+  jangan tambahkan `singleLine="true"`. Di repo ini larangan itu ikut ditulis sebagai
+  komentar di `activity_main.xml` supaya tidak diulang.
+  **Pelajaran verifikasi (§12):** CI hanya mengompilasi; yang menangkap cacat ini adalah
+  uji perangkat V1 **H6** dari maintainer. Simulasi angka tidak boleh diperlakukan
+  setara dengan uji perangkat.
 
 ## §6 Protokol Android: Presisi & Efisiensi Waktu (aktif 2026-09-11)
 
