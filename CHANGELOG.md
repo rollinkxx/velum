@@ -35,6 +35,17 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
   terpotong.
 
 ### Fixed
+- **Judul terpotong ("Vel…") — regresi dari perubahan auto-size, diperbaiki dengan
+  membuang `android:singleLine="true"`.** Bukti akar masalah dari sumber upstream, bukan
+  dugaan: `TextView.applySingleLine()` memanggil `setHorizontallyScrolling(true)` (AOSP
+  `TextView.java:12391-12396`), dan `AppCompatTextViewAutoSizeHelper` menghitung lebar
+  tersedia untuk auto-size sebagai **`VERY_WIDE`** begitu view *horizontally scrollable*
+  — bukan lebar view. Selama batas auto-size masih 80sp bug ini tidak pernah terlihat
+  (teks memang muat); setelah batasnya dinaikkan ke 106sp, setiap ukuran dianggap
+  "muat", auto-size tidak pernah menyusut, teks meluber melewati 371dp area isi, lalu
+  terpotong. `maxLines="1"` tetap dipertahankan (cukup melarang pembungkusan **tanpa**
+  mematikan auto-size), dan jebakannya ditulis di komentar layout agar tidak diulang.
+  Dampak: **kedua** lapisan judul (depan + bayangan 3D) terkena, di semua perangkat.
 - **Laju trafik lambat & tidak akurat**: sebelumnya dihitung tiap 5 detik sebagai selisih
   dua titik dan angka pertama baru muncul ±10 detik setelah tersambung; kini memakai
   jendela geser 5 detik (`VelumRate`, teruji JVM) dengan polling 1 Hz — angka pertama

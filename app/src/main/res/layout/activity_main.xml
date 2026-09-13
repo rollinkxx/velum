@@ -33,7 +33,18 @@
         <!--
           Judul dua lapis (kesan timbul 3D): lapisan gelap bergeser sedikit turun di
           belakang lapisan depan bergradien gading-emas. Keduanya WAJIB satu baris:
-          maxLines=1 + singleLine=true + auto-size 48-106sp + letter-spacing 0.15.
+          maxLines=1 + auto-size 48-106sp + letter-spacing 0.15.
+
+          JANGAN menambahkan singleLine="true" di sini. `TextView.applySingleLine()`
+          memanggil `setHorizontallyScrolling(true)` (TextView.java:12391-12396), dan
+          begitu view horizontally scrollable, AppCompat menghitung lebar tersedia
+          untuk auto-size sebagai VERY_WIDE, bukan lebar view
+          (AppCompatTextViewAutoSizeHelper, "final int availableWidth =
+          horizontallyScrolling ? VERY_WIDE : getMeasuredWidth() - padding").
+          Akibatnya setiap ukuran dianggap "muat": batas atas 106sp selalu dipilih,
+          teks meluber melewati lebar layar, lalu terpotong — persis gejala "Vel…"
+          yang dilaporkan maintainer 2026-09-13 pada build 20d3a07. maxLines=1 sudah
+          cukup untuk melarang pembungkusan tanpa mematikan auto-size.
           includeFontPadding=false menghapus ruang kosong bawaan font.
 
           Lebar judul sengaja match_parent (bukan wrap_content) dan batas atas
@@ -62,7 +73,6 @@
                 android:includeFontPadding="false"
                 android:letterSpacing="0.15"
                 android:maxLines="1"
-                android:singleLine="true"
                 android:text="@string/app_name"
                 android:textColor="@color/title_shadow"
                 android:textSize="106sp"
@@ -80,7 +90,6 @@
                 android:includeFontPadding="false"
                 android:letterSpacing="0.15"
                 android:maxLines="1"
-                android:singleLine="true"
                 android:text="@string/app_name"
                 android:textColor="@color/fg"
                 android:textSize="106sp"
