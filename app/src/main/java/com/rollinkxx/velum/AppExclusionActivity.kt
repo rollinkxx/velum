@@ -1,6 +1,7 @@
 package com.rollinkxx.velum
 
 import android.content.Intent
+import android.graphics.Typeface
 import android.os.Bundle
 import android.util.Log
 import android.widget.Button
@@ -42,7 +43,6 @@ class AppExclusionActivity : AppCompatActivity() {
         list = findViewById(R.id.appList)
 
         val excluded = prefs.excludedApps
-        val warna = resources.getColor(R.color.fg, theme)
         val apps = launcherApps()
         if (apps.isEmpty()) {
             // Perangkat tanpa aplikasi peluncur yang terbaca (mis. profil kerja
@@ -54,15 +54,16 @@ class AppExclusionActivity : AppCompatActivity() {
                 setPadding(0, dp(12), 0, dp(12))
             })
         }
-        for (app in apps) {
-            val box = CheckBox(this).apply {
-                text = app.label
-                isChecked = app.packageName in excluded
-                setTextColor(warna)
-                setPadding(0, dp(12), 0, dp(12))
-            }
-            boxes[app.packageName] = box
-            list.addView(box)
+        // Yang dikecualikan dinaikkan ke atas di bawah labelnya sendiri, supaya
+        // pilihan pengguna tidak tenggelam di antara puluhan aplikasi lain.
+        val (dikecualikan, lainnya) = apps.partition { it.packageName in excluded }
+        if (dikecualikan.isNotEmpty()) {
+            addSectionHeader(getString(R.string.excluded_section_on), true)
+            for (app in dikecualikan) addAppRow(app, excluded)
+            addSectionHeader(getString(R.string.excluded_section_off), false)
+            for (app in lainnya) addAppRow(app, excluded)
+        } else {
+            for (app in lainnya) addAppRow(app, excluded)
         }
         findViewById<Button>(R.id.save).setOnClickListener { save() }
         // Tombol kembali di bilah atas: memakai dispatcher yang sama dengan gestur
@@ -82,6 +83,31 @@ class AppExclusionActivity : AppCompatActivity() {
      */
     private fun dp(value: Int): Int =
         (value * resources.displayMetrics.density).roundToInt()
+
+    /** Judul bagian kecil di atas kelompok aplikasi. */
+    private fun addSectionHeader(text: String, accent: Boolean) {
+        list.addView(TextView(this).apply {
+            setText(text)
+            setTextColor(resources.getColor(if (accent) R.color.accent else R.color.muted, theme))
+            setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL))
+            textSize = 12f
+            setPadding(0, dp(18), 0, dp(4))
+        })
+    }
+
+    /** Satu baris aplikasi; yang dikecualikan dibedakan warna dan ketebalannya. */
+    private fun addAppRow(app: AppInfo, excluded: Set<String>) {
+        val picked = app.packageName in excluded
+        val box = CheckBox(this).apply {
+            text = app.label
+            isChecked = picked
+            setTextColor(resources.getColor(if (picked) R.color.accent else R.color.fg, theme))
+            if (picked) setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL))
+            setPadding(0, dp(12), 0, dp(12))
+        }
+        boxes[app.packageName] = box
+        list.addView(box)
+    }
 
     /**
      * Simpan daftar, lalu terapkan SEKARANG bila tunnel sedang naik.
