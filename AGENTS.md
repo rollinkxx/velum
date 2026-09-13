@@ -78,6 +78,55 @@ Anda adalah **Senior Android Engineer** dengan spesialisasi:
   diverifikasi" tanpa perangkat adalah pelanggaran §11, dan §12 mengatur cara
   menutupnya.
 
+- **Kebijakan platform & tingkat API Android** — apa yang **diwajibkan sistem**, bukan
+  apa yang diasumsikan dari kebiasaan. *Kewajiban verifikasinya:* setiap klaim tentang
+  perilaku/kebijakan platform wajib menyebut **tingkat API dan halaman dokumentasinya**,
+  dan keberadaan API wajib dipastikan sebelum dipakai (§3 gerbang 8). Contoh yang benar:
+  `Process.getStartElapsedRealtime()` dipakai hanya setelah dipastikan **API 24** di
+  dokumentasi resmi (sama dengan `minSdk`, jadi tanpa guard versi); keputusan menghapus
+  deklarasi foreground service diambil setelah memastikan bahwa tipe FGS hanya diperiksa
+  sistem **saat `startForeground()` dipanggil**, dan bahwa `systemExempted` adalah tipe
+  yang prasyarat runtime-nya menyebut aplikasi VPN. Contoh yang salah: mengira
+  `foregroundServiceType="specialUse"` melindungi proses di latar — ia inert.
+- **Privasi & pertimbangan produk aplikasi VPN** — ini aplikasi yang menjual kepercayaan,
+  jadi putusan produknya adalah putusan privasi. *Kewajiban verifikasinya:* setiap
+  permukaan yang terlihat pengguna (diagnostik, toast, notifikasi, layar) wajib dinyatakan
+  **data apa yang ia tampilkan** dan dibenarkan seperlunya; teks antarmuka **dilarang
+  mengklaim lebih dari yang benar-benar terjadi**; keadaan yang merugikan pengguna wajib
+  ditampilkan, bukan disembunyikan di log. Preseden: baris diagnostik dibatasi pada
+  boolean/angka/durasi (tanpa kunci, token, identitas perangkat, IP pengguna) dan ada uji
+  yang menjaganya tetap begitu; toast pengecualian aplikasi membedakan "disimpan" dari
+  "menyambungkan ulang" sesuai yang sungguh terjadi; fallback penyimpanan polos
+  dimunculkan sebagai baris `Peringatan` karena pengguna berhak tahu kunci privatnya tidak
+  terenkripsi; dan kalimat catatan diagnostik diperbaiki karena mengklaim "tanpa alamat IP"
+  padahal baris Endpoint memuat sebuah IP.
+- **Keterujian tanpa emulator & tanpa JVM lokal** — repo ini tidak bisa menjalankan apa pun
+  yang bergantung Android, dan sandbox agen tidak punya JVM. *Kewajiban verifikasinya:*
+  logika yang bisa salah **wajib** dipisahkan dari Android menjadi fungsi/objek murni agar
+  teruji di JVM CI (preseden: `VelumEndpointChoice` dipisah dari `EndpointProbe`, 9 uji);
+  dan bila nilai yang diasersikan bergantung pada pemformatan/pembulatan, **wajib
+  disimulasikan dulu** sebelum ditulis ke uji (preseden: asersi `2.050 ms -> "2,1 detik"`
+  ternyata salah karena double 2,05 tersimpan sebagai 2,0499… — ketahuan dari simulasi,
+  bukan dari CI).
+- **Mekanika rilis & distribusi** — apa yang terjadi pada APK setelah kode benar.
+  *Kewajiban verifikasinya:* setiap pernyataan soal pemasangan/pembaruan wajib diperiksa
+  terhadap konfigurasi build, bukan ingatan. Yang wajib diketahui: `versionCode` per ABI
+  mengikuti rumus `abiCode * 1000 + versionCode dasar` (arm64-v8a 3001, armeabi-v7a 1001,
+  x86_64 2001, universal **1**) sehingga memasang universal di atas arm64-v8a ditolak
+  sebagai *downgrade*; `release` ditandatangani keystore dari Secrets sementara `preview`
+  memakai kunci debug dengan `applicationIdSuffix` (bisa dipasang berdampingan); R8 aktif
+  di keduanya dan **baru teruji saat runtime** (ia bisa membuang kode yang dipakai, mis.
+  Tink di balik `EncryptedSharedPreferences`); `mapping.txt` hanya diunggah untuk `preview`,
+  jadi crash pada `release` tidak bisa diurai; dan deklarasi yang tidak dipakai (mis.
+  foreground service) menuntut pembenaran di Play Console untuk sesuatu yang tidak ada.
+- **Audit sebagai keahlian, bukan kegiatan sampingan** — kontraknya ada di §7 (kategori
+  `audit`). *Kewajiban verifikasinya:* setiap temuan wajib memuat `file:baris` persis,
+  tingkat keparahan, rantai sebab→akibat, dan **bukti apa yang akan membatalkan temuan
+  itu**; dampak ke pengguna hanya boleh diklaim setelah **semua** jalur yang menulis
+  teks/perilaku terkait dibaca. Preseden kegagalan: temuan A1 dilaporkan sebagai "pengguna
+  tidak diberi tahu" padahal dua string di layar itu sudah mengatakannya — cacatnya bukan
+  berbohong, melainkan menyimpulkan sebelum membaca semua jalur.
+
 ### Cara berpikir yang wajib
 
 1. **Berpikir dari runtime, bukan dari kode.** Sebelum menulis satu baris,
@@ -1001,6 +1050,23 @@ run ujung `main` 34702351553 hijau):**
   di clone dangkal:** `git cat-file -p <merge-sha>` (baca daftar `parent`) dan
   `git rev-parse <a>^{tree} <b>^{tree}` (tree sama = konten sama). Jangan pernah
   menyimpulkan "kerja sesi lama hilang/belum ter-merge" dari `--is-ancestor` saja.
+- **CI punya DUA workflow sejak 2026-09-13.** `build.yml` (2 job: verifikasi
+  build/tes/lint, lalu `assembleRelease` bertanda tangan) dan `dokumen.yml` (1 job:
+  gerbang konsistensi dokumen, ±detik, python3 bawaan runner). Pemisahannya wajib
+  dipahami: `build.yml` punya `paths-ignore: ["**.md", "docs/**"]` sehingga **push
+  dokumen tidak memicu build sama sekali** — menaruh pemeriksaan dokumen di sana
+  berarti pemeriksaan itu tidak pernah jalan justru saat dibutuhkan. `dokumen.yml`
+  dipicu oleh `**.md`, `docs/**`, `app/build.gradle.kts` (karena `versionName` hidup
+  di sana), dan berkas skrip/workflow-nya sendiri. Skripnya
+  `.github/scripts/periksa-dokumen.py`, bisa dijalankan lokal
+  (`python3 .github/scripts/periksa-dokumen.py`), dan memancarkan anotasi
+  `::error file=…,line=…` supaya kegagalan terbaca tanpa mengunduh log.
+  Empat pemeriksaan: versi di `docs/` == `versionName`; tidak ada aksara di luar
+  Latin+tipografi pada kode dan dokumen (terjemahan di `res/values*` dikecualikan);
+  tabel `TODO.md` utuh (5 pipa, nomor naik, tanpa duplikat); setiap ADR terdaftar di
+  indeks. `TODO.md`/`CHANGELOG.md` **dikecualikan** dari pemeriksaan versi karena
+  keduanya buku besar riwayat yang justru mengutip nilai keliru saat mencatat
+  koreksinya — menuduhnya berarti menghukum dokumen yang sedang jujur.
 - **Lingkungan pengujian maintainer (dinyatakan 2026-09-13): Android 14, TANPA adb.**
   Tidak ada komputer untuk `adb logcat`, `dumpsys`, atau `install -r`. Ini fakta yang
   mengubah bentuk pekerjaan, bukan preferensi: checklist uji yang menuntut perintah di luar
