@@ -24,6 +24,9 @@
     <!-- Subjudul baris aksi: menjelaskan akibat tiap baris sebelum ditekan. -->
     <string name="sub_reset">Daftarkan ulang perangkat ini</string>
     <string name="sub_vpn_settings">Pengaturan VPN sistem</string>
+    <string name="sub_vpn_settings_on">Aktif · tersambung otomatis</string>
+    <string name="sub_vpn_settings_on_lockdown">Aktif · blokir tanpa VPN</string>
+    <string name="sub_vpn_settings_off">Nonaktif</string>
     <string name="sub_exclusions">Lewatkan tunnel untuk aplikasi tertentu</string>
     <string name="sub_copy_diag">Ringkasan tanpa kunci &amp; alamat IP</string>
     <string name="title_excluded">Kecualikan aplikasi</string>

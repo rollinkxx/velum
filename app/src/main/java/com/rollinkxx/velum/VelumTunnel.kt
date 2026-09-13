@@ -1,6 +1,7 @@
 package com.rollinkxx.velum
 
 import android.content.Context
+import android.os.Build
 import android.os.SystemClock
 import com.wireguard.android.backend.GoBackend
 import com.wireguard.android.backend.Tunnel
@@ -208,6 +209,28 @@ object VelumTunnel : Tunnel {
                 if (p.latestHandshakeEpochMillis > hs) hs = p.latestHandshakeEpochMillis
             }
             TrafficStats(rx, tx, hs)
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    /** Keadaan "Selalu aktif" VPN sistem; null = tidak terbaca (API < 29 / layanan mati). */
+    class AlwaysOnState(val alwaysOn: Boolean, val lockdown: Boolean)
+
+    /**
+     * Membaca keadaan always-on/lockdown dari backend WireGuard.
+     *
+     * Hanya berhasil bila (a) Android 29+ — `VpnService.isAlwaysOn()`/`isLockdownEnabled()`
+     * ditambahkan di API 29 — dan (b) `VpnService` sedang hidup di proses ini (tunnel UP).
+     * Bila layanan mati, `GoBackend` melempar `TimeoutException` (future-nya di-reset saat
+     * service `onDestroy`) → null. Pemanggil wajib menampilkan fallback, bukan menebak.
+     * Blocking ringan; panggil dari thread latar.
+     */
+    fun alwaysOnState(): AlwaysOnState? {
+        if (Build.VERSION.SDK_INT < 29) return null
+        val b = backend ?: return null
+        return try {
+            AlwaysOnState(b.isAlwaysOn(), b.isLockdownEnabled())
         } catch (_: Exception) {
             null
         }

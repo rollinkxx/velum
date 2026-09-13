@@ -45,6 +45,7 @@ class MainActivity : AppCompatActivity(), VelumController.Ui {
     private lateinit var infoEndpoint: TextView
     private lateinit var infoTest: TextView
     private lateinit var infoData: TextView
+    private lateinit var vpnSettingsSub: TextView
 
     private val main = Handler(Looper.getMainLooper())
 
@@ -111,6 +112,7 @@ class MainActivity : AppCompatActivity(), VelumController.Ui {
         infoEndpoint = findViewById(R.id.infoEndpoint)
         infoTest = findViewById(R.id.infoTest)
         infoData = findViewById(R.id.infoData)
+        vpnSettingsSub = findViewById(R.id.subVpnSettings)
 
         toggleButton.setOnClickListener { onToggle() }
         testButton.setOnClickListener { controller.runTest() }
@@ -172,6 +174,7 @@ class MainActivity : AppCompatActivity(), VelumController.Ui {
             // kasus itu `onConnectedVisual()` TIDAK dipanggil (tidak ada transisi).
             resetTrafficBaseline()
         }
+        refreshAlwaysOn()
         controller.refreshStateAsync { controller.resumeIfNeeded() }
     }
 
@@ -298,6 +301,30 @@ class MainActivity : AppCompatActivity(), VelumController.Ui {
         }
     }
 
+    /**
+     * Menampilkan keadaan "Selalu aktif" sistem pada subjudul baris aksi.
+     *
+     * Pembacaan hanya berhasil saat tunnel UP (VpnService hidup di proses ini) dan
+     * Android 29+; selain itu subjudul kembali ke teks netral "Pengaturan VPN sistem"
+     * — kita tidak menebak keadaan yang tidak bisa dibaca (§11).
+     */
+    private fun refreshAlwaysOn() {
+        if (controller.state != Tunnel.State.UP) {
+            vpnSettingsSub.setText(R.string.sub_vpn_settings)
+            return
+        }
+        controller.runAlwaysOnState { s ->
+            vpnSettingsSub.setText(
+                when {
+                    s == null -> R.string.sub_vpn_settings
+                    s.alwaysOn && s.lockdown -> R.string.sub_vpn_settings_on_lockdown
+                    s.alwaysOn -> R.string.sub_vpn_settings_on
+                    else -> R.string.sub_vpn_settings_off
+                }
+            )
+        }
+    }
+
     // ---------- Implementasi VelumController.Ui ----------
 
     override fun setBusy(busy: Boolean) {
@@ -360,6 +387,7 @@ class MainActivity : AppCompatActivity(), VelumController.Ui {
         startTicker()
         startPulse()
         refreshStaticInfo()
+        refreshAlwaysOn()
         // Notifikasi status sengaja TIDAK diposting dari sini. `VelumTunnel.onStateChange`
         // yang melakukannya, supaya tunnel yang tersambung lewat ubin pengaturan cepat
         // atau receiver boot (tanpa Activity sama sekali) tetap punya notifikasi, dan
@@ -389,6 +417,7 @@ class MainActivity : AppCompatActivity(), VelumController.Ui {
         // sini: layar bisa saja sudah tidak ada ketika tunnel mati di latar.
         infoDuration.setText(R.string.value_none)
         infoData.setText(R.string.value_none)
+        refreshAlwaysOn()
     }
 
     override fun render(state: Tunnel.State) {
