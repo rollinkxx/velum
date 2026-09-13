@@ -20,9 +20,7 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 ### Changed
 - **Judul aplikasi membesar (30sp → 52sp) dan berkesan timbul 3D**: lapisan gelap sedikit
   turun di belakang lapisan bergradien emas. Keduanya teks statis yang digambar sekali,
-  tanpa beban per-frame (prioritas kecepatan dipertahankan). Pasca-uji perangkat H5,
-  isi layar dipaku ke atas (`center_horizontal` tanpa `center_vertical`) supaya judul
-  tidak menggantung di tengah dengan ruang kosong besar di atasnya.
+  tanpa beban per-frame (prioritas kecepatan dipertahankan).
 - **Tagline diganti** "TUNNEL AMAN YANG RINGAN" → "PRIVAT, CEPAT, RINGAN".
 - **Status "Tersambung" disusun sebaris** (titik + teks 14sp) supaya hemat tinggi.
 - **Layar utama menjadi tetap (tanpa menggulir)**: tinggi elemen ditekan agar muat satu
