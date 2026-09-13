@@ -36,10 +36,8 @@ komputer untuk logcat/dumpsys). Karena itu:
 ## Status saat ini
 
 **Sebagian uji sudah dijalankan** (kelompok H, branch `arena/01a098b1-velum`,
-laporan maintainer 2026-09-13): H1/H3/H4 `LULUS`, H2 dilaporkan lewat tangkapan layar
-yang tidak bisa dibaca agen (menunggu teks angka laju), H5 percobaan pertama
-`TIDAK SESUAI HARAPAN` (judul kecil, status memakan tempat — sudah disesuaikan,
-menunggu uji ulang). Kelompok A–G (29 uji) masih menunggu perangkat.
+laporan maintainer 2026-09-13): H1/H2/H3/H4 `LULUS`, H5 `TIDAK SESUAI HARAPAN`
+(menunggu uji ulang). Kelompok A–G (29 uji) masih menunggu perangkat.
 
 | Kelompok | Uji | Tingkat | Menutup utang di |
 |---|---|---|---|
@@ -70,10 +68,10 @@ hasil — ganti atau hapus saat dipakai.
 | Tanggal | Perangkat & Android | Uji | Tingkat | Hasil sebenarnya | Vonis | Tindak lanjut |
 |---|---|---|---|---|---|---|
 | 2026-09-13 | Android 14 (perangkat maintainer) | H1 | V1 | Maintainer: "H1 terverifikasi" — `Total` langsung tampil dan laju muncul dalam ±2 detik setelah tersambung. | LULUS | — |
-| 2026-09-13 | Android 14 (perangkat maintainer) | H2 | V1 | Maintainer: "H2 seperti terlihat di screenshot". Agen tidak bisa membaca gambar; butuh teks angka laju (mis. `↓ 1,2 MB/s · ↑ 45,0 KB/s`) untuk dinilai halus atau melompat. | — | Minta teks angka laju |
+| 2026-09-13 | Android 14 (perangkat maintainer) | H2 | V1 | Maintainer: laju Velum `↓ 5,1 MB/s · ↑ 192,3 KB/s` vs indikator status bar `10,8 M/s`. Tidak ada aplikasi yang dikecualikan dan unduhan stabil. Penjelasan agen (selisih = cara indikator status bar menghitung saat VPN aktif, angka Velum adalah laju tunnel sebenarnya) disetujui maintainer: "saya setuju penjelasanmu (saya anggap terverifikasi)". | LULUS | — |
 | 2026-09-13 | Android 14 (perangkat maintainer) | H3 | V1 | Maintainer: "H3 terverifikasi seperti yang diharapkan" — aplikasi tercentang naik ke atas di bawah label "Dikecualikan dari tunnel". | LULUS | — |
 | 2026-09-13 | Android 14 (perangkat maintainer) | H4 | V1 | Maintainer: "H4 ini juga terverifikasi" — subjudul "Selalu aktif" mengikuti keadaan sistem saat tersambung. | LULUS | — |
-| 2026-09-13 | Android 14 (perangkat maintainer) | H5 | V1 | Maintainer: judul masih terasa kecil (tinggi & lebar kurang, sisi kiri-kanan & atas banyak ruang kosong) dan tulisan "Tersambung" masih memakan banyak tempat. | TIDAK SESUAI HARAPAN | Disesuaikan: judul 52sp, isi dipaku ke atas, status 14sp + kartu dirapatkan. Uji ulang H5 |
+| 2026-09-13 | Android 14 (perangkat maintainer) | H5 | V1 | Percobaan 1: judul kecil, "Tersambung" makan tempat. Percobaan 2: maintainer menilai malah parah — seluruh isi naik ke atas sehingga bagian bawah kosong; yang diminta hanya perbaikan Title & label Tersambung. | TIDAK SESUAI HARAPAN | **Koreksi atas kesalahan agen (scope §0)**: pemindahan isi ke atas dibatalkan (gravity & spacing dikembalikan semula), hanya judul 52sp & status 14sp yang dipertahankan. Uji ulang H5 |
 
 ## Tidak terverifikasi oleh siapa pun — status permanen `hanya nalar`
 
