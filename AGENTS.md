@@ -657,11 +657,13 @@ run ujung `main` 34702351553 hijau):**
   (laporan HTML tidak terbaca dari sandbox), `abortOnError = true`.
 - <a id="identitas"></a>**Identitas (ADR 002):** `applicationId` = `com.rollinkxx.velum` (debug: suffix `.debug`),
   package Kotlin `com.rollinkxx.velum`, nama aplikasi **Velum**, versi awal `0.1.0`/code 1.
-- <a id="struktur-modul-app"></a>**Struktur modul `app/`** (`app/src/main/java/com/rollinkxx/velum/`, 21 berkas Kotlin):
-  - `MainActivity.kt` — **hanya render**: UI satu layar (View XML), panel info interaktif
-    (durasi/endpoint/hasil uji+DC/laju+deteksi basi), izin notifikasi Android 13+ (diminta
-    hanya bila perlu, lewat Activity Result API), pintasan pengaturan VPN/Always-on,
-    konfirmasi Daftar ulang, salin diagnostik, judul bergradien (`polishAppTitle()`).
+- <a id="struktur-modul-app"></a>**Struktur modul `app/`** (`app/src/main/java/com/rollinkxx/velum/`, 22 berkas Kotlin):
+  - `MainActivity.kt` — **hanya render**: UI satu layar (View XML, **tetap tanpa gulir**),
+    panel info interaktif (durasi/endpoint/hasil uji+DC/laju+total sesi+deteksi basi),
+    izin notifikasi Android 13+ (diminta hanya bila perlu, lewat Activity Result API),
+    pintasan pengaturan VPN/Always-on (subjudulnya sinkron dengan keadaan sistem lewat
+    `GoBackend.isAlwaysOn`/`isLockdownEnabled`), konfirmasi Daftar ulang, salin
+    diagnostik, judul dua lapis 40sp (`polishAppTitle()`).
   - `VelumController.kt` — **orkestrasi** koneksi & uji, terpisah dari Activity agar tidak
     ikut mati saat Activity dibuat ulang (rotasi/proses lahir ulang).
   - `VelumApi.kt` — registrasi/hapus registrasi ke API upstream
@@ -706,7 +708,9 @@ run ujung `main` 34702351553 hijau):**
     dipisah dari `EndpointProbe` yang mengukur lewat soket, supaya logikanya teruji di JVM
     tanpa perangkat; 9 kasus uji termasuk regresi "pemenang bukan-IP sama dengan endpoint
     gagal → tidak ada perpindahan").
-    Uji padanannya di `app/src/test/java/com/rollinkxx/velum/*Test.kt` (8 berkas;
+    `VelumRate.kt` (laju trafik jendela geser 5 dtk — laju halus, penghitung yang mundur
+    dianggap reset sesi; dipakai baris Data layar utama).
+    Uji padanannya di `app/src/test/java/com/rollinkxx/velum/*Test.kt` (9 berkas;
     `VelumSetupTest` ikut terhapus bersama fiturnya, lihat jebakan 2026-09-12).
   - `AndroidManifest.xml` — VpnService milik library (`GoBackend$VpnService`) di-merge
     (`tools:node="merge"`), **tanpa** `foregroundServiceType` dan tanpa izin
@@ -1262,6 +1266,18 @@ run ujung `main` 34702351553 hijau):**
   lewat helper `dp()`, bukan piksel mentah (piksel mentah = 8 px di semua densitas);
   `VelumFormat.isUsable()` menolak respons yang bukan keluaran `cdn-cgi/trace` sebelum
   disimpulkan "tunnel belum aktif" (halaman captive portal berbentuk 200 + HTML).
+- (2026-09-13) **Keadaan "Selalu aktif" bisa dibaca aplikasi sendiri — lewat library,
+  bukan `Settings.Secure`.** `GoBackend` (tag `1.0.20260102`) menyediakan
+  `isAlwaysOn()`/`isLockdownEnabled()` publik (bagian dari interface `Backend`), yang
+  menembus `android.net.VpnService.isAlwaysOn()`/`isLockdownEnabled()` — keduanya
+  **API 29+** (dokumentasi resmi developer.android.com). Dua batas yang menentukan bentuk
+  implementasi: (a) di bawah API 29 metodenya tidak ada; (b) pembacaan hanya berhasil saat
+  `VpnService` hidup di proses ini (tunnel UP) — begitu layanan mati, `GoBackend`
+  melempar `TimeoutException` (future-nya di-reset di `VpnService.onDestroy`). Jalur
+  `Settings.Secure.getString("always_on_vpn_app")` ditolak: di Android 12+ kunci itu
+  `@hide` dan melempar `SecurityException` untuk aplikasi biasa. Karena itu baris
+  "Selalu aktif" menampilkan keadaan nyata saat tersambung dan fallback teks netral saat
+  tidak terbaca — tidak menebak.
 
 ## §6 Protokol Android: Presisi & Efisiensi Waktu (aktif 2026-09-11)
 
