@@ -6,6 +6,34 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 ## [Unreleased]
 
 ### Added
+- **Baris Data menampilkan total pemakaian sesi** (↓/↑ kumulatif sejak tunnel naik)
+  di samping laju — total muncul seketika karena dibaca langsung dari penghitung
+  backend, dan reset otomatis tiap tunnel dibangun ulang (satu sesi).
+- **Layar "Kecualikan aplikasi" mengelompokkan pilihan**: aplikasi yang dikecualikan
+  dinaikkan ke atas di bawah label "Dikecualikan dari tunnel" (aksen emas, huruf tebal),
+  sisanya di bawah "Aplikasi lain" — pilihan tidak lagi tenggelam di antara puluhan baris.
+- **Subjudul "Selalu aktif" menampilkan keadaan sistem yang sebenarnya**: "Aktif · blokir
+  tanpa VPN", "Aktif · tersambung otomatis", atau "Nonaktif", dibaca lewat
+  `GoBackend.isAlwaysOn()`/`isLockdownEnabled()` (API 29+). Bila tidak terbaca (tunnel
+  turun / API < 29), subjudul kembali ke teks netral — tidak menebak.
+
+### Changed
+- **Judul aplikasi membesar (30sp → 40sp) dan berkesan timbul 3D**: lapisan gelap sedikit
+  turun di belakang lapisan bergradien emas. Keduanya teks statis yang digambar sekali,
+  tanpa beban per-frame (prioritas kecepatan dipertahankan).
+- **Tagline diganti** "TUNNEL AMAN YANG RINGAN" → "PRIVAT, CEPAT, RINGAN".
+- **Status "Tersambung" disusun sebaris** (titik + teks 16sp) supaya hemat tinggi.
+- **Layar utama menjadi tetap (tanpa menggulir)**: tinggi elemen ditekan agar muat satu
+  layar. Konsekuensi diterima sadar — layar sangat pendek/skala huruf besar bisa
+  terpotong.
+
+### Fixed
+- **Laju trafik lambat & tidak akurat**: sebelumnya dihitung tiap 5 detik sebagai selisih
+  dua titik dan angka pertama baru muncul ±10 detik setelah tersambung; kini memakai
+  jendela geser 5 detik (`VelumRate`, teruji JVM) dengan polling 1 Hz — angka pertama
+  muncul ±1 detik dan halus saat trafik bursty. Deteksi tunnel basi dijaga tetap ±30 detik.
+
+### Added
 - **Logo baru bergaya emblem** (arah "A" yang dipilih maintainer): cincin emas tipis
   mengelilingi monogram "V" — bukan huruf polos tanpa bingkai lagi. Cincin digambar
   sebagai dua lingkaran (`fillType="evenOdd"`) dengan gradien gading-emas terang di atas
