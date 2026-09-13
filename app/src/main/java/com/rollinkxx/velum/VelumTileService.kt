@@ -29,6 +29,18 @@ class VelumTileService : TileService() {
         updateTile()
     }
 
+    /**
+     * Menghentikan executor. Tanpa ini setiap instance layanan meninggalkan satu thread
+     * **non-daemon** yang tidak pernah mati — dan sistem membuat-dan-membuang TileService
+     * berulang kali selama pemakaian normal, jadi threadnya menumpuk dan menahan proses
+     * tetap hidup. `shutdown()` (bukan `shutdownNow()`) agar aksi yang sudah berjalan
+     * tidak dipotong di tengah `VelumTunnel.up()`.
+     */
+    override fun onDestroy() {
+        worker.shutdown()
+        super.onDestroy()
+    }
+
     override fun onClick() {
         super.onClick()
         val app = applicationContext
@@ -41,17 +53,40 @@ class VelumTileService : TileService() {
         worker.execute {
             val prefs = Prefs.of(app)
             try {
-                if (wasUp) {
-                    prefs.wasUp = false
-                    ReconnectMonitor.stop(app)
-                    VelumTunnel.down(app)
-                } else if (prefs.isRegistered) {
-                    EndpointProbe.refresh(prefs)
-                    VelumTunnel.up(app, prefs)
-                    prefs.wasUp = true
-                    ReconnectMonitor.ensure(app)
-                } else {
+                if (!wasUp && !prefs.isRegistered) {
+                    // Belum terdaftar: registrasi butuh layar untuk menampilkan hasilnya.
+                    // Sengaja TIDAK menaikkan generasi niat di jalur ini — membuka aplikasi
+                    // bukan perubahan niat koneksi, dan menaikkannya di sini akan
+                    // membatalkan registrasi yang mungkin sedang berjalan di layar utama.
                     openApp()
+                } else {
+                    // Niat baru dari pelaku ini, dicatat tepat sebelum tunnel disentuh.
+                    // Tanpa ini, ubin dan layar utama saling menimpa `wasUp` dan
+                    // hidup/matinya pemantau: pengguna memutus lewat ubin, lalu ekor
+                    // `connect()` milik layar menulis `wasUp = true` + menyalakan pemantau
+                    // lagi, dan tunnel yang baru dimatikan membangkitkan dirinya sendiri
+                    // pada peristiwa jaringan berikutnya.
+                    val gen = VelumTunnel.bumpIntent()
+                    if (wasUp) {
+                        if (VelumTunnel.intentStale(gen)) {
+                            Log.i(TAG, "aksi ubin (putus) dibatalkan: ada niat yang lebih baru")
+                        } else {
+                            prefs.wasUp = false
+                            ReconnectMonitor.stop(app)
+                            VelumTunnel.down(app)
+                        }
+                    } else {
+                        // Proba endpoint bisa makan ~6 detik: niat pengguna bisa berubah di
+                        // dalamnya, jadi diperiksa ulang tepat sebelum tunnel disentuh.
+                        EndpointProbe.refresh(prefs)
+                        if (VelumTunnel.intentStale(gen)) {
+                            Log.i(TAG, "aksi ubin (sambung) dibatalkan: ada niat yang lebih baru")
+                        } else {
+                            VelumTunnel.up(app, prefs)
+                            prefs.wasUp = true
+                            ReconnectMonitor.ensure(app)
+                        }
+                    }
                 }
             } catch (e: Exception) {
                 Log.w(TAG, "aksi ubin gagal", e)

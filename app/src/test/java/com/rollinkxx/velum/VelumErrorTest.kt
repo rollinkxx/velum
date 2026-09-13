@@ -70,4 +70,24 @@ class VelumErrorTest {
         // Pesan jaringan tetap NETWORK walau kebetulan memuat kata umum.
         assertEquals(VelumError.Kind.NETWORK, VelumError.kindOf(IOException("connection reset")))
     }
+
+    @Test
+    fun penolakanLayanan_terbungkusIOException_tetapDikenali() {
+        // Regresi: cabang `is IOException -> NETWORK` dulu dievaluasi lebih dulu, sehingga
+        // penolakan layanan yang terbungkus IOException dilaporkan ke pengguna sebagai
+        // "Kesalahan jaringan" dan menyuruhnya memeriksa jaringan yang sebenarnya sehat.
+        assertEquals(
+            VelumError.Kind.SERVICE_BLOCKED,
+            VelumError.kindOf(IOException("startForeground() not allowed for service"))
+        )
+        assertEquals(
+            VelumError.Kind.SERVICE_BLOCKED,
+            VelumError.kindOf(IOException("Unable to start VpnService foreground service"))
+        )
+        // Sisi lainnya juga dijaga: IOException jaringan biasa tidak boleh ikut berubah.
+        assertEquals(
+            VelumError.Kind.NETWORK,
+            VelumError.kindOf(IOException("connection reset by peer"))
+        )
+    }
 }

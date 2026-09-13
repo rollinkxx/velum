@@ -58,9 +58,56 @@ object VelumFormat {
         }
     }
 
+    /**
+     * Durasi dalam detik dengan satu desimal, memakai koma (konvensi Indonesia):
+     * `14200` -> `"14,2 detik"`.
+     *
+     * Dipakai untuk angka yang presisinya penting bagi keputusan, misalnya berapa lama
+     * `BootReceiver` menghabiskan anggaran `goAsync()` (batasnya 10 detik, jadi "14 detik"
+     * dan "14,2 detik" punya arti berbeda). `formatDuration` tidak dipakai di sini karena
+     * membulatkan ke detik penuh.
+     */
+    fun formatSeconds(ms: Long): String {
+        val clamped = ms.coerceAtLeast(0)
+        val detik = clamped / 1000.0
+        val teks = String.format(Locale.US, "%.1f", detik).replace('.', ',')
+        return "$teks detik"
+    }
+
+    /**
+     * Umur relatif dalam bahasa manusia: `"42 detik lalu"`, `"5 menit lalu"`,
+     * `"3 jam lalu"`, `"3 hari lalu"`. Nilai negatif dianggap nol.
+     *
+     * Baris `Handshake` pada diagnostik SENGAJA tidak dipindah ke fungsi ini: formatnya
+     * (`"N detik lalu"`) sudah dikunci oleh `VelumDiagnosticsTest` dan dibaca pengguna
+     * sejak lama. Fungsi ini hanya untuk baris baru.
+     */
+    fun formatAge(sec: Long): String {
+        val s = sec.coerceAtLeast(0)
+        return when {
+            s < 60 -> "$s detik lalu"
+            s < 3_600 -> "${s / 60} menit lalu"
+            s < 86_400 -> "${s / 3_600} jam lalu"
+            else -> "${s / 86_400} hari lalu"
+        }
+    }
+
     /** Jam menit lokal (`HH:mm`) untuk cap waktu hasil uji. */
     fun formatClock(epochMillis: Long): String =
         SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date(epochMillis))
+
+    /**
+     * Apakah hasil parse ini benar-benar berasal dari keluaran `cdn-cgi/trace`.
+     *
+     * Portal tawanan (captive portal) dan halaman galat proxy menjawab HTTP 200 berisi
+     * HTML, yang diparse menjadi tiga bidang kosong. Tanpa pemeriksaan ini keadaan itu
+     * dilaporkan sebagai "Belum aktif" — seolah tunnelnya tidak bekerja, padahal yang
+     * sebenarnya terjadi jaringan ini meminta login lebih dulu. Diagnosis salah arah,
+     * persis kelas masalah yang dulu membuat "Kesalahan jaringan: Unable to resolve host"
+     * menyesatkan pengguna.
+     */
+    fun isUsable(trace: TraceInfo): Boolean =
+        trace.warp.isNotEmpty() || trace.colo.isNotEmpty() || trace.ip.isNotEmpty()
 
     /** Memisahkan host dari "host:port" (aman untuk literal IPv6 dalam kurung siku). */
     fun hostPart(endpoint: String): String {

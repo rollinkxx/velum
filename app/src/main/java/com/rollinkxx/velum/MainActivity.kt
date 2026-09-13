@@ -62,8 +62,7 @@ class MainActivity : AppCompatActivity(), VelumController.Ui {
     ) { /* ditolak pun tidak apa-apa: hanya status bar yang hilang */ }
 
     /** Apakah UI sedang terlihat; tiker & denyut hanya hidup bila true (hemat baterai). */
-    private var resumed = false
-    private var connectedSinceMs = 0L
+    private var visible = false
     private var pulse: ValueAnimator? = null
     private var tickCount = 0
     private var lastRxBytes = -1L
@@ -76,11 +75,23 @@ class MainActivity : AppCompatActivity(), VelumController.Ui {
 
     private val ticker = object : Runnable {
         override fun run() {
-            infoDuration.text = VelumFormat.formatDuration(SystemClock.elapsedRealtime() - connectedSinceMs)
+            infoDuration.text = VelumFormat.formatDuration(connectedMs())
             tickCount++
             if (tickCount % 5 == 0) pollStats()
             main.postDelayed(this, 1000)
         }
+    }
+
+    /**
+     * Durasi koneksi, dibaca dari [VelumTunnel] — bukan dari jam milik Activity.
+     *
+     * Sebelumnya layar menyimpan `connectedSinceMs` sendiri dan mengisinya ulang setiap
+     * kali status diterapkan, sehingga rotasi layar (yang membuat ulang Activity)
+     * mengembalikan durasi ke `00:00` padahal koneksi tidak pernah putus.
+     */
+    private fun connectedMs(): Long {
+        val since = VelumTunnel.upSinceElapsedMs
+        return if (since <= 0L) 0L else SystemClock.elapsedRealtime() - since
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -153,11 +164,16 @@ class MainActivity : AppCompatActivity(), VelumController.Ui {
 
     override fun onStart() {
         super.onStart()
-        resumed = true
+        visible = true
         controller.applyCurrentState()
         // Pulihkan tiker & denyut bila tunnel masih UP dari sesi sebelumnya.
         startTicker()
-        if (controller.state == Tunnel.State.UP) startPulse()
+        if (controller.state == Tunnel.State.UP) {
+            startPulse()
+            // Layar ini bisa jadi hasil rotasi atau kembali dari latar, dan pada kedua
+            // kasus itu `onConnectedVisual()` TIDAK dipanggil (tidak ada transisi).
+            resetTrafficBaseline()
+        }
         controller.refreshStateAsync { controller.resumeIfNeeded() }
     }
 
@@ -165,10 +181,11 @@ class MainActivity : AppCompatActivity(), VelumController.Ui {
      * Tiker durasi + pemantau trafik dimatikan selama UI tak terlihat. Proses aplikasi
      * ditahan hidup oleh VpnService library selama tunnel UP, jadi tanpa ini tiker 1 Hz
      * akan terus membangunkan CPU di latar belakang. Durasi tetap benar saat tiker
-     * dinyalakan lagi karena dihitung mundur dari [connectedSinceMs].
+     * dinyalakan lagi karena dihitung dari [VelumTunnel.upSinceElapsedMs], bukan dari
+     * jam milik Activity.
      */
     override fun onStop() {
-        resumed = false
+        visible = false
         stopTicker()
         stopPulse() // animasi per-frame tak perlu berjalan saat UI tak terlihat
         super.onStop()
@@ -237,11 +254,27 @@ class MainActivity : AppCompatActivity(), VelumController.Ui {
                     ?.let { (System.currentTimeMillis() - it) / 1000 },
                 rxBytes = stats?.rxBytes ?: 0L,
                 txBytes = stats?.txBytes ?: 0L,
-                connectedSec = if (up) (SystemClock.elapsedRealtime() - connectedSinceMs) / 1000 else 0L,
+                connectedSec = if (up) connectedMs() / 1000 else 0L,
                 excludedApps = Prefs.of(this).excludedApps.toList(),
                 // Ikut disertakan: tanpa ini laporan gangguan dari perangkat hanya memuat
                 // keadaan saat itu, bukan alasan uji terakhir gagal.
-                lastTest = renderTest(Prefs.of(this).lastTest)
+                lastTest = renderTest(Prefs.of(this).lastTest),
+                // Kejujuran keamanan: bila keystore perangkat gagal dan penyimpanan jatuh
+                // ke berkas polos, pengguna dan penerima laporan berhak tahu — selama ini
+                // keadaan itu hanya tercatat di logcat yang tidak dibaca siapa pun.
+                plaintextFallback = Prefs.of(this).isPlainFallback,
+                // Keadaan internal — ditambahkan 2026-09-13 atas persetujuan maintainer
+                // karena pengujian dilakukan di perangkat TANPA adb. Baris-baris ini yang
+                // mengubah uji konkurensi dan daya tahan proses dari "tidak bisa diperiksa"
+                // menjadi "cukup dilihat". `Process.getStartElapsedRealtime()` ada sejak
+                // API 24 (minSdk repo ini 24), jadi tanpa guard versi.
+                wasUp = Prefs.of(this).wasUp,
+                intentGen = VelumTunnel.currentIntent,
+                monitorActive = ReconnectMonitor.isActive,
+                processAgeSec = (SystemClock.elapsedRealtime() -
+                    android.os.Process.getStartElapsedRealtime()) / 1000,
+                boot = VelumDiagnostics.decodeBoot(Prefs.of(this).bootRecord),
+                nowEpochMs = System.currentTimeMillis()
             )
             val clipboard = getSystemService(android.content.ClipboardManager::class.java)
             clipboard?.setPrimaryClip(
@@ -325,25 +358,46 @@ class MainActivity : AppCompatActivity(), VelumController.Ui {
     }
 
     override fun onConnectedVisual() {
-        connectedSinceMs = SystemClock.elapsedRealtime()
-        lastRxBytes = 0L
-        lastTxBytes = 0L
-        lastPollMs = connectedSinceMs
         tickCount = 0
-        statsBaseline = true // polling pertama hanya jadi dasar hitungan laju
-        staleTicks = 0
-        staleWarned = false
-        infoData.setText(R.string.value_none)
+        resetTrafficBaseline()
         startTicker()
         startPulse()
         refreshStaticInfo()
-        StatusNotifier.show(this, getString(R.string.notif_connected))
+        // Notifikasi status sengaja TIDAK diposting dari sini. `VelumTunnel.onStateChange`
+        // yang melakukannya, supaya tunnel yang tersambung lewat ubin pengaturan cepat
+        // atau receiver boot (tanpa Activity sama sekali) tetap punya notifikasi, dan
+        // tunnel yang mati di latar tetap dibersihkan — sebelumnya notifikasi "Tersambung"
+        // bisa menetap selamanya karena satu-satunya pemanggil `hide()` ada di layar ini.
+    }
+
+    /**
+     * Mengosongkan dasar hitungan laju trafik, sehingga sampel berikutnya hanya menjadi
+     * pembanding dan tidak ditampilkan sebagai laju.
+     *
+     * Wajib dipanggil setiap layar mulai terlihat dengan tunnel UP, bukan hanya saat
+     * transisi DOWN->UP. Sejak `prevState` di controller diawali dari status tunnel yang
+     * sebenarnya (supaya rotasi tidak lagi mereset durasi), layar hasil rotasi TIDAK
+     * menerima `onConnectedVisual()` — jadi `statsBaseline` tetap `false` dan `lastPollMs`
+     * tetap `0`. Sampel pertama lalu menghitung laju terhadap uptime perangkat
+     * (`dtSec = elapsedRealtime / 1000`), hasilnya ≈ 0 B/s selama satu siklus (~5 detik)
+     * sebelum benar sendiri. Kembali dari latar punya cacat yang sama dengan angka yang
+     * berbeda: sampel terakhir sudah tua, jadi selisih byte dibagi rentang yang panjang.
+     */
+    private fun resetTrafficBaseline() {
+        statsBaseline = true // polling pertama hanya jadi dasar hitungan laju
+        lastRxBytes = 0L
+        lastTxBytes = 0L
+        lastPollMs = SystemClock.elapsedRealtime()
+        staleTicks = 0
+        staleWarned = false
+        infoData.setText(R.string.value_none)
     }
 
     override fun onDisconnectedVisual() {
         stopTicker()
         stopPulse()
-        StatusNotifier.hide(this)
+        // `StatusNotifier.hide` dipanggil oleh VelumTunnel saat status berubah, bukan di
+        // sini: layar bisa saja sudah tidak ada ketika tunnel mati di latar.
         infoDuration.setText(R.string.value_none)
         infoData.setText(R.string.value_none)
     }
@@ -374,7 +428,7 @@ class MainActivity : AppCompatActivity(), VelumController.Ui {
 
     /** Menjalankan tiker hanya bila UI terlihat dan tunnel UP; aman dipanggil berulang. */
     private fun startTicker() {
-        if (!resumed || controller.state != Tunnel.State.UP) return
+        if (!visible || controller.state != Tunnel.State.UP) return
         main.removeCallbacks(ticker)
         main.post(ticker)
     }

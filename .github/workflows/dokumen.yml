@@ -1,0 +1,58 @@
+name: dokumen
+
+# Workflow TERPISAH dari build.yml, dan pemisahannya bukan selera.
+#
+# build.yml punya `paths-ignore: ["**.md", "docs/**"]` supaya push dokumen tidak
+# menghabiskan ±7 menit build Gradle. Akibatnya: perubahan dokumen TIDAK PERNAH
+# memicu CI di sana. Menaruh pemeriksaan dokumen di build.yml berarti pemeriksaan
+# itu tidak pernah jalan justru pada satu-satunya keadaan ia dibutuhkan — push yang
+# hanya mengubah dokumen.
+#
+# Karena itu pemeriksaan dokumen punya pemicunya sendiri dan berjalan dalam hitungan
+# detik (python3 bawaan runner, tanpa Gradle, tanpa Android SDK, tanpa dependensi baru).
+#
+# `app/build.gradle.kts` ikut dipicu karena `versionName` hidup di sana: bila versi
+# dinaikkan, dokumen yang menyebut versi lama harus ketahuan saat itu juga.
+
+on:
+  push:
+    branches: ["**"]
+    paths:
+      - "**.md"
+      - "docs/**"
+      - "app/build.gradle.kts"
+      - ".github/scripts/periksa-dokumen.py"
+      - ".github/workflows/dokumen.yml"
+  pull_request:
+    paths:
+      - "**.md"
+      - "docs/**"
+      - "app/build.gradle.kts"
+      - ".github/scripts/periksa-dokumen.py"
+      - ".github/workflows/dokumen.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: dokumen-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  konsistensi:
+    name: konsistensi dokumen
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ambil kode
+        uses: actions/checkout@v7
+
+      # Sengaja tanpa actions/setup-python: python3 sudah ada di image ubuntu-latest,
+      # dan menambah action berarti menambah dependensi + waktu untuk nol manfaat.
+      - name: Gerbang konsistensi dokumen
+        run: python3 .github/scripts/periksa-dokumen.py
+
+      # Bila gerbang gagal, keluaran skrip sudah memuat anotasi `::error file=…,line=…`
+      # sehingga penyebabnya terbaca langsung di halaman run — tanpa mengunduh log.
+      # Log CI tidak bisa diunduh dari sandbox agen (AGENTS.md §5), dan maintainer pun
+      # tidak punya adb/alat lokal, jadi anotasi adalah satu-satunya jalur yang andal.

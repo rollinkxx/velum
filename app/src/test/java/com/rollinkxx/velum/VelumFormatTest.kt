@@ -81,10 +81,62 @@ class VelumFormatTest {
     }
 
     @Test
+    fun isUsable_menolakResponsYangBukanKeluaranTrace() {
+        // Portal tawanan (captive portal) menjawab HTTP 200 dengan HTML. Tanpa penolakan
+        // ini, keadaan itu dilaporkan sebagai "Belum aktif" — menuduh tunnel padahal
+        // jaringannya yang meminta login lebih dulu.
+        assertFalse(VelumFormat.isUsable(VelumFormat.parseTrace("<html><body>Login Wi-Fi</body></html>")))
+        assertFalse(VelumFormat.isUsable(VelumFormat.parseTrace("")))
+        assertFalse(VelumFormat.isUsable(VelumFormat.parseTrace("warp=")))
+        // Satu bidang yang dikenal saja sudah cukup membuktikan ini keluaran trace.
+        assertTrue(VelumFormat.isUsable(VelumFormat.parseTrace("warp=on")))
+        assertTrue(VelumFormat.isUsable(VelumFormat.parseTrace("colo=DPS")))
+        assertTrue(VelumFormat.isUsable(VelumFormat.parseTrace("ip=1.2.3.4")))
+        assertTrue(VelumFormat.isUsable(VelumFormat.parseTrace("warp=off\ncolo=SIN")))
+    }
+
+    @Test
     fun isIpLiteral_hanyaIPv4() {
         assertTrue(VelumFormat.isIpLiteral("162.159.192.1"))
         assertFalse(VelumFormat.isIpLiteral("engage.cloudflareclient.com"))
         assertFalse(VelumFormat.isIpLiteral("162.159.192"))
         assertFalse(VelumFormat.isIpLiteral(""))
     }
+
+    // ---------- ditambahkan 2026-09-13 untuk baris diagnostik baru ----------
+
+    @Test
+    fun formatSeconds_satuDesimalDenganKoma() {
+        assertEquals("0,0 detik", VelumFormat.formatSeconds(0))
+        assertEquals("1,0 detik", VelumFormat.formatSeconds(1_000))
+        assertEquals("2,5 detik", VelumFormat.formatSeconds(2_500))
+        assertEquals("14,2 detik", VelumFormat.formatSeconds(14_200))
+        assertEquals("10,0 detik", VelumFormat.formatSeconds(10_000)) // batas anggaran goAsync
+    }
+
+    @Test
+    fun formatSeconds_negatifDianggapNol() {
+        // Jam perangkat bisa melompat; angka "-3,0 detik" di layar pengguna tidak berarti
+        // apa-apa dan akan terbaca sebagai cacat.
+        assertEquals("0,0 detik", VelumFormat.formatSeconds(-5_000))
+    }
+
+    @Test
+    fun formatAge_satuanNaikOtomatis() {
+        assertEquals("0 detik lalu", VelumFormat.formatAge(0))
+        assertEquals("42 detik lalu", VelumFormat.formatAge(42))
+        assertEquals("59 detik lalu", VelumFormat.formatAge(59))
+        assertEquals("1 menit lalu", VelumFormat.formatAge(60))
+        assertEquals("59 menit lalu", VelumFormat.formatAge(3_599))
+        assertEquals("1 jam lalu", VelumFormat.formatAge(3_600))
+        assertEquals("23 jam lalu", VelumFormat.formatAge(86_399))
+        assertEquals("1 hari lalu", VelumFormat.formatAge(86_400))
+        assertEquals("3 hari lalu", VelumFormat.formatAge(300_000))
+    }
+
+    @Test
+    fun formatAge_negatifDianggapNol() {
+        assertEquals("0 detik lalu", VelumFormat.formatAge(-10))
+    }
+
 }
