@@ -35,9 +35,11 @@ komputer untuk logcat/dumpsys). Karena itu:
 
 ## Status saat ini
 
-**Sebagian uji sudah dijalankan** (kelompok H, branch `arena/01a098b1-velum`,
-laporan maintainer 2026-09-13): H1/H2/H3/H4 `LULUS`, H5 `TIDAK SESUAI HARAPAN`
-(menunggu uji ulang). Kelompok A–G (29 uji) masih menunggu perangkat.
+**Sebagian uji sudah dijalankan** (kelompok H): H1/H2/H3/H4 `LULUS` (branch
+`arena/01a098b1-velum`), H5 `TIDAK SESUAI HARAPAN` pada percobaan 1–4 lalu **`LULUS`
+pada percobaan 5** (build `e945ee6`, branch `arena/01a09973-velum`), dan H6 `LULUS`
+serta H7 `LULUS (parsial)` pada build yang sama — semuanya dari tangkapan layar
+maintainer 2026-09-13 14:50. Kelompok A–G (29 uji) masih menunggu perangkat.
 
 | Kelompok | Uji | Tingkat | Menutup utang di |
 |---|---|---|---|
@@ -72,6 +74,9 @@ hasil — ganti atau hapus saat dipakai.
 | 2026-09-13 | Android 14 (perangkat maintainer) | H3 | V1 | Maintainer: "H3 terverifikasi seperti yang diharapkan" — aplikasi tercentang naik ke atas di bawah label "Dikecualikan dari tunnel". | LULUS | — |
 | 2026-09-13 | Android 14 (perangkat maintainer) | H4 | V1 | Maintainer: "H4 ini juga terverifikasi" — subjudul "Selalu aktif" mengikuti keadaan sistem saat tersambung. | LULUS | — |
 | 2026-09-13 | Android 14 (perangkat maintainer) | H5 | V1 | Percobaan 1: judul kecil, "Tersambung" makan tempat. Percobaan 2: seluruh isi naik ke atas sehingga bagian bawah kosong (di luar scope). Percobaan 3: judul 80sp membungkus jadi dua baris ("Velu" / "m") dan letter-spacing terlalu lebar. | TIDAK SESUAI HARAPAN | **Koreksi atas kesalahan agen** (percobaan 2 scope §0; percobaan 3 tidak mensimulasikan lebar teks vs layar). Percobaan 4 (audit & refaktor hierarki layout): judul satu baris penuh (`maxLines=1`+`singleLine=true`, auto-size 48–80sp, letter-spacing 0.15, `includeFontPadding=false`), judul+tagline satu kolom header rata tengah (gap 4dp), badge status `gravity="center_vertical"` di tengah kartu, padding kartu simetris 10dp/16dp. Menunggu uji ulang maintainer |
+| 2026-09-13 | Android 14 (perangkat maintainer) | H5 | V1 | **Percobaan 5** (build `e945ee6`): tangkapan layar 14:50 menunjukkan judul "Velum" besar berkesan timbul, tagline "PRIVAT, CEPAT, RINGAN", status "Tersambung" satu baris, dan seluruh isi terlihat sampai baris "Salin diagnostik" tanpa terpotong. | **LULUS** | Percobaan 1–4 dicatat di baris di atas sebagai riwayat; percobaan 5 menutupnya |
+| 2026-09-13 | Android 14 (perangkat maintainer) | H6 | V1 | Tangkapan layar 14:50 (build `e945ee6`): judul "Velum" tampil **utuh satu baris** — tanpa titik-titik, tanpa huruf terpotong — dan membentang hampir menyentuh tepi kiri/kanan area isi; tagline rapat tepat di bawah judul tanpa menabrak hurufnya. | **LULUS** | Menutup regresi TODO 110 (`singleLine` dimatikan) |
+| 2026-09-13 | Android 14 (perangkat maintainer) | H7 | V1 | **Parsial** — keadaan "tanpa pesan" terlihat pada tangkapan layar 14:50: badge "Tersambung" langsung diikuti garis pemisah, tidak ada celah kosong di bawahnya, dan kartu tampak seimbang terhadap tombol "Putuskan" (52dp). Langkah kedua (memancing pesan agar barisnya muncul kembali) **belum dijalankan**. | **LULUS (parsial)** | Menunggu bagian kedua: tekan "Uji koneksi" saat belum tersambung atau cabut jaringan, lalu pastikan baris pesan muncul utuh |
 
 ## Tidak terverifikasi oleh siapa pun — status permanen `hanya nalar`
 
