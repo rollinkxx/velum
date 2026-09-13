@@ -64,20 +64,18 @@ class MainActivity : AppCompatActivity(), VelumController.Ui {
     /** Apakah UI sedang terlihat; tiker & denyut hanya hidup bila true (hemat baterai). */
     private var visible = false
     private var pulse: ValueAnimator? = null
-    private var tickCount = 0
+    /** Pelacak laju trafik (jendela geser 5 dtk); satu per sesi tunnel. */
+    private val rate = VelumRate.Tracker()
     private var lastRxBytes = -1L
     private var lastTxBytes = -1L
-    private var staleTicks = 0
+    /** Kapan terakhir penghitung trafik berubah (elapsedRealtime); untuk deteksi basi. */
+    private var lastTrafficMs = 0L
     private var staleWarned = false
-    private var lastPollMs = 0L
-    /** Polling pertama setelah UP belum punya dasar pembanding → jangan dihitung sebagai laju. */
-    private var statsBaseline = false
 
     private val ticker = object : Runnable {
         override fun run() {
             infoDuration.text = VelumFormat.formatDuration(connectedMs())
-            tickCount++
-            if (tickCount % 5 == 0) pollStats()
+            pollStats()
             main.postDelayed(this, 1000)
         }
     }
@@ -358,7 +356,6 @@ class MainActivity : AppCompatActivity(), VelumController.Ui {
     }
 
     override fun onConnectedVisual() {
-        tickCount = 0
         resetTrafficBaseline()
         startTicker()
         startPulse()
@@ -371,24 +368,16 @@ class MainActivity : AppCompatActivity(), VelumController.Ui {
     }
 
     /**
-     * Mengosongkan dasar hitungan laju trafik, sehingga sampel berikutnya hanya menjadi
-     * pembanding dan tidak ditampilkan sebagai laju.
-     *
-     * Wajib dipanggil setiap layar mulai terlihat dengan tunnel UP, bukan hanya saat
-     * transisi DOWN->UP. Sejak `prevState` di controller diawali dari status tunnel yang
-     * sebenarnya (supaya rotasi tidak lagi mereset durasi), layar hasil rotasi TIDAK
-     * menerima `onConnectedVisual()` — jadi `statsBaseline` tetap `false` dan `lastPollMs`
-     * tetap `0`. Sampel pertama lalu menghitung laju terhadap uptime perangkat
-     * (`dtSec = elapsedRealtime / 1000`), hasilnya ≈ 0 B/s selama satu siklus (~5 detik)
-     * sebelum benar sendiri. Kembali dari latar punya cacat yang sama dengan angka yang
-     * berbeda: sampel terakhir sudah tua, jadi selisih byte dibagi rentang yang panjang.
+     * Mengosongkan pelacak laju sehingga sesi baru (atau layar yang kembali terlihat
+     * dengan tunnel UP) memulai pengukuran dari nol. Sampel pertama hanya menjadi dasar
+     * hitungan; laju pertama muncul pada sampel kedua (±1 detik dengan polling 1 Hz) dan
+     * total sesi muncul seketika karena dibaca langsung dari penghitung kumulatif backend.
      */
     private fun resetTrafficBaseline() {
-        statsBaseline = true // polling pertama hanya jadi dasar hitungan laju
-        lastRxBytes = 0L
-        lastTxBytes = 0L
-        lastPollMs = SystemClock.elapsedRealtime()
-        staleTicks = 0
+        rate.reset()
+        lastRxBytes = -1L
+        lastTxBytes = -1L
+        lastTrafficMs = SystemClock.elapsedRealtime()
         staleWarned = false
         infoData.setText(R.string.value_none)
     }
@@ -454,7 +443,11 @@ class MainActivity : AppCompatActivity(), VelumController.Ui {
         statusDot.alpha = 1f
     }
 
-    /** Menampilkan laju trafik (KB/s) tiap 5 detik selama UP; mendeteksi tunnel basi. */
+    /**
+     * Menampilkan laju trafik (jendela geser 5 dtk) dan total sesi setiap detik selama
+     * UP; mendeteksi tunnel basi. Dipanggil tiap tick tiker (1 Hz) — baca penghitung
+     * murah, dan tiker mati saat UI tak terlihat, jadi tidak menambah beban latar.
+     */
     private fun pollStats() {
         controller.runStats { t ->
             if (controller.state != Tunnel.State.UP) return@runStats
@@ -463,40 +456,50 @@ class MainActivity : AppCompatActivity(), VelumController.Ui {
                 return@runStats
             }
             val nowMs = SystemClock.elapsedRealtime()
-            if (statsBaseline) {
-                // Sampel pertama: hitungan laju belum bermakna (selisihnya bisa
-                // memakai statistik sisa sesi sebelumnya) → jadikan dasar saja.
-                statsBaseline = false
-                lastRxBytes = t.rxBytes
-                lastTxBytes = t.txBytes
-                lastPollMs = nowMs
-                infoData.setText(R.string.value_none)
-                return@runStats
-            }
-            val dtSec = ((nowMs - lastPollMs).coerceAtLeast(1)) / 1000.0
-            val rxRate = ((t.rxBytes - lastRxBytes).coerceAtLeast(0) / dtSec).toLong()
-            val txRate = ((t.txBytes - lastTxBytes).coerceAtLeast(0) / dtSec).toLong()
-            lastPollMs = nowMs
-            infoData.text = getString(
-                R.string.data_format,
-                VelumFormat.formatBytes(rxRate),
-                VelumFormat.formatBytes(txRate)
-            )
+            val rates = rate.add(t.rxBytes, t.txBytes, nowMs)
+            infoData.text = renderData(rates, t.rxBytes, t.txBytes)
             if (t.rxBytes != lastRxBytes || t.txBytes != lastTxBytes) {
                 lastRxBytes = t.rxBytes
                 lastTxBytes = t.txBytes
-                staleTicks = 0
+                lastTrafficMs = nowMs
                 staleWarned = false
                 return@runStats
             }
-            staleTicks++
             val hsAge = System.currentTimeMillis() - t.latestHandshakeMs
-            if (!staleWarned && staleTicks >= 6 &&
+            if (!staleWarned && nowMs - lastTrafficMs >= STALE_MS &&
                 (t.latestHandshakeMs == 0L || hsAge > 180_000)
             ) {
                 staleWarned = true
                 setMessage(getString(R.string.stale_warn))
             }
         }
+    }
+
+    /**
+     * Merangkai baris Data: laju (jendela geser) + total sesi. Total dibaca langsung
+     * dari penghitung kumulatif backend, jadi terlihat sejak sampel pertama; laju `null`
+     * berarti belum ada dua sampel — ditampilkan sebagai "—", jujur daripada mengarang.
+     */
+    private fun renderData(rates: VelumRate.Rates?, rxTotal: Long, txTotal: Long): String {
+        val laju = if (rates == null) {
+            getString(R.string.value_none)
+        } else {
+            getString(
+                R.string.data_format,
+                VelumFormat.formatBytes(rates.rxBps.toLong()),
+                VelumFormat.formatBytes(rates.txBps.toLong())
+            )
+        }
+        val total = getString(
+            R.string.data_total_format,
+            VelumFormat.formatBytes(rxTotal),
+            VelumFormat.formatBytes(txTotal)
+        )
+        return "$laju\n$total"
+    }
+
+    private companion object {
+        /** Deteksi basi: tanpa perubahan trafik selama ini (ms) + handshake tua/tiada. */
+        const val STALE_MS = 30_000L
     }
 }

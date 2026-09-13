@@ -56,6 +56,7 @@
     <string name="info_last_test">Uji terakhir</string>
     <string name="info_data">Data</string>
     <string name="data_format">↓ %1$s/s · ↑ %2$s/s</string>
+    <string name="data_total_format">Total ↓ %1$s · ↑ %2$s</string>
     <string name="stale_warn">Tersambung, tetapi tidak ada lalu lintas. Coba Putuskan lalu Sambungkan.</string>
     <string name="value_none">—</string>
     <string name="err_vpn_denied">Izin VPN ditolak</string>
