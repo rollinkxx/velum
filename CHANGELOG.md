@@ -18,11 +18,13 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
   turun / API < 29), subjudul kembali ke teks netral — tidak menebak.
 
 ### Changed
-- **Judul aplikasi membesar (30sp → 52sp) dan berkesan timbul 3D**: lapisan gelap sedikit
-  turun di belakang lapisan bergradien emas. Keduanya teks statis yang digambar sekali,
-  tanpa beban per-frame (prioritas kecepatan dipertahankan).
+- **Judul aplikasi membesar (30sp → 80sp) dan berkesan timbul 3D**: lapisan gelap sedikit
+  turun di belakang lapisan bergradien emas, menempel ke atas layar dan melebar hampir
+  memenuhi lebar. Keduanya teks statis yang digambar sekali, tanpa beban per-frame
+  (prioritas kecepatan dipertahankan); sisa isi dipusatkan vertikal di ruang yang tersisa.
 - **Tagline diganti** "TUNNEL AMAN YANG RINGAN" → "PRIVAT, CEPAT, RINGAN".
-- **Status "Tersambung" disusun sebaris** (titik + teks 14sp) supaya hemat tinggi.
+- **Status "Tersambung" disusun sebaris** (titik + teks 14sp) supaya hemat tinggi; ruang
+  dalam kartu di sekitarnya (padding atas + jarak ke garis pemisah) dirapatkan.
 - **Layar utama menjadi tetap (tanpa menggulir)**: tinggi elemen ditekan agar muat satu
   layar. Konsekuensi diterima sadar — layar sangat pendek/skala huruf besar bisa
   terpotong.
