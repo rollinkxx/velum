@@ -35,10 +35,11 @@ komputer untuk logcat/dumpsys). Karena itu:
 
 ## Status saat ini
 
-**Belum ada satu pun uji yang dijalankan.** Seluruh 29 uji V1 di `uji-perangkat.md` menunggu
-perangkat. Konsekuensinya, menurut §12 butir 4: semua perbaikan yang menyangkut perilaku
-runtime di branch `arena/01a09664-velum` berstatus *terbukti kompilasi + unit test JVM +
-nalar*, **bukan** *terverifikasi di perangkat*.
+**Sebagian uji sudah dijalankan** (kelompok H, branch `arena/01a098b1-velum`,
+laporan maintainer 2026-09-13): H1/H3/H4 `LULUS`, H2 dilaporkan lewat tangkapan layar
+yang tidak bisa dibaca agen (menunggu teks angka laju), H5 percobaan pertama
+`TIDAK SESUAI HARAPAN` (judul kecil, status memakan tempat — sudah disesuaikan,
+menunggu uji ulang). Kelompok A–G (29 uji) masih menunggu perangkat.
 
 | Kelompok | Uji | Tingkat | Menutup utang di |
 |---|---|---|---|
@@ -68,8 +69,11 @@ hasil — ganti atau hapus saat dipakai.
 
 | Tanggal | Perangkat & Android | Uji | Tingkat | Hasil sebenarnya | Vonis | Tindak lanjut |
 |---|---|---|---|---|---|---|
-| _contoh_ | _Pixel 7, Android 14_ | _F2_ | _V1_ | _Diagnostik: `Status: Tersambung`, `Boot: 14,2 detik · berhasil · 2 menit lalu`, `Proses: hidup 02:31`. Notifikasi muncul setelah layar kunci, terasa lama._ | _TIDAK SESUAI HARAPAN_ | _TODO 77: 14,2 dtk > 10 dtk, `goAsync()` perlu diputuskan_ |
-| | | | | | | |
+| 2026-09-13 | Android 14 (perangkat maintainer) | H1 | V1 | Maintainer: "H1 terverifikasi" — `Total` langsung tampil dan laju muncul dalam ±2 detik setelah tersambung. | LULUS | — |
+| 2026-09-13 | Android 14 (perangkat maintainer) | H2 | V1 | Maintainer: "H2 seperti terlihat di screenshot". Agen tidak bisa membaca gambar; butuh teks angka laju (mis. `↓ 1,2 MB/s · ↑ 45,0 KB/s`) untuk dinilai halus atau melompat. | — | Minta teks angka laju |
+| 2026-09-13 | Android 14 (perangkat maintainer) | H3 | V1 | Maintainer: "H3 terverifikasi seperti yang diharapkan" — aplikasi tercentang naik ke atas di bawah label "Dikecualikan dari tunnel". | LULUS | — |
+| 2026-09-13 | Android 14 (perangkat maintainer) | H4 | V1 | Maintainer: "H4 ini juga terverifikasi" — subjudul "Selalu aktif" mengikuti keadaan sistem saat tersambung. | LULUS | — |
+| 2026-09-13 | Android 14 (perangkat maintainer) | H5 | V1 | Maintainer: judul masih terasa kecil (tinggi & lebar kurang, sisi kiri-kanan & atas banyak ruang kosong) dan tulisan "Tersambung" masih memakan banyak tempat. | TIDAK SESUAI HARAPAN | Disesuaikan: judul 52sp, isi dipaku ke atas, status 14sp + kartu dirapatkan. Uji ulang H5 |
 
 ## Tidak terverifikasi oleh siapa pun — status permanen `hanya nalar`
 
