@@ -179,18 +179,25 @@ class Prefs(context: Context) {
      *   sehingga menekan "Daftar ulang" diam-diam menghapus daftar pengecualian yang sudah
      *   disusun pengguna — dan dialog konfirmasinya tidak mengatakan itu.
      *
-     * Semuanya ditulis dalam SATU transaksi (`clear()` + kedua `put` + `commit()`), bukan
-     * tiga tulisan terpisah seperti sebelumnya: proses yang mati di antara `clear()` dan
-     * penulisan ulang akan menghapus niat dan pengecualian pengguna — persis kelas
+     * Semuanya ditulis dalam SATU transaksi (`clear()` + ketiga `put` + `commit()`), bukan
+     * beberapa tulisan terpisah seperti sebelumnya: proses yang mati di antara `clear()`
+     * dan penulisan ulang akan menghapus niat dan pengecualian pengguna — persis kelas
      * kegagalan yang [saveRegistration] tutup dengan `commit()`.
+     *
+     * [bootRecord] ikut dipertahankan (ditambahkan 2026-09-13), walaupun ia bukan milik
+     * registrasi: baris `Boot` pada layar diagnostik adalah satu-satunya bukti tanpa-adb
+     * untuk anggaran `goAsync()` (TODO 77), dan menghapusnya setiap kali pengguna menekan
+     * Daftar ulang berarti menghilangkan ukuran yang belum sempat dibaca.
      */
     @SuppressLint("ApplySharedPref")
     fun clear() {
         val keepUp = wasUp
         val keepExcluded = excludedApps
+        val keepBoot = bootRecord
         val ed = sp.edit().clear()
         if (keepUp) ed.putBoolean(K_WAS_UP, true)
         if (keepExcluded.isNotEmpty()) ed.putStringSet(K_EXCLUDED, keepExcluded)
+        if (keepBoot != null) ed.putString(K_BOOT, keepBoot)
         ed.commit()
     }
 
