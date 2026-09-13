@@ -40,6 +40,24 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
   jendela geser 5 detik (`VelumRate`, teruji JVM) dengan polling 1 Hz — angka pertama
   muncul ±1 detik dan halus saat trafik bursty. Deteksi tunnel basi dijaga tetap ±30 detik.
 
+- **BootReceiver ikut menaikkan generasi niat sebelum menyambung ulang**, sehingga
+  `up()` boot tidak lagi bisa mengalahkan `down()` yang diminta pengguna dari layar —
+  keduanya `@Synchronized`, jadi tanpa penanda urutan keduanya sekadar berlomba
+  memperoleh kunci. Pemantau sambung ulang juga tidak lagi dihidupkan kembali sesudah
+  pengguna memutus, supaya baris `Pemantau` tidak terbaca "aktif" padahal ia baru
+  meminta putus.
+- **Pembatalan sambung ulang otomatis kini terlihat di baris `Boot`** sebagai outcome
+  `dibatalkan`, terpisah dari `gagal`: tunnel tidak gagal menyambung, ia memang tidak
+  boleh dinyalakan lagi.
+- **Subjudul & toast "Salin diagnostik" tidak lagi mengklaim hal yang dibantah oleh
+  isinya sendiri**: keduanya kini berbunyi "tanpa kunci & alamat IP Anda", sama dengan
+  catatan di dalam ringkasan — baris `Endpoint` memang memuat IP PoP anycast.
+- **Daftar ulang tidak lagi menghapus rekaman `Boot`**, yaitu satu-satunya bukti
+  tanpa-adb untuk anggaran `goAsync()`.
+- **Pemisah desimal diseragamkan**: baris `Data` kini memakai koma seperti baris `Boot`
+  ("5,1 MB" alih-alih "5.1 MB") — sebelumnya keduanya tampil berdampingan pada ringkasan
+  diagnostik yang sama dengan format berbeda.
+
 ### Added
 - **Logo baru bergaya emblem** (arah "A" yang dipilih maintainer): cincin emas tipis
   mengelilingi monogram "V" — bukan huruf polos tanpa bingkai lagi. Cincin digambar
