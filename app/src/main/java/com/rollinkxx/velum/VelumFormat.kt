@@ -35,14 +35,20 @@ object VelumFormat {
      */
     fun isWarpActive(trace: TraceInfo): Boolean = trace.warp == "on" || trace.warp == "plus"
 
-    /** Memformat jumlah byte ke satuan paling masuk akal (B/KB/MB/GB). */
+    /**
+     * Memformat jumlah byte ke satuan paling masuk akal (B/KB/MB/GB), memakai **koma**
+     * sebagai pemisah desimal — sama dengan [formatSeconds] dan konvensi Indonesia.
+     *
+     * Sebelumnya fungsi ini memakai titik, sehingga baris `Data` menulis "5.1 MB"
+     * sementara baris `Boot` pada ringkasan diagnostik yang sama menulis "14,2 detik".
+     */
     fun formatBytes(bytes: Long): String {
         if (bytes < 1024) return "$bytes B"
         val kb = bytes / 1024.0
-        if (kb < 1024) return String.format(Locale.US, "%.1f KB", kb)
+        if (kb < 1024) return String.format(Locale.US, "%.1f KB", kb).replace('.', ',')
         val mb = kb / 1024.0
-        if (mb < 1024) return String.format(Locale.US, "%.1f MB", mb)
-        return String.format(Locale.US, "%.2f GB", mb / 1024.0)
+        if (mb < 1024) return String.format(Locale.US, "%.1f MB", mb).replace('.', ',')
+        return String.format(Locale.US, "%.2f GB", mb / 1024.0).replace('.', ',')
     }
 
     /** Memformat durasi (ms) ke `mm:ss` atau `h:mm:ss` bila lebih dari satu jam. */

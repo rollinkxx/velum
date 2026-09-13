@@ -39,11 +39,13 @@ class VelumFormatTest {
 
     @Test
     fun formatBytes_skalaNaik() {
+        // Pemisah desimalnya KOMA, sama dengan `formatSeconds` dan konvensi Indonesia:
+        // baris `Data` dan baris `Boot` tampil berdampingan pada ringkasan yang sama.
         assertEquals("512 B", VelumFormat.formatBytes(512))
         assertEquals("1023 B", VelumFormat.formatBytes(1023))
-        assertEquals("2.0 KB", VelumFormat.formatBytes(2048))
-        assertEquals("5.0 MB", VelumFormat.formatBytes(5L * 1024 * 1024))
-        assertEquals("3.00 GB", VelumFormat.formatBytes(3L * 1024 * 1024 * 1024))
+        assertEquals("2,0 KB", VelumFormat.formatBytes(2048))
+        assertEquals("5,0 MB", VelumFormat.formatBytes(5L * 1024 * 1024))
+        assertEquals("3,00 GB", VelumFormat.formatBytes(3L * 1024 * 1024 * 1024))
     }
 
     @Test
