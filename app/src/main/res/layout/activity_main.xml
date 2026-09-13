@@ -1,14 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  Layar utama — kini TETAP (tanpa menggulir) atas permintaan maintainer, bukan lagi
-  ScrollView: satu layar penuh yang dirancang selalu muat. Konsekuensi yang diterima
-  sadar: pada layar sangat pendek atau skala huruf sangat besar, isi bisa terpotong
-  karena tidak ada gulir — keputusan disengaja demi tampilan yang tidak "melompat".
+  Layar utama — TETAP (tanpa menggulir) atas permintaan maintainer: satu layar penuh
+  yang selalu muat. Konsekuensi yang diterima sadar: pada layar sangat pendek atau
+  skala huruf sangat besar, isi bisa terpotong karena tidak ada gulir.
 
-  Cara menjaga agar tetap muat: tinggi ditekan (status sebaris, kartu rapat, baris
-  aksi 52dp). Susunan baru atas permintaan maintainer (H5): judul menempel ke atas
-  sebagai SATU baris penuh (auto-size 48–80sp) dengan sisa isi dipusatkan vertikal
-  di ruang yang tersisa di bawahnya.
+  Hirarki bersih (audit & refaktor 2026-09-13), dua bagian utama:
+    root (vertikal, center_horizontal)
+    ├─ header (vertikal, wrap_content, center) : judul dua lapis + tagline
+    └─ isi   (vertikal, weight=1, center)      : pembatas, kartu status, tombol, menu
+
+  Tinggi ditekan (status sebaris, kartu rapat, baris aksi 52dp) agar semua muat.
 -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
@@ -22,57 +23,81 @@
     android:paddingEnd="20dp"
     android:paddingBottom="12dp">
 
-    <!-- Judul dua lapis: lapisan gelap sedikit turun memberi kesan timbul (3D),
-         lapisan depan bergradien gading-emas. Keduanya satu baris penuh (maxLines=1 +
-         singleLine) dengan auto-size supaya tidak pernah membungkus; letter-spacing
-         dikecilkan agar proporsional. Lebar sengaja match_parent (bukan wrap_content)
-         karena auto-size butuh lebar terbatas untuk bisa mengecil — teks dipusatkan
-         sehingga secara visual tetap "pas" dengan isinya. -->
-    <FrameLayout
+    <!-- ===== Header: judul + tagline dalam satu kolom rata tengah ===== -->
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:clipChildren="false">
+        android:gravity="center_horizontal"
+        android:orientation="vertical">
 
-        <androidx.appcompat.widget.AppCompatTextView
-            android:id="@+id/appTitleShadow"
+        <!--
+          Judul dua lapis (kesan timbul 3D): lapisan gelap bergeser sedikit turun di
+          belakang lapisan depan bergradien gading-emas. Keduanya WAJIB satu baris:
+          maxLines=1 + singleLine=true + auto-size 48-80sp (mengecil otomatis bila
+          layar sempit) + letter-spacing 0.15. includeFontPadding=false menghapus
+          ruang kosong bawaan font.
+
+          Lebar judul sengaja match_parent (bukan wrap_content): auto-size hanya bisa
+          mengecil bila lebarnya terbatas; teks dipusatkan (gravity center_horizontal)
+          sehingga secara visual tetap pas di tengah layar.
+        -->
+        <FrameLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:translationX="2dp"
-            android:translationY="3dp"
-            android:fontFamily="sans-serif-light"
-            android:gravity="center_horizontal"
-            android:includeFontPadding="false"
-            android:letterSpacing="0.15"
-            android:maxLines="1"
-            android:singleLine="true"
-            android:text="@string/app_name"
-            android:textColor="@color/title_shadow"
-            android:textSize="80sp"
-            app:autoSizeTextType="uniform"
-            app:autoSizeMinTextSize="48sp"
-            app:autoSizeMaxTextSize="80sp"
-            app:autoSizeStepGranularity="1sp" />
+            android:clipChildren="false">
 
-        <androidx.appcompat.widget.AppCompatTextView
-            android:id="@+id/appTitle"
-            android:layout_width="match_parent"
+            <androidx.appcompat.widget.AppCompatTextView
+                android:id="@+id/appTitleShadow"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:translationX="2dp"
+                android:translationY="3dp"
+                android:fontFamily="sans-serif-light"
+                android:gravity="center_horizontal"
+                android:includeFontPadding="false"
+                android:letterSpacing="0.15"
+                android:maxLines="1"
+                android:singleLine="true"
+                android:text="@string/app_name"
+                android:textColor="@color/title_shadow"
+                android:textSize="80sp"
+                app:autoSizeTextType="uniform"
+                app:autoSizeMinTextSize="48sp"
+                app:autoSizeMaxTextSize="80sp"
+                app:autoSizeStepGranularity="1sp" />
+
+            <androidx.appcompat.widget.AppCompatTextView
+                android:id="@+id/appTitle"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:fontFamily="sans-serif-light"
+                android:gravity="center_horizontal"
+                android:includeFontPadding="false"
+                android:letterSpacing="0.15"
+                android:maxLines="1"
+                android:singleLine="true"
+                android:text="@string/app_name"
+                android:textColor="@color/fg"
+                android:textSize="80sp"
+                app:autoSizeTextType="uniform"
+                app:autoSizeMinTextSize="48sp"
+                app:autoSizeMaxTextSize="80sp"
+                app:autoSizeStepGranularity="1sp" />
+        </FrameLayout>
+
+        <TextView
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:fontFamily="sans-serif-light"
-            android:gravity="center_horizontal"
-            android:includeFontPadding="false"
-            android:letterSpacing="0.15"
-            android:maxLines="1"
-            android:singleLine="true"
-            android:text="@string/app_name"
-            android:textColor="@color/fg"
-            android:textSize="80sp"
-            app:autoSizeTextType="uniform"
-            app:autoSizeMinTextSize="48sp"
-            app:autoSizeMaxTextSize="80sp"
-            app:autoSizeStepGranularity="1sp" />
-    </FrameLayout>
+            android:layout_marginTop="4dp"
+            android:fontFamily="sans-serif-medium"
+            android:letterSpacing="0.28"
+            android:text="@string/app_tagline"
+            android:textAllCaps="true"
+            android:textColor="@color/accent_dim"
+            android:textSize="11sp" />
+    </LinearLayout>
 
-    <!-- Sisa isi dipusatkan vertikal di ruang yang tersisa setelah judul menempel atas. -->
+    <!-- ===== Isi: dipusatkan vertikal di ruang yang tersisa di bawah header ===== -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="0dp"
@@ -80,465 +105,455 @@
         android:gravity="center_horizontal|center_vertical"
         android:orientation="vertical">
 
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
-            android:fontFamily="sans-serif-medium"
-        android:letterSpacing="0.28"
-        android:text="@string/app_tagline"
-        android:textAllCaps="true"
-        android:textColor="@color/accent_dim"
-        android:textSize="11sp" />
+        <View
+            android:layout_width="52dp"
+            android:layout_height="1dp"
+            android:layout_marginTop="10dp"
+            android:background="@drawable/divider_gold" />
 
-    <View
-        android:layout_width="52dp"
-        android:layout_height="1dp"
-        android:layout_marginTop="10dp"
-        android:background="@drawable/divider_gold" />
-
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="14dp"
-        android:background="@drawable/card_bg"
-        android:gravity="center_horizontal"
-        android:orientation="vertical"
-        android:paddingStart="14dp"
-        android:paddingTop="12dp"
-        android:paddingEnd="14dp"
-        android:paddingBottom="12dp">
-
-        <!-- Status disusun sebaris: titik + teks, tepat di tengah horizontal kartu. -->
+        <!-- Kartu status: padding simetris (atas = bawah = 10dp, kiri = kanan = 16dp). -->
         <LinearLayout
-            android:layout_width="wrap_content"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_gravity="center_horizontal"
-            android:gravity="center"
-            android:orientation="horizontal">
+            android:layout_marginTop="14dp"
+            android:background="@drawable/card_bg"
+            android:gravity="center_horizontal"
+            android:orientation="vertical"
+            android:paddingStart="16dp"
+            android:paddingTop="10dp"
+            android:paddingEnd="16dp"
+            android:paddingBottom="10dp">
 
-            <View
-                android:id="@+id/statusDot"
-                android:layout_width="7dp"
-                android:layout_height="7dp"
-                android:background="@drawable/dot_off"
-                android:contentDescription="@string/cd_status_down" />
-
-            <TextView
-                android:id="@+id/status"
+            <!-- Badge status: titik + teks sejajar garis tengah, badge di tengah kartu. -->
+            <LinearLayout
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="7dp"
-                android:fontFamily="sans-serif-medium"
-                android:includeFontPadding="false"
-                android:text="@string/status_disconnected"
-                android:textColor="@color/fg"
-                android:textSize="14sp" />
-        </LinearLayout>
+                android:layout_gravity="center_horizontal"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
 
-        <TextView
-            android:id="@+id/message"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="2dp"
-            android:gravity="center"
-            android:lineSpacingMultiplier="1.2"
-            android:maxLines="3"
-            android:textColor="@color/muted"
-            android:textSize="13sp" />
+                <View
+                    android:id="@+id/statusDot"
+                    android:layout_width="7dp"
+                    android:layout_height="7dp"
+                    android:background="@drawable/dot_off"
+                    android:contentDescription="@string/cd_status_down" />
 
-        <View
-            android:layout_width="match_parent"
-            android:layout_height="1dp"
-            android:layout_marginTop="6dp"
-            android:background="@color/card_stroke" />
+                <TextView
+                    android:id="@+id/status"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="7dp"
+                    android:fontFamily="sans-serif-medium"
+                    android:includeFontPadding="false"
+                    android:text="@string/status_disconnected"
+                    android:textColor="@color/fg"
+                    android:textSize="14sp" />
+            </LinearLayout>
 
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="6dp"
-            android:orientation="vertical">
+            <TextView
+                android:id="@+id/message"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:gravity="center"
+                android:lineSpacingMultiplier="1.2"
+                android:maxLines="3"
+                android:textColor="@color/muted"
+                android:textSize="13sp" />
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:layout_marginTop="6dp"
+                android:background="@color/card_stroke" />
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:paddingTop="3dp"
-                android:paddingBottom="3dp">
+                android:layout_marginTop="6dp"
+                android:orientation="vertical">
 
-                <TextView
-                    android:layout_width="0dp"
+                <LinearLayout
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:text="@string/info_duration"
-                    android:textColor="@color/muted"
-                    android:textSize="13sp" />
+                    android:orientation="horizontal"
+                    android:paddingTop="3dp"
+                    android:paddingBottom="3dp">
 
-                <TextView
-                    android:id="@+id/infoDuration"
-                    android:layout_width="0dp"
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="@string/info_duration"
+                        android:textColor="@color/muted"
+                        android:textSize="13sp" />
+
+                    <TextView
+                        android:id="@+id/infoDuration"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1.5"
+                        android:ellipsize="end"
+                        android:gravity="end"
+                        android:maxLines="2"
+                        android:text="@string/value_none"
+                        android:textColor="@color/fg"
+                        android:textSize="13sp" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_weight="1.5"
-                    android:ellipsize="end"
-                    android:gravity="end"
-                    android:maxLines="2"
-                    android:text="@string/value_none"
-                    android:textColor="@color/fg"
-                    android:textSize="13sp" />
+                    android:orientation="horizontal"
+                    android:paddingTop="3dp"
+                    android:paddingBottom="3dp">
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="@string/info_endpoint"
+                        android:textColor="@color/muted"
+                        android:textSize="13sp" />
+
+                    <TextView
+                        android:id="@+id/infoEndpoint"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1.5"
+                        android:ellipsize="end"
+                        android:gravity="end"
+                        android:maxLines="2"
+                        android:text="@string/value_none"
+                        android:textColor="@color/fg"
+                        android:textSize="13sp" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:paddingTop="3dp"
+                    android:paddingBottom="3dp">
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="@string/info_last_test"
+                        android:textColor="@color/muted"
+                        android:textSize="13sp" />
+
+                    <TextView
+                        android:id="@+id/infoTest"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1.5"
+                        android:ellipsize="end"
+                        android:gravity="end"
+                        android:maxLines="2"
+                        android:text="@string/value_none"
+                        android:textColor="@color/fg"
+                        android:textSize="13sp" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:paddingTop="3dp"
+                    android:paddingBottom="3dp">
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="@string/info_data"
+                        android:textColor="@color/muted"
+                        android:textSize="13sp" />
+
+                    <TextView
+                        android:id="@+id/infoData"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1.5"
+                        android:ellipsize="end"
+                        android:gravity="end"
+                        android:maxLines="2"
+                        android:text="@string/value_none"
+                        android:textColor="@color/fg"
+                        android:textSize="13sp" />
+                </LinearLayout>
             </LinearLayout>
+        </LinearLayout>
+
+        <Button
+            android:id="@+id/toggle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:background="@drawable/btn_primary"
+            android:fontFamily="sans-serif-medium"
+            android:letterSpacing="0.03"
+            android:minHeight="52dp"
+            android:text="@string/btn_connect"
+            android:textAllCaps="false"
+            android:textColor="@color/btn_primary_text"
+            android:textSize="16sp" />
+
+        <Button
+            android:id="@+id/test"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:background="@drawable/btn_outline"
+            android:minHeight="52dp"
+            android:text="@string/btn_test"
+            android:textAllCaps="false"
+            android:textColor="@color/btn_outline_text"
+            android:textSize="15sp" />
+
+        <!-- Kartu baris aksi: satu baris = satu tujuan, tanpa gulir di dalamnya. -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:background="@drawable/card_bg"
+            android:orientation="vertical"
+            android:paddingTop="4dp"
+            android:paddingBottom="4dp">
 
             <LinearLayout
+                android:id="@+id/reset"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:background="?attr/selectableItemBackground"
+                android:clickable="true"
+                android:focusable="true"
+                android:gravity="center_vertical"
+                android:minHeight="52dp"
                 android:orientation="horizontal"
-                android:paddingTop="3dp"
-                android:paddingBottom="3dp">
+                android:paddingStart="16dp"
+                android:paddingEnd="12dp">
 
-                <TextView
+                <ImageView
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
+                    android:contentDescription="@null"
+                    android:src="@drawable/ic_refresh"
+                    app:tint="@color/accent" />
+
+                <LinearLayout
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
+                    android:layout_marginStart="14dp"
                     android:layout_weight="1"
-                    android:text="@string/info_endpoint"
-                    android:textColor="@color/muted"
-                    android:textSize="13sp" />
+                    android:orientation="vertical">
 
-                <TextView
-                    android:id="@+id/infoEndpoint"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1.5"
-                    android:ellipsize="end"
-                    android:gravity="end"
-                    android:maxLines="2"
-                    android:text="@string/value_none"
-                    android:textColor="@color/fg"
-                    android:textSize="13sp" />
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:includeFontPadding="false"
+                        android:text="@string/btn_reset"
+                        android:textColor="@color/fg"
+                        android:textSize="15sp" />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:includeFontPadding="false"
+                        android:text="@string/sub_reset"
+                        android:textColor="@color/muted"
+                        android:textSize="12sp" />
+                </LinearLayout>
+
+                <ImageView
+                    android:layout_width="16dp"
+                    android:layout_height="16dp"
+                    android:contentDescription="@null"
+                    android:src="@drawable/ic_chevron"
+                    app:tint="@color/outline" />
             </LinearLayout>
 
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:layout_marginStart="50dp"
+                android:background="@color/card_stroke" />
+
             <LinearLayout
+                android:id="@+id/vpnSettings"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:background="?attr/selectableItemBackground"
+                android:clickable="true"
+                android:focusable="true"
+                android:gravity="center_vertical"
+                android:minHeight="52dp"
                 android:orientation="horizontal"
-                android:paddingTop="3dp"
-                android:paddingBottom="3dp">
+                android:paddingStart="16dp"
+                android:paddingEnd="12dp">
 
-                <TextView
+                <ImageView
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
+                    android:contentDescription="@null"
+                    android:src="@drawable/ic_settings"
+                    app:tint="@color/accent" />
+
+                <LinearLayout
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
+                    android:layout_marginStart="14dp"
                     android:layout_weight="1"
-                    android:text="@string/info_last_test"
-                    android:textColor="@color/muted"
-                    android:textSize="13sp" />
+                    android:orientation="vertical">
 
-                <TextView
-                    android:id="@+id/infoTest"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1.5"
-                    android:ellipsize="end"
-                    android:gravity="end"
-                    android:maxLines="2"
-                    android:text="@string/value_none"
-                    android:textColor="@color/fg"
-                    android:textSize="13sp" />
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:includeFontPadding="false"
+                        android:text="@string/btn_vpn_settings"
+                        android:textColor="@color/fg"
+                        android:textSize="15sp" />
+
+                    <TextView
+                        android:id="@+id/subVpnSettings"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:includeFontPadding="false"
+                        android:text="@string/sub_vpn_settings"
+                        android:textColor="@color/muted"
+                        android:textSize="12sp" />
+                </LinearLayout>
+
+                <ImageView
+                    android:layout_width="16dp"
+                    android:layout_height="16dp"
+                    android:contentDescription="@null"
+                    android:src="@drawable/ic_chevron"
+                    app:tint="@color/outline" />
             </LinearLayout>
 
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:layout_marginStart="50dp"
+                android:background="@color/card_stroke" />
+
             <LinearLayout
+                android:id="@+id/exclusions"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:background="?attr/selectableItemBackground"
+                android:clickable="true"
+                android:focusable="true"
+                android:gravity="center_vertical"
+                android:minHeight="52dp"
                 android:orientation="horizontal"
-                android:paddingTop="3dp"
-                android:paddingBottom="3dp">
+                android:paddingStart="16dp"
+                android:paddingEnd="12dp">
 
-                <TextView
+                <ImageView
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
+                    android:contentDescription="@null"
+                    android:src="@drawable/ic_apps"
+                    app:tint="@color/accent" />
+
+                <LinearLayout
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
+                    android:layout_marginStart="14dp"
                     android:layout_weight="1"
-                    android:text="@string/info_data"
-                    android:textColor="@color/muted"
-                    android:textSize="13sp" />
+                    android:orientation="vertical">
 
-                <TextView
-                    android:id="@+id/infoData"
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:includeFontPadding="false"
+                        android:text="@string/btn_exclusions"
+                        android:textColor="@color/fg"
+                        android:textSize="15sp" />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:includeFontPadding="false"
+                        android:text="@string/sub_exclusions"
+                        android:textColor="@color/muted"
+                        android:textSize="12sp" />
+                </LinearLayout>
+
+                <ImageView
+                    android:layout_width="16dp"
+                    android:layout_height="16dp"
+                    android:contentDescription="@null"
+                    android:src="@drawable/ic_chevron"
+                    app:tint="@color/outline" />
+            </LinearLayout>
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:layout_marginStart="50dp"
+                android:background="@color/card_stroke" />
+
+            <LinearLayout
+                android:id="@+id/copyDiag"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="?attr/selectableItemBackground"
+                android:clickable="true"
+                android:focusable="true"
+                android:gravity="center_vertical"
+                android:minHeight="52dp"
+                android:orientation="horizontal"
+                android:paddingStart="16dp"
+                android:paddingEnd="12dp">
+
+                <ImageView
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
+                    android:contentDescription="@null"
+                    android:src="@drawable/ic_copy"
+                    app:tint="@color/accent" />
+
+                <LinearLayout
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:layout_weight="1.5"
-                    android:ellipsize="end"
-                    android:gravity="end"
-                    android:maxLines="2"
-                    android:text="@string/value_none"
-                    android:textColor="@color/fg"
-                    android:textSize="13sp" />
+                    android:layout_marginStart="14dp"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:includeFontPadding="false"
+                        android:text="@string/btn_copy_diag"
+                        android:textColor="@color/fg"
+                        android:textSize="15sp" />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:includeFontPadding="false"
+                        android:text="@string/sub_copy_diag"
+                        android:textColor="@color/muted"
+                        android:textSize="12sp" />
+                </LinearLayout>
+
+                <ImageView
+                    android:layout_width="16dp"
+                    android:layout_height="16dp"
+                    android:contentDescription="@null"
+                    android:src="@drawable/ic_chevron"
+                    app:tint="@color/outline" />
             </LinearLayout>
         </LinearLayout>
-    </LinearLayout>
-
-    <Button
-        android:id="@+id/toggle"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="16dp"
-        android:background="@drawable/btn_primary"
-        android:fontFamily="sans-serif-medium"
-        android:letterSpacing="0.03"
-        android:minHeight="52dp"
-        android:text="@string/btn_connect"
-        android:textAllCaps="false"
-        android:textColor="@color/btn_primary_text"
-        android:textSize="16sp" />
-
-    <Button
-        android:id="@+id/test"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
-        android:background="@drawable/btn_outline"
-        android:minHeight="52dp"
-        android:text="@string/btn_test"
-        android:textAllCaps="false"
-        android:textColor="@color/btn_outline_text"
-        android:textSize="15sp" />
-
-    <!-- Kartu baris aksi: satu baris = satu tujuan, tanpa gulir di dalamnya. -->
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="12dp"
-        android:background="@drawable/card_bg"
-        android:orientation="vertical"
-        android:paddingTop="4dp"
-        android:paddingBottom="4dp">
-
-        <LinearLayout
-            android:id="@+id/reset"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:background="?attr/selectableItemBackground"
-            android:clickable="true"
-            android:focusable="true"
-            android:gravity="center_vertical"
-            android:minHeight="52dp"
-            android:orientation="horizontal"
-            android:paddingStart="16dp"
-            android:paddingEnd="12dp">
-
-            <ImageView
-                android:layout_width="20dp"
-                android:layout_height="20dp"
-                android:contentDescription="@null"
-                android:src="@drawable/ic_refresh"
-                app:tint="@color/accent" />
-
-            <LinearLayout
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="14dp"
-                android:layout_weight="1"
-                android:orientation="vertical">
-
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:includeFontPadding="false"
-                    android:text="@string/btn_reset"
-                    android:textColor="@color/fg"
-                    android:textSize="15sp" />
-
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="2dp"
-                    android:includeFontPadding="false"
-                    android:text="@string/sub_reset"
-                    android:textColor="@color/muted"
-                    android:textSize="12sp" />
-            </LinearLayout>
-
-            <ImageView
-                android:layout_width="16dp"
-                android:layout_height="16dp"
-                android:contentDescription="@null"
-                android:src="@drawable/ic_chevron"
-                app:tint="@color/outline" />
-        </LinearLayout>
-
-        <View
-            android:layout_width="match_parent"
-            android:layout_height="1dp"
-            android:layout_marginStart="50dp"
-            android:background="@color/card_stroke" />
-
-        <LinearLayout
-            android:id="@+id/vpnSettings"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:background="?attr/selectableItemBackground"
-            android:clickable="true"
-            android:focusable="true"
-            android:gravity="center_vertical"
-            android:minHeight="52dp"
-            android:orientation="horizontal"
-            android:paddingStart="16dp"
-            android:paddingEnd="12dp">
-
-            <ImageView
-                android:layout_width="20dp"
-                android:layout_height="20dp"
-                android:contentDescription="@null"
-                android:src="@drawable/ic_settings"
-                app:tint="@color/accent" />
-
-            <LinearLayout
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="14dp"
-                android:layout_weight="1"
-                android:orientation="vertical">
-
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:includeFontPadding="false"
-                    android:text="@string/btn_vpn_settings"
-                    android:textColor="@color/fg"
-                    android:textSize="15sp" />
-
-                <TextView
-                    android:id="@+id/subVpnSettings"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="2dp"
-                    android:includeFontPadding="false"
-                    android:text="@string/sub_vpn_settings"
-                    android:textColor="@color/muted"
-                    android:textSize="12sp" />
-            </LinearLayout>
-
-            <ImageView
-                android:layout_width="16dp"
-                android:layout_height="16dp"
-                android:contentDescription="@null"
-                android:src="@drawable/ic_chevron"
-                app:tint="@color/outline" />
-        </LinearLayout>
-
-        <View
-            android:layout_width="match_parent"
-            android:layout_height="1dp"
-            android:layout_marginStart="50dp"
-            android:background="@color/card_stroke" />
-
-        <LinearLayout
-            android:id="@+id/exclusions"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:background="?attr/selectableItemBackground"
-            android:clickable="true"
-            android:focusable="true"
-            android:gravity="center_vertical"
-            android:minHeight="52dp"
-            android:orientation="horizontal"
-            android:paddingStart="16dp"
-            android:paddingEnd="12dp">
-
-            <ImageView
-                android:layout_width="20dp"
-                android:layout_height="20dp"
-                android:contentDescription="@null"
-                android:src="@drawable/ic_apps"
-                app:tint="@color/accent" />
-
-            <LinearLayout
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="14dp"
-                android:layout_weight="1"
-                android:orientation="vertical">
-
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:includeFontPadding="false"
-                    android:text="@string/btn_exclusions"
-                    android:textColor="@color/fg"
-                    android:textSize="15sp" />
-
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="2dp"
-                    android:includeFontPadding="false"
-                    android:text="@string/sub_exclusions"
-                    android:textColor="@color/muted"
-                    android:textSize="12sp" />
-            </LinearLayout>
-
-            <ImageView
-                android:layout_width="16dp"
-                android:layout_height="16dp"
-                android:contentDescription="@null"
-                android:src="@drawable/ic_chevron"
-                app:tint="@color/outline" />
-        </LinearLayout>
-
-        <View
-            android:layout_width="match_parent"
-            android:layout_height="1dp"
-            android:layout_marginStart="50dp"
-            android:background="@color/card_stroke" />
-
-        <LinearLayout
-            android:id="@+id/copyDiag"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:background="?attr/selectableItemBackground"
-            android:clickable="true"
-            android:focusable="true"
-            android:gravity="center_vertical"
-            android:minHeight="52dp"
-            android:orientation="horizontal"
-            android:paddingStart="16dp"
-            android:paddingEnd="12dp">
-
-            <ImageView
-                android:layout_width="20dp"
-                android:layout_height="20dp"
-                android:contentDescription="@null"
-                android:src="@drawable/ic_copy"
-                app:tint="@color/accent" />
-
-            <LinearLayout
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="14dp"
-                android:layout_weight="1"
-                android:orientation="vertical">
-
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:includeFontPadding="false"
-                    android:text="@string/btn_copy_diag"
-                    android:textColor="@color/fg"
-                    android:textSize="15sp" />
-
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="2dp"
-                    android:includeFontPadding="false"
-                    android:text="@string/sub_copy_diag"
-                    android:textColor="@color/muted"
-                    android:textSize="12sp" />
-            </LinearLayout>
-
-            <ImageView
-                android:layout_width="16dp"
-                android:layout_height="16dp"
-                android:contentDescription="@null"
-                android:src="@drawable/ic_chevron"
-                app:tint="@color/outline" />
-        </LinearLayout>
-    </LinearLayout>
     </LinearLayout>
 </LinearLayout>
