@@ -899,7 +899,9 @@ run ujung `main` 34743255110 (`build`, hijau, 5m18s) + 34743255117 (`dokumen`, h
   sehingga memasang toolchain sendiri pun mustahil — CI benar-benar satu-satunya jalan
   build. `gh` terautentikasi tetapi **tanpa izin `workflow_dispatch`** (HTTP 403) dan tanpa
   akses billing/permissions; satu-satunya cara memicu CI dari sandbox adalah **push**.
-  Clone **dangkal** (`git log` hanya memuat 1 commit) dengan refspec fetch terbatas.
+  Clone **dangkal** — `git log` hanya memuat ujung riwayat sampai batas `.git/shallow`
+  (saat sesi dimulai: `main` `4cca724` + basis branch sesi; bertambah seiring commit sesi),
+  bukan riwayat penuh — dengan refspec fetch terbatas.
 - Dokumen: `README.md` (pointer), `CONTRIBUTING.md` (pointer ke dokumen ini), `CHANGELOG.md`,
   `TODO.md`, `docs/adr/` (001 superseded, 002 identitas Velum) + indeks,
   `docs/rilis-github.md` (runbook APK rilis GitHub).
@@ -1306,8 +1308,9 @@ run ujung `main` 34743255110 (`build`, hijau, 5m18s) + 34743255117 (`dokumen`, h
   `git merge-base --is-ancestor`** (di clone dangkal ia melaporkan "bukan ancestor" palsu,
   lihat entri 2026-09-12); pakai objeknya langsung — `git cat-file -p 4cca724` mencetak
   `parent fc17261…` dan `gh api repos/…/commits/4cca724` mencatat parent yang sama.
-  `git reflog` (dua entri saja: `clone` di `4cca724`, lalu `checkout -b` di `fc17261`)
-  menunjukkan urutannya; alasan platform memilih basis itu belum bisa diamati dari sandbox.
+  `git reflog` saat kejadian (hanya dua entri: `clone` di `4cca724`, lalu `checkout -b` di
+  `fc17261`) menunjukkan urutannya; alasan platform memilih basis itu belum bisa diamati
+  dari sandbox.
   **Prosedur memajukan basis — hanya sah bila branch sesi belum punya commit di remote:**
   1. prasyarat: `git status --porcelain -uall` kosong **dan** `git stash list` kosong;
   2. `git fetch origin '+refs/heads/main:refs/remotes/origin/main'`;
