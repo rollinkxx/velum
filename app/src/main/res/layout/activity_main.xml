@@ -1,96 +1,161 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  Layar utama — dirancang untuk MUAT SATU LAYAR (tanpa menggulir) pada ponsel
-  biasa, lalu tetap bisa digulir sebagai cadangan bila layar sangat pendek atau
-  pengguna memakai skala huruf besar.
+  Layar utama — TETAP (tanpa menggulir) atas permintaan maintainer: satu layar penuh
+  yang selalu muat. Konsekuensi yang diterima sadar: pada layar sangat pendek atau
+  skala huruf sangat besar, isi bisa terpotong karena tidak ada gulir.
 
-  Dua hal yang sengaja diatur begini:
-  1. `fillViewport="true"` pada ScrollView + `android:gravity="center_vertical"`
-     pada LinearLayout isi. Gravity inilah cara yang benar memusatkan isi secara
-     vertikal: saat isi lebih PENDEK dari layar, ia dipusatkan; saat isi lebih
-     TINGGI, tidak ada pergeseran sama sekali sehingga bagian atas tidak pernah
-     terpotong. Sebelumnya dipakai `android:layout_gravity="center_vertical"`
-     yang menggeser seluruh isi ke atas lalu memotong judul secara permanen.
-  2. Tinggi sengaja ditekan (judul 30sp, kartu 18dp, baris aksi 52dp) supaya
-     keempat baris aksi muat bersamaan dengan kartu status — satu layar penuh,
-     tanpa gulir, tanpa sisa yang menggantung di bawah.
+  Hirarki bersih (audit & refaktor 2026-09-13), dua bagian utama:
+    root (vertikal, center_horizontal)
+    ├─ header (vertikal, wrap_content, center) : judul dua lapis + tagline
+    └─ isi   (vertikal, weight=1, center)      : pembatas, kartu status, tombol, menu
+
+  Tinggi ditekan (status sebaris, kartu rapat, baris aksi 52dp) agar semua muat.
 -->
-<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:id="@+id/root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:fillViewport="true">
+    android:gravity="center_horizontal"
+    android:orientation="vertical"
+    android:paddingStart="20dp"
+    android:paddingTop="8dp"
+    android:paddingEnd="20dp"
+    android:paddingBottom="12dp">
 
+    <!-- ===== Header: judul + tagline dalam satu kolom rata tengah ===== -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:gravity="center_horizontal|center_vertical"
-        android:orientation="vertical"
-        android:paddingStart="20dp"
-        android:paddingTop="20dp"
-        android:paddingEnd="20dp"
-        android:paddingBottom="16dp">
+        android:gravity="center_horizontal"
+        android:orientation="vertical">
+
+        <!--
+          Judul dua lapis (kesan timbul 3D): lapisan gelap bergeser sedikit turun di
+          belakang lapisan depan bergradien gading-emas. Keduanya WAJIB satu baris:
+          maxLines=1 + singleLine=true + auto-size 48-80sp (mengecil otomatis bila
+          layar sempit) + letter-spacing 0.15. includeFontPadding=false menghapus
+          ruang kosong bawaan font.
+
+          Lebar judul sengaja match_parent (bukan wrap_content): auto-size hanya bisa
+          mengecil bila lebarnya terbatas; teks dipusatkan (gravity center_horizontal)
+          sehingga secara visual tetap pas di tengah layar.
+        -->
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:clipChildren="false">
+
+            <androidx.appcompat.widget.AppCompatTextView
+                android:id="@+id/appTitleShadow"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:translationX="2dp"
+                android:translationY="3dp"
+                android:fontFamily="sans-serif-light"
+                android:gravity="center_horizontal"
+                android:includeFontPadding="false"
+                android:letterSpacing="0.15"
+                android:maxLines="1"
+                android:singleLine="true"
+                android:text="@string/app_name"
+                android:textColor="@color/title_shadow"
+                android:textSize="80sp"
+                app:autoSizeTextType="uniform"
+                app:autoSizeMinTextSize="48sp"
+                app:autoSizeMaxTextSize="80sp"
+                app:autoSizeStepGranularity="1sp" />
+
+            <androidx.appcompat.widget.AppCompatTextView
+                android:id="@+id/appTitle"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:fontFamily="sans-serif-light"
+                android:gravity="center_horizontal"
+                android:includeFontPadding="false"
+                android:letterSpacing="0.15"
+                android:maxLines="1"
+                android:singleLine="true"
+                android:text="@string/app_name"
+                android:textColor="@color/fg"
+                android:textSize="80sp"
+                app:autoSizeTextType="uniform"
+                app:autoSizeMinTextSize="48sp"
+                app:autoSizeMaxTextSize="80sp"
+                app:autoSizeStepGranularity="1sp" />
+        </FrameLayout>
 
         <TextView
-            android:id="@+id/appTitle"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:fontFamily="sans-serif-light"
-            android:includeFontPadding="false"
-            android:letterSpacing="0.34"
-            android:text="@string/app_name"
-            android:textColor="@color/fg"
-            android:textSize="30sp" />
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="6dp"
+            android:layout_marginTop="4dp"
             android:fontFamily="sans-serif-medium"
             android:letterSpacing="0.28"
             android:text="@string/app_tagline"
             android:textAllCaps="true"
             android:textColor="@color/accent_dim"
             android:textSize="11sp" />
+    </LinearLayout>
+
+    <!-- ===== Isi: dipusatkan vertikal di ruang yang tersisa di bawah header ===== -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:gravity="center_horizontal|center_vertical"
+        android:orientation="vertical">
 
         <View
             android:layout_width="52dp"
             android:layout_height="1dp"
-            android:layout_marginTop="12dp"
+            android:layout_marginTop="10dp"
             android:background="@drawable/divider_gold" />
 
+        <!-- Kartu status: padding simetris (atas = bawah = 10dp, kiri = kanan = 16dp). -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="18dp"
+            android:layout_marginTop="14dp"
             android:background="@drawable/card_bg"
             android:gravity="center_horizontal"
             android:orientation="vertical"
-            android:padding="18dp">
+            android:paddingStart="16dp"
+            android:paddingTop="10dp"
+            android:paddingEnd="16dp"
+            android:paddingBottom="10dp">
 
-            <View
-                android:id="@+id/statusDot"
-                android:layout_width="10dp"
-                android:layout_height="10dp"
-                android:background="@drawable/dot_off"
-                android:contentDescription="@string/cd_status_down" />
-
-            <TextView
-                android:id="@+id/status"
+            <!-- Badge status: titik + teks sejajar garis tengah, badge di tengah kartu. -->
+            <LinearLayout
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:fontFamily="sans-serif-medium"
-                android:text="@string/status_disconnected"
-                android:textColor="@color/fg"
-                android:textSize="20sp" />
+                android:layout_gravity="center_horizontal"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <View
+                    android:id="@+id/statusDot"
+                    android:layout_width="7dp"
+                    android:layout_height="7dp"
+                    android:background="@drawable/dot_off"
+                    android:contentDescription="@string/cd_status_down" />
+
+                <TextView
+                    android:id="@+id/status"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="7dp"
+                    android:fontFamily="sans-serif-medium"
+                    android:includeFontPadding="false"
+                    android:text="@string/status_disconnected"
+                    android:textColor="@color/fg"
+                    android:textSize="14sp" />
+            </LinearLayout>
 
             <TextView
                 android:id="@+id/message"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="6dp"
+                android:layout_marginTop="2dp"
                 android:gravity="center"
                 android:lineSpacingMultiplier="1.2"
                 android:maxLines="3"
@@ -100,13 +165,13 @@
             <View
                 android:layout_width="match_parent"
                 android:layout_height="1dp"
-                android:layout_marginTop="14dp"
+                android:layout_marginTop="6dp"
                 android:background="@color/card_stroke" />
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
+                android:layout_marginTop="6dp"
                 android:orientation="vertical">
 
                 <LinearLayout
@@ -227,7 +292,7 @@
             android:id="@+id/toggle"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="20dp"
+            android:layout_marginTop="16dp"
             android:background="@drawable/btn_primary"
             android:fontFamily="sans-serif-medium"
             android:letterSpacing="0.03"
@@ -241,7 +306,7 @@
             android:id="@+id/test"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="10dp"
+            android:layout_marginTop="8dp"
             android:background="@drawable/btn_outline"
             android:minHeight="52dp"
             android:text="@string/btn_test"
@@ -253,7 +318,7 @@
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
+            android:layout_marginTop="12dp"
             android:background="@drawable/card_bg"
             android:orientation="vertical"
             android:paddingTop="4dp"
@@ -354,6 +419,7 @@
                         android:textSize="15sp" />
 
                     <TextView
+                        android:id="@+id/subVpnSettings"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="2dp"
@@ -490,4 +556,4 @@
             </LinearLayout>
         </LinearLayout>
     </LinearLayout>
-</ScrollView>
+</LinearLayout>

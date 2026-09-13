@@ -180,6 +180,16 @@ logcat sama sekali** — angkanya ada di baris `Boot`.
 
 ---
 
+## Kelompok H — trafik, pengecualian, selalu aktif & tampilan (semua V1)
+
+| # | Tingkat | Langkah | Yang diharapkan | Bila berbeda |
+|---|---|---|---|---|
+| H1 | V1 | Sambungkan, lihat baris `Data`. | **Total** (mis. `Total ↓ 24 KB · ↑ 12 KB`) tampil segera; laju (baris pertama) muncul dalam ±2 detik, bukan belasan detik | Laju baru muncul setelah 5+ detik = polling tidak 1 Hz; total kosong = total tidak dibaca dari penghitung kumulatif |
+| H2 | V1 | Sambil tersambung, unduh berkas besar (atau streaming video) dan perhatikan baris `Data`. | Laju naik dan turun secara **halus**, tanpa melompat liar tiap beberapa detik | Angka melompat jauh = laju dihitung selisih dua titik, jendela geser tidak jalan |
+| H3 | V1 | Centang 2 aplikasi di "Kecualikan aplikasi", Simpan, buka lagi layar itu. | Kedua aplikasi berada **di atas**, di bawah label **"Dikecualikan dari tunnel"** (emas); sisanya di bawah **"Aplikasi lain"** | Aplikasi tercentang tersebar di tengah daftar = pengelompokan tidak jalan |
+| H4 | V1 | Dalam keadaan **tersambung**: buka Pengaturan sistem → aktifkan **Always-on VPN** untuk Velum (lalu "Blokir koneksi tanpa VPN" juga), kembali ke aplikasi. | Subjudul baris "Selalu aktif" berubah menjadi "Aktif · blokir tanpa VPN" (atau "Aktif · tersambung otomatis" bila tanpa blokir). Matikan always-on → subjudul "Nonaktif" | Subjudul tetap "Pengaturan VPN sistem" saat tersambung = pembacaan gagal |
+| H5 | V1 | Buka aplikasi; periksa judul besar + tagline baru, dan pastikan seluruh isi (sampai "Salin diagnostik") terlihat **tanpa menggulir** pada ponsel biasa. | Judul "Velum" besar berkesan timbul; tagline "PRIVAT, CEPAT, RINGAN"; status satu baris; layar **tidak bisa digulir** dan tidak ada yang terpotong | Ada isi terpotong/tertutup bilah bawah = layar tidak muat; layar bisa digulir = ScrollView tidak diganti |
+
 ## Yang TIDAK bisa Anda uji — dan jangan dicoba
 
 Berikut ini dulu tertulis sebagai tugas Anda. Semuanya **ditarik kembali**: tanpa adb tidak

@@ -343,6 +343,17 @@ class VelumController(context: Context, private val ui: Ui) {
         }
     }
 
+    /**
+     * Membaca keadaan "Selalu aktif" VPN sistem di latar, lalu menyerahkannya ke
+     * [onResult] di main thread; null = tidak terbaca (API < 29 / tunnel turun).
+     */
+    fun runAlwaysOnState(onResult: (VelumTunnel.AlwaysOnState?) -> Unit) {
+        submit(worker) {
+            val s = VelumTunnel.alwaysOnState()
+            main.post { if (!dead) onResult(s) }
+        }
+    }
+
     // ---------- Uji trace ----------
 
     /**

@@ -35,10 +35,9 @@ komputer untuk logcat/dumpsys). Karena itu:
 
 ## Status saat ini
 
-**Belum ada satu pun uji yang dijalankan.** Seluruh 29 uji V1 di `uji-perangkat.md` menunggu
-perangkat. Konsekuensinya, menurut §12 butir 4: semua perbaikan yang menyangkut perilaku
-runtime di branch `arena/01a09664-velum` berstatus *terbukti kompilasi + unit test JVM +
-nalar*, **bukan** *terverifikasi di perangkat*.
+**Sebagian uji sudah dijalankan** (kelompok H, branch `arena/01a098b1-velum`,
+laporan maintainer 2026-09-13): H1/H2/H3/H4 `LULUS`, H5 `TIDAK SESUAI HARAPAN`
+(menunggu uji ulang). Kelompok A–G (29 uji) masih menunggu perangkat.
 
 | Kelompok | Uji | Tingkat | Menutup utang di |
 |---|---|---|---|
@@ -68,8 +67,11 @@ hasil — ganti atau hapus saat dipakai.
 
 | Tanggal | Perangkat & Android | Uji | Tingkat | Hasil sebenarnya | Vonis | Tindak lanjut |
 |---|---|---|---|---|---|---|
-| _contoh_ | _Pixel 7, Android 14_ | _F2_ | _V1_ | _Diagnostik: `Status: Tersambung`, `Boot: 14,2 detik · berhasil · 2 menit lalu`, `Proses: hidup 02:31`. Notifikasi muncul setelah layar kunci, terasa lama._ | _TIDAK SESUAI HARAPAN_ | _TODO 77: 14,2 dtk > 10 dtk, `goAsync()` perlu diputuskan_ |
-| | | | | | | |
+| 2026-09-13 | Android 14 (perangkat maintainer) | H1 | V1 | Maintainer: "H1 terverifikasi" — `Total` langsung tampil dan laju muncul dalam ±2 detik setelah tersambung. | LULUS | — |
+| 2026-09-13 | Android 14 (perangkat maintainer) | H2 | V1 | Maintainer: laju Velum `↓ 5,1 MB/s · ↑ 192,3 KB/s` vs indikator status bar `10,8 M/s`. Tidak ada aplikasi yang dikecualikan dan unduhan stabil. Penjelasan agen (selisih = cara indikator status bar menghitung saat VPN aktif, angka Velum adalah laju tunnel sebenarnya) disetujui maintainer: "saya setuju penjelasanmu (saya anggap terverifikasi)". | LULUS | — |
+| 2026-09-13 | Android 14 (perangkat maintainer) | H3 | V1 | Maintainer: "H3 terverifikasi seperti yang diharapkan" — aplikasi tercentang naik ke atas di bawah label "Dikecualikan dari tunnel". | LULUS | — |
+| 2026-09-13 | Android 14 (perangkat maintainer) | H4 | V1 | Maintainer: "H4 ini juga terverifikasi" — subjudul "Selalu aktif" mengikuti keadaan sistem saat tersambung. | LULUS | — |
+| 2026-09-13 | Android 14 (perangkat maintainer) | H5 | V1 | Percobaan 1: judul kecil, "Tersambung" makan tempat. Percobaan 2: seluruh isi naik ke atas sehingga bagian bawah kosong (di luar scope). Percobaan 3: judul 80sp membungkus jadi dua baris ("Velu" / "m") dan letter-spacing terlalu lebar. | TIDAK SESUAI HARAPAN | **Koreksi atas kesalahan agen** (percobaan 2 scope §0; percobaan 3 tidak mensimulasikan lebar teks vs layar). Percobaan 4 (audit & refaktor hierarki layout): judul satu baris penuh (`maxLines=1`+`singleLine=true`, auto-size 48–80sp, letter-spacing 0.15, `includeFontPadding=false`), judul+tagline satu kolom header rata tengah (gap 4dp), badge status `gravity="center_vertical"` di tengah kartu, padding kartu simetris 10dp/16dp. Menunggu uji ulang maintainer |
 
 ## Tidak terverifikasi oleh siapa pun — status permanen `hanya nalar`
 
