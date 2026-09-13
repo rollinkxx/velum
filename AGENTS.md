@@ -663,8 +663,12 @@ run ujung `main` 34743255110 (`build`, hijau, 5m18s) + 34743255117 (`dokumen`, h
     izin notifikasi Android 13+ (diminta hanya bila perlu, lewat Activity Result API),
     pintasan pengaturan VPN/Always-on (subjudulnya sinkron dengan keadaan sistem lewat
     `GoBackend.isAlwaysOn`/`isLockdownEnabled`), konfirmasi Daftar ulang, salin
-    diagnostik, judul dua lapis satu baris (auto-size 48–80sp) menempel ke atas
-    (`polishAppTitle()`), sisa isi dipusatkan di ruang yang tersisa di bawahnya.
+    diagnostik, judul dua lapis satu baris (auto-size 48–106sp, sehingga **lebar** yang
+    mengikat di ~105sp dan judul membentang selebar area isi; ukuran terlihatnya tidak
+    bergantung `fontScale`) dengan tagline berjarak terlihat ±14dp (`marginTop="-18dp"`,
+    rumusnya di komentar layout), menempel ke atas (`polishAppTitle()`), sisa isi
+    dipusatkan di ruang yang tersisa di bawahnya; baris pesan `@id/message` **GONE** bila
+    kosong (`MainActivity.setMessage`).
   - `VelumController.kt` — **orkestrasi** koneksi & uji, terpisah dari Activity agar tidak
     ikut mati saat Activity dibuat ulang (rotasi/proses lahir ulang).
   - `VelumApi.kt` — registrasi/hapus registrasi ke API upstream
