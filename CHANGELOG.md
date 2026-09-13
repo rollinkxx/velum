@@ -90,6 +90,27 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
   gagal memasang.
 
 ### Changed
+- **Judul "Velum" kini membentang selebar area isi (batas auto-size 80sp → 106sp) dan
+  tagline didekatkan ke judul** atas permintaan maintainer (referensi visual: judul
+  membesar, tagline tepat di bawahnya). Kedua lapisan judul ikut berubah agar bayangan
+  3D tidak tertinggal ukurannya. Karena "Velum" (3,54 em dengan letter-spacing 0,15)
+  baru melewati lebar area isi 371dp di ~105sp, kini **lebar** yang mengikat auto-size —
+  bukan angka maksimumnya — sehingga judul selalu mengisi lebar dan ukuran *terlihat*-nya
+  tidak bergantung skala font perangkat (auto-size memilih sp lebih kecil dengan hasil dp
+  yang sama).
+  Jarak yang **terlihat** judul→tagline dipangkas dari ~29dp menjadi **14dp** lewat
+  `layout_marginTop="-18dp"` pada tagline: kotak baris judul (2701/2048 em) jauh lebih
+  tinggi daripada tintanya (tinggi huruf kapital 1456/2048 em), jadi sisa ruang di bawah
+  baseline (555/2048 em) + ruang di atas huruf tagline ((2146−1456)/2048 em) menambah
+  jarak tanpa diminta. Rumusnya ditulis di komentar layout, bukan disimpan di kepala.
+- **Kartu status tidak lagi menyisakan ruang kosong saat tidak ada pesan.** Baris pesan
+  (`@id/message`) kini `GONE` bila teksnya kosong (`MainActivity.setMessage`), karena
+  `VelumController` memang mengosongkannya di dua tempat dan teks kosong tetap memesan
+  tinggi kotak ~20,6dp — itulah yang membuat badge "Tersambung" tampak melayang dengan
+  padding bawah terasa tidak seimbang meski padding kartunya sudah simetris. Saat ada
+  pesan (mis. peringatan tunnel basi, galat, konfirmasi), tampilannya persis seperti
+  sebelumnya. Efek samping yang disengaja: tinggi kartu kini 144dp (dari 167dp) pada
+  keadaan normal.
 - **Notifikasi status kini mengikuti tunnel, bukan layar.** Sebelumnya `show`/`hide`
   hanya dipanggil dari callback visual layar utama, sehingga dua keadaan salah terjadi:
   tunnel yang mati di latar (pantulan menyerah, atau diputus lewat ubin) meninggalkan

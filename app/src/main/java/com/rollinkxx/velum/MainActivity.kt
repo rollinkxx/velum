@@ -299,7 +299,9 @@ class MainActivity : AppCompatActivity(), VelumController.Ui {
         try {
             startActivity(Intent("android.settings.VPN_SETTINGS"))
         } catch (e: Exception) {
-            messageView.setText(R.string.err_no_settings)
+            // Lewat setMessageRes, bukan messageView.setText langsung: hanya jalur itu
+            // yang mengurus GONE/VISIBLE baris pesan (lihat setMessage).
+            setMessageRes(R.string.err_no_settings)
         }
     }
 
@@ -341,12 +343,22 @@ class MainActivity : AppCompatActivity(), VelumController.Ui {
         statusView.setText(resId)
     }
 
+    /**
+     * Baris pesan: kosong berarti TIDAK ditampilkan sama sekali.
+     *
+     * Teks kosong tetap memesan tinggi kotaknya (~20,6dp), dan VelumController memang
+     * mengosongkannya lewat `setMessage("")` di dua tempat (saat mulai menyambung dan
+     * saat uji dibuang karena tunnel turun). Akibatnya badge "Tersambung" tampak
+     * melayang dengan ruang tak seimbang di bawahnya — ukuran kartu berubah hanya
+     * karena ada/tidaknya pesan, bukan karena tata letaknya berbeda.
+     */
     override fun setMessageRes(resId: Int) {
-        messageView.setText(resId)
+        setMessage(getString(resId))
     }
 
     override fun setMessage(text: String) {
         messageView.text = text
+        messageView.visibility = if (text.isEmpty()) View.GONE else View.VISIBLE
     }
 
     /**

@@ -33,13 +33,18 @@
         <!--
           Judul dua lapis (kesan timbul 3D): lapisan gelap bergeser sedikit turun di
           belakang lapisan depan bergradien gading-emas. Keduanya WAJIB satu baris:
-          maxLines=1 + singleLine=true + auto-size 48-80sp (mengecil otomatis bila
-          layar sempit) + letter-spacing 0.15. includeFontPadding=false menghapus
-          ruang kosong bawaan font.
+          maxLines=1 + singleLine=true + auto-size 48-106sp + letter-spacing 0.15.
+          includeFontPadding=false menghapus ruang kosong bawaan font.
 
-          Lebar judul sengaja match_parent (bukan wrap_content): auto-size hanya bisa
-          mengecil bila lebarnya terbatas; teks dipusatkan (gravity center_horizontal)
-          sehingga secara visual tetap pas di tengah layar.
+          Lebar judul sengaja match_parent (bukan wrap_content) dan batas atas
+          auto-size dinaikkan ke 106sp (dari 80sp, 2026-09-13 atas permintaan
+          maintainer: "title ukurannya lebih besar"): pada lebar 371dp area isi
+          (411dp - 2x20dp padding), "Velum" 3,54 em baru melewati lebar itu di
+          ~105sp, jadi lebar-lah yang menjadi pengikat dan judul selalu membentang
+          selebar area isi seperti pada referensi maintainer. Ini juga membuat
+          ukuran TERLIHAT tidak bergantung skala font perangkat: pada fontScale
+          lebih besar auto-size memilih sp lebih kecil dengan hasil dp yang sama.
+          autoSizeMinTextSize 48sp tetap menjaga layar sangat sempit.
         -->
         <FrameLayout
             android:layout_width="match_parent"
@@ -60,10 +65,10 @@
                 android:singleLine="true"
                 android:text="@string/app_name"
                 android:textColor="@color/title_shadow"
-                android:textSize="80sp"
+                android:textSize="106sp"
                 app:autoSizeTextType="uniform"
                 app:autoSizeMinTextSize="48sp"
-                app:autoSizeMaxTextSize="80sp"
+                app:autoSizeMaxTextSize="106sp"
                 app:autoSizeStepGranularity="1sp" />
 
             <androidx.appcompat.widget.AppCompatTextView
@@ -78,17 +83,30 @@
                 android:singleLine="true"
                 android:text="@string/app_name"
                 android:textColor="@color/fg"
-                android:textSize="80sp"
+                android:textSize="106sp"
                 app:autoSizeTextType="uniform"
                 app:autoSizeMinTextSize="48sp"
-                app:autoSizeMaxTextSize="80sp"
+                app:autoSizeMaxTextSize="106sp"
                 app:autoSizeStepGranularity="1sp" />
         </FrameLayout>
 
+        <!--
+          marginTop NEGATIF disengaja: kotak baris judul selalu lebih tinggi daripada
+          tintanya (Roboto: 2701/2048 em kotak vs 1456/2048 em tinggi huruf kapital),
+          jadi sisa ruang di bawah baseline (555/2048 em) + ruang di atas huruf tagline
+          ((2146-1456)/2048 em) menambah jarak yang terlihat tanpa diminta.
+
+          Rumus jarak terlihat (bukan tafsiran; em dari hhea/OS-2 Roboto):
+            jarak = marginTop + (555/2048)*judul_efektif + ((2146-1456)/2048)*11
+          Dengan judul yang membentang selebar area isi (~104,7sp pada fontScale 1,0)
+          dan target jarak 14dp: marginTop = 14 - 28,4 - 3,7 = -18dp.
+          Nilai ini stabil lintas fontScale karena auto-size menahan tinggi judul (dp)
+          tetap sama walau sp yang dipilih berbeda.
+        -->
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
+            android:layout_marginTop="-18dp"
             android:fontFamily="sans-serif-medium"
             android:letterSpacing="0.28"
             android:text="@string/app_tagline"
@@ -151,11 +169,19 @@
                     android:textSize="14sp" />
             </LinearLayout>
 
+            <!--
+              visibility="gone" sejak awal: VelumController memang mengosongkan baris ini
+              lewat setMessage("") (dua tempat), dan teks kosong TETAP memesan tinggi
+              kotak (~20,6dp) sehingga badge "Tersambung" tampak melayang dengan ruang
+              tak seimbang di bawahnya. MainActivity.setMessage() yang menjaga
+              GONE/VISIBLE; saat ada pesan, tampilannya persis seperti sebelumnya.
+            -->
             <TextView
                 android:id="@+id/message"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="2dp"
+                android:visibility="gone"
                 android:gravity="center"
                 android:lineSpacingMultiplier="1.2"
                 android:maxLines="3"
