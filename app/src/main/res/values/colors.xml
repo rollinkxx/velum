@@ -23,6 +23,9 @@
     <color name="fg">#E9EEF5</color>
     <color name="muted">#9AA7B8</color>
 
+    <!-- Bayangan lapisan judul (kesan timbul 3D) -->
+    <color name="title_shadow">#660A0D12</color>
+
     <!-- Status -->
     <color name="ok">#3FB27F</color>
     <color name="off">#7A8699</color>

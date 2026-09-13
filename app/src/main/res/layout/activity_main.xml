@@ -1,36 +1,44 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  Layar utama — dirancang untuk MUAT SATU LAYAR (tanpa menggulir) pada ponsel
-  biasa, lalu tetap bisa digulir sebagai cadangan bila layar sangat pendek atau
-  pengguna memakai skala huruf besar.
+  Layar utama — kini TETAP (tanpa menggulir) atas permintaan maintainer, bukan lagi
+  ScrollView: satu layar penuh yang dirancang selalu muat. Konsekuensi yang diterima
+  sadar: pada layar sangat pendek atau skala huruf sangat besar, isi bisa terpotong
+  karena tidak ada gulir — keputusan disengaja demi tampilan yang tidak "melompat".
 
-  Dua hal yang sengaja diatur begini:
-  1. `fillViewport="true"` pada ScrollView + `android:gravity="center_vertical"`
-     pada LinearLayout isi. Gravity inilah cara yang benar memusatkan isi secara
-     vertikal: saat isi lebih PENDEK dari layar, ia dipusatkan; saat isi lebih
-     TINGGI, tidak ada pergeseran sama sekali sehingga bagian atas tidak pernah
-     terpotong. Sebelumnya dipakai `android:layout_gravity="center_vertical"`
-     yang menggeser seluruh isi ke atas lalu memotong judul secara permanen.
-  2. Tinggi sengaja ditekan (judul 30sp, kartu 18dp, baris aksi 52dp) supaya
-     keempat baris aksi muat bersamaan dengan kartu status — satu layar penuh,
-     tanpa gulir, tanpa sisa yang menggantung di bawah.
+  Cara menjaga agar tetap muat: tinggi ditekan (status sebaris, kartu rapat, baris
+  aksi 52dp) dan judul dibesarkan secukupnya. `gravity="center_vertical"` dipakai
+  supaya isi tampil di tengah pada layar yang lebih tinggi.
 -->
-<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:id="@+id/root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:fillViewport="true">
+    android:gravity="center_horizontal|center_vertical"
+    android:orientation="vertical"
+    android:paddingStart="20dp"
+    android:paddingTop="14dp"
+    android:paddingEnd="20dp"
+    android:paddingBottom="12dp">
 
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:gravity="center_horizontal|center_vertical"
-        android:orientation="vertical"
-        android:paddingStart="20dp"
-        android:paddingTop="20dp"
-        android:paddingEnd="20dp"
-        android:paddingBottom="16dp">
+    <!-- Judul dua lapis: lapisan gelap sedikit turun memberi kesan timbul (3D),
+         lapisan depan bergradien gading-emas. Keduanya teks statis, digambar sekali. -->
+    <FrameLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content">
+
+        <TextView
+            android:id="@+id/appTitleShadow"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="2dp"
+            android:layout_marginTop="3dp"
+            android:fontFamily="sans-serif-light"
+            android:includeFontPadding="false"
+            android:letterSpacing="0.34"
+            android:text="@string/app_name"
+            android:textColor="@color/title_shadow"
+            android:textSize="40sp" />
 
         <TextView
             android:id="@+id/appTitle"
@@ -41,38 +49,46 @@
             android:letterSpacing="0.34"
             android:text="@string/app_name"
             android:textColor="@color/fg"
-            android:textSize="30sp" />
+            android:textSize="40sp" />
+    </FrameLayout>
 
-        <TextView
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:fontFamily="sans-serif-medium"
+        android:letterSpacing="0.28"
+        android:text="@string/app_tagline"
+        android:textAllCaps="true"
+        android:textColor="@color/accent_dim"
+        android:textSize="11sp" />
+
+    <View
+        android:layout_width="52dp"
+        android:layout_height="1dp"
+        android:layout_marginTop="10dp"
+        android:background="@drawable/divider_gold" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="14dp"
+        android:background="@drawable/card_bg"
+        android:gravity="center_horizontal"
+        android:orientation="vertical"
+        android:padding="14dp">
+
+        <!-- Status disusun sebaris: titik + teks, memakan tinggi minimal. -->
+        <LinearLayout
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="6dp"
-            android:fontFamily="sans-serif-medium"
-            android:letterSpacing="0.28"
-            android:text="@string/app_tagline"
-            android:textAllCaps="true"
-            android:textColor="@color/accent_dim"
-            android:textSize="11sp" />
-
-        <View
-            android:layout_width="52dp"
-            android:layout_height="1dp"
-            android:layout_marginTop="12dp"
-            android:background="@drawable/divider_gold" />
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="18dp"
-            android:background="@drawable/card_bg"
-            android:gravity="center_horizontal"
-            android:orientation="vertical"
-            android:padding="18dp">
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
 
             <View
                 android:id="@+id/statusDot"
-                android:layout_width="10dp"
-                android:layout_height="10dp"
+                android:layout_width="8dp"
+                android:layout_height="8dp"
                 android:background="@drawable/dot_off"
                 android:contentDescription="@string/cd_status_down" />
 
@@ -80,415 +96,415 @@
                 android:id="@+id/status"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
+                android:layout_marginStart="8dp"
                 android:fontFamily="sans-serif-medium"
                 android:text="@string/status_disconnected"
                 android:textColor="@color/fg"
-                android:textSize="20sp" />
-
-            <TextView
-                android:id="@+id/message"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="6dp"
-                android:gravity="center"
-                android:lineSpacingMultiplier="1.2"
-                android:maxLines="3"
-                android:textColor="@color/muted"
-                android:textSize="13sp" />
-
-            <View
-                android:layout_width="match_parent"
-                android:layout_height="1dp"
-                android:layout_marginTop="14dp"
-                android:background="@color/card_stroke" />
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:orientation="vertical">
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:paddingTop="3dp"
-                    android:paddingBottom="3dp">
-
-                    <TextView
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:text="@string/info_duration"
-                        android:textColor="@color/muted"
-                        android:textSize="13sp" />
-
-                    <TextView
-                        android:id="@+id/infoDuration"
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1.5"
-                        android:ellipsize="end"
-                        android:gravity="end"
-                        android:maxLines="2"
-                        android:text="@string/value_none"
-                        android:textColor="@color/fg"
-                        android:textSize="13sp" />
-                </LinearLayout>
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:paddingTop="3dp"
-                    android:paddingBottom="3dp">
-
-                    <TextView
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:text="@string/info_endpoint"
-                        android:textColor="@color/muted"
-                        android:textSize="13sp" />
-
-                    <TextView
-                        android:id="@+id/infoEndpoint"
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1.5"
-                        android:ellipsize="end"
-                        android:gravity="end"
-                        android:maxLines="2"
-                        android:text="@string/value_none"
-                        android:textColor="@color/fg"
-                        android:textSize="13sp" />
-                </LinearLayout>
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:paddingTop="3dp"
-                    android:paddingBottom="3dp">
-
-                    <TextView
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:text="@string/info_last_test"
-                        android:textColor="@color/muted"
-                        android:textSize="13sp" />
-
-                    <TextView
-                        android:id="@+id/infoTest"
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1.5"
-                        android:ellipsize="end"
-                        android:gravity="end"
-                        android:maxLines="2"
-                        android:text="@string/value_none"
-                        android:textColor="@color/fg"
-                        android:textSize="13sp" />
-                </LinearLayout>
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:paddingTop="3dp"
-                    android:paddingBottom="3dp">
-
-                    <TextView
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:text="@string/info_data"
-                        android:textColor="@color/muted"
-                        android:textSize="13sp" />
-
-                    <TextView
-                        android:id="@+id/infoData"
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1.5"
-                        android:ellipsize="end"
-                        android:gravity="end"
-                        android:maxLines="2"
-                        android:text="@string/value_none"
-                        android:textColor="@color/fg"
-                        android:textSize="13sp" />
-                </LinearLayout>
-            </LinearLayout>
+                android:textSize="16sp" />
         </LinearLayout>
 
-        <Button
-            android:id="@+id/toggle"
+        <TextView
+            android:id="@+id/message"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="20dp"
-            android:background="@drawable/btn_primary"
-            android:fontFamily="sans-serif-medium"
-            android:letterSpacing="0.03"
-            android:minHeight="52dp"
-            android:text="@string/btn_connect"
-            android:textAllCaps="false"
-            android:textColor="@color/btn_primary_text"
-            android:textSize="16sp" />
+            android:layout_marginTop="4dp"
+            android:gravity="center"
+            android:lineSpacingMultiplier="1.2"
+            android:maxLines="3"
+            android:textColor="@color/muted"
+            android:textSize="13sp" />
 
-        <Button
-            android:id="@+id/test"
+        <View
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
+            android:layout_height="1dp"
             android:layout_marginTop="10dp"
-            android:background="@drawable/btn_outline"
-            android:minHeight="52dp"
-            android:text="@string/btn_test"
-            android:textAllCaps="false"
-            android:textColor="@color/btn_outline_text"
-            android:textSize="15sp" />
+            android:background="@color/card_stroke" />
 
-        <!-- Kartu baris aksi: satu baris = satu tujuan, tanpa gulir di dalamnya. -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
-            android:background="@drawable/card_bg"
-            android:orientation="vertical"
-            android:paddingTop="4dp"
-            android:paddingBottom="4dp">
+            android:layout_marginTop="6dp"
+            android:orientation="vertical">
 
             <LinearLayout
-                android:id="@+id/reset"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:background="?attr/selectableItemBackground"
-                android:clickable="true"
-                android:focusable="true"
-                android:gravity="center_vertical"
-                android:minHeight="52dp"
                 android:orientation="horizontal"
-                android:paddingStart="16dp"
-                android:paddingEnd="12dp">
+                android:paddingTop="3dp"
+                android:paddingBottom="3dp">
 
-                <ImageView
-                    android:layout_width="20dp"
-                    android:layout_height="20dp"
-                    android:contentDescription="@null"
-                    android:src="@drawable/ic_refresh"
-                    app:tint="@color/accent" />
-
-                <LinearLayout
+                <TextView
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:layout_marginStart="14dp"
                     android:layout_weight="1"
-                    android:orientation="vertical">
+                    android:text="@string/info_duration"
+                    android:textColor="@color/muted"
+                    android:textSize="13sp" />
 
-                    <TextView
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:includeFontPadding="false"
-                        android:text="@string/btn_reset"
-                        android:textColor="@color/fg"
-                        android:textSize="15sp" />
-
-                    <TextView
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="2dp"
-                        android:includeFontPadding="false"
-                        android:text="@string/sub_reset"
-                        android:textColor="@color/muted"
-                        android:textSize="12sp" />
-                </LinearLayout>
-
-                <ImageView
-                    android:layout_width="16dp"
-                    android:layout_height="16dp"
-                    android:contentDescription="@null"
-                    android:src="@drawable/ic_chevron"
-                    app:tint="@color/outline" />
+                <TextView
+                    android:id="@+id/infoDuration"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1.5"
+                    android:ellipsize="end"
+                    android:gravity="end"
+                    android:maxLines="2"
+                    android:text="@string/value_none"
+                    android:textColor="@color/fg"
+                    android:textSize="13sp" />
             </LinearLayout>
 
-            <View
-                android:layout_width="match_parent"
-                android:layout_height="1dp"
-                android:layout_marginStart="50dp"
-                android:background="@color/card_stroke" />
-
             <LinearLayout
-                android:id="@+id/vpnSettings"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:background="?attr/selectableItemBackground"
-                android:clickable="true"
-                android:focusable="true"
-                android:gravity="center_vertical"
-                android:minHeight="52dp"
                 android:orientation="horizontal"
-                android:paddingStart="16dp"
-                android:paddingEnd="12dp">
+                android:paddingTop="3dp"
+                android:paddingBottom="3dp">
 
-                <ImageView
-                    android:layout_width="20dp"
-                    android:layout_height="20dp"
-                    android:contentDescription="@null"
-                    android:src="@drawable/ic_settings"
-                    app:tint="@color/accent" />
-
-                <LinearLayout
+                <TextView
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:layout_marginStart="14dp"
                     android:layout_weight="1"
-                    android:orientation="vertical">
+                    android:text="@string/info_endpoint"
+                    android:textColor="@color/muted"
+                    android:textSize="13sp" />
 
-                    <TextView
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:includeFontPadding="false"
-                        android:text="@string/btn_vpn_settings"
-                        android:textColor="@color/fg"
-                        android:textSize="15sp" />
-
-                    <TextView
-                        android:id="@+id/subVpnSettings"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="2dp"
-                        android:includeFontPadding="false"
-                        android:text="@string/sub_vpn_settings"
-                        android:textColor="@color/muted"
-                        android:textSize="12sp" />
-                </LinearLayout>
-
-                <ImageView
-                    android:layout_width="16dp"
-                    android:layout_height="16dp"
-                    android:contentDescription="@null"
-                    android:src="@drawable/ic_chevron"
-                    app:tint="@color/outline" />
+                <TextView
+                    android:id="@+id/infoEndpoint"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1.5"
+                    android:ellipsize="end"
+                    android:gravity="end"
+                    android:maxLines="2"
+                    android:text="@string/value_none"
+                    android:textColor="@color/fg"
+                    android:textSize="13sp" />
             </LinearLayout>
 
-            <View
-                android:layout_width="match_parent"
-                android:layout_height="1dp"
-                android:layout_marginStart="50dp"
-                android:background="@color/card_stroke" />
-
             <LinearLayout
-                android:id="@+id/exclusions"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:background="?attr/selectableItemBackground"
-                android:clickable="true"
-                android:focusable="true"
-                android:gravity="center_vertical"
-                android:minHeight="52dp"
                 android:orientation="horizontal"
-                android:paddingStart="16dp"
-                android:paddingEnd="12dp">
+                android:paddingTop="3dp"
+                android:paddingBottom="3dp">
 
-                <ImageView
-                    android:layout_width="20dp"
-                    android:layout_height="20dp"
-                    android:contentDescription="@null"
-                    android:src="@drawable/ic_apps"
-                    app:tint="@color/accent" />
-
-                <LinearLayout
+                <TextView
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:layout_marginStart="14dp"
                     android:layout_weight="1"
-                    android:orientation="vertical">
+                    android:text="@string/info_last_test"
+                    android:textColor="@color/muted"
+                    android:textSize="13sp" />
 
-                    <TextView
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:includeFontPadding="false"
-                        android:text="@string/btn_exclusions"
-                        android:textColor="@color/fg"
-                        android:textSize="15sp" />
-
-                    <TextView
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="2dp"
-                        android:includeFontPadding="false"
-                        android:text="@string/sub_exclusions"
-                        android:textColor="@color/muted"
-                        android:textSize="12sp" />
-                </LinearLayout>
-
-                <ImageView
-                    android:layout_width="16dp"
-                    android:layout_height="16dp"
-                    android:contentDescription="@null"
-                    android:src="@drawable/ic_chevron"
-                    app:tint="@color/outline" />
+                <TextView
+                    android:id="@+id/infoTest"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1.5"
+                    android:ellipsize="end"
+                    android:gravity="end"
+                    android:maxLines="2"
+                    android:text="@string/value_none"
+                    android:textColor="@color/fg"
+                    android:textSize="13sp" />
             </LinearLayout>
 
-            <View
-                android:layout_width="match_parent"
-                android:layout_height="1dp"
-                android:layout_marginStart="50dp"
-                android:background="@color/card_stroke" />
-
             <LinearLayout
-                android:id="@+id/copyDiag"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:background="?attr/selectableItemBackground"
-                android:clickable="true"
-                android:focusable="true"
-                android:gravity="center_vertical"
-                android:minHeight="52dp"
                 android:orientation="horizontal"
-                android:paddingStart="16dp"
-                android:paddingEnd="12dp">
+                android:paddingTop="3dp"
+                android:paddingBottom="3dp">
 
-                <ImageView
-                    android:layout_width="20dp"
-                    android:layout_height="20dp"
-                    android:contentDescription="@null"
-                    android:src="@drawable/ic_copy"
-                    app:tint="@color/accent" />
-
-                <LinearLayout
+                <TextView
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:layout_marginStart="14dp"
                     android:layout_weight="1"
-                    android:orientation="vertical">
+                    android:text="@string/info_data"
+                    android:textColor="@color/muted"
+                    android:textSize="13sp" />
 
-                    <TextView
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:includeFontPadding="false"
-                        android:text="@string/btn_copy_diag"
-                        android:textColor="@color/fg"
-                        android:textSize="15sp" />
-
-                    <TextView
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="2dp"
-                        android:includeFontPadding="false"
-                        android:text="@string/sub_copy_diag"
-                        android:textColor="@color/muted"
-                        android:textSize="12sp" />
-                </LinearLayout>
-
-                <ImageView
-                    android:layout_width="16dp"
-                    android:layout_height="16dp"
-                    android:contentDescription="@null"
-                    android:src="@drawable/ic_chevron"
-                    app:tint="@color/outline" />
+                <TextView
+                    android:id="@+id/infoData"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1.5"
+                    android:ellipsize="end"
+                    android:gravity="end"
+                    android:maxLines="2"
+                    android:text="@string/value_none"
+                    android:textColor="@color/fg"
+                    android:textSize="13sp" />
             </LinearLayout>
         </LinearLayout>
     </LinearLayout>
-</ScrollView>
+
+    <Button
+        android:id="@+id/toggle"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:background="@drawable/btn_primary"
+        android:fontFamily="sans-serif-medium"
+        android:letterSpacing="0.03"
+        android:minHeight="52dp"
+        android:text="@string/btn_connect"
+        android:textAllCaps="false"
+        android:textColor="@color/btn_primary_text"
+        android:textSize="16sp" />
+
+    <Button
+        android:id="@+id/test"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:background="@drawable/btn_outline"
+        android:minHeight="52dp"
+        android:text="@string/btn_test"
+        android:textAllCaps="false"
+        android:textColor="@color/btn_outline_text"
+        android:textSize="15sp" />
+
+    <!-- Kartu baris aksi: satu baris = satu tujuan, tanpa gulir di dalamnya. -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:background="@drawable/card_bg"
+        android:orientation="vertical"
+        android:paddingTop="4dp"
+        android:paddingBottom="4dp">
+
+        <LinearLayout
+            android:id="@+id/reset"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="?attr/selectableItemBackground"
+            android:clickable="true"
+            android:focusable="true"
+            android:gravity="center_vertical"
+            android:minHeight="52dp"
+            android:orientation="horizontal"
+            android:paddingStart="16dp"
+            android:paddingEnd="12dp">
+
+            <ImageView
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:contentDescription="@null"
+                android:src="@drawable/ic_refresh"
+                app:tint="@color/accent" />
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="14dp"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:includeFontPadding="false"
+                    android:text="@string/btn_reset"
+                    android:textColor="@color/fg"
+                    android:textSize="15sp" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:includeFontPadding="false"
+                    android:text="@string/sub_reset"
+                    android:textColor="@color/muted"
+                    android:textSize="12sp" />
+            </LinearLayout>
+
+            <ImageView
+                android:layout_width="16dp"
+                android:layout_height="16dp"
+                android:contentDescription="@null"
+                android:src="@drawable/ic_chevron"
+                app:tint="@color/outline" />
+        </LinearLayout>
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:layout_marginStart="50dp"
+            android:background="@color/card_stroke" />
+
+        <LinearLayout
+            android:id="@+id/vpnSettings"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="?attr/selectableItemBackground"
+            android:clickable="true"
+            android:focusable="true"
+            android:gravity="center_vertical"
+            android:minHeight="52dp"
+            android:orientation="horizontal"
+            android:paddingStart="16dp"
+            android:paddingEnd="12dp">
+
+            <ImageView
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:contentDescription="@null"
+                android:src="@drawable/ic_settings"
+                app:tint="@color/accent" />
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="14dp"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:includeFontPadding="false"
+                    android:text="@string/btn_vpn_settings"
+                    android:textColor="@color/fg"
+                    android:textSize="15sp" />
+
+                <TextView
+                    android:id="@+id/subVpnSettings"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:includeFontPadding="false"
+                    android:text="@string/sub_vpn_settings"
+                    android:textColor="@color/muted"
+                    android:textSize="12sp" />
+            </LinearLayout>
+
+            <ImageView
+                android:layout_width="16dp"
+                android:layout_height="16dp"
+                android:contentDescription="@null"
+                android:src="@drawable/ic_chevron"
+                app:tint="@color/outline" />
+        </LinearLayout>
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:layout_marginStart="50dp"
+            android:background="@color/card_stroke" />
+
+        <LinearLayout
+            android:id="@+id/exclusions"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="?attr/selectableItemBackground"
+            android:clickable="true"
+            android:focusable="true"
+            android:gravity="center_vertical"
+            android:minHeight="52dp"
+            android:orientation="horizontal"
+            android:paddingStart="16dp"
+            android:paddingEnd="12dp">
+
+            <ImageView
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:contentDescription="@null"
+                android:src="@drawable/ic_apps"
+                app:tint="@color/accent" />
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="14dp"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:includeFontPadding="false"
+                    android:text="@string/btn_exclusions"
+                    android:textColor="@color/fg"
+                    android:textSize="15sp" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:includeFontPadding="false"
+                    android:text="@string/sub_exclusions"
+                    android:textColor="@color/muted"
+                    android:textSize="12sp" />
+            </LinearLayout>
+
+            <ImageView
+                android:layout_width="16dp"
+                android:layout_height="16dp"
+                android:contentDescription="@null"
+                android:src="@drawable/ic_chevron"
+                app:tint="@color/outline" />
+        </LinearLayout>
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:layout_marginStart="50dp"
+            android:background="@color/card_stroke" />
+
+        <LinearLayout
+            android:id="@+id/copyDiag"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="?attr/selectableItemBackground"
+            android:clickable="true"
+            android:focusable="true"
+            android:gravity="center_vertical"
+            android:minHeight="52dp"
+            android:orientation="horizontal"
+            android:paddingStart="16dp"
+            android:paddingEnd="12dp">
+
+            <ImageView
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:contentDescription="@null"
+                android:src="@drawable/ic_copy"
+                app:tint="@color/accent" />
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="14dp"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:includeFontPadding="false"
+                    android:text="@string/btn_copy_diag"
+                    android:textColor="@color/fg"
+                    android:textSize="15sp" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:includeFontPadding="false"
+                    android:text="@string/sub_copy_diag"
+                    android:textColor="@color/muted"
+                    android:textSize="12sp" />
+            </LinearLayout>
+
+            <ImageView
+                android:layout_width="16dp"
+                android:layout_height="16dp"
+                android:contentDescription="@null"
+                android:src="@drawable/ic_chevron"
+                app:tint="@color/outline" />
+        </LinearLayout>
+    </LinearLayout>
+</LinearLayout>

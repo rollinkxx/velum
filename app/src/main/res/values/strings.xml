@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Velum</string>
-    <string name="app_tagline">Tunnel aman yang ringan</string>
+    <string name="app_tagline">Privat, cepat, ringan</string>
     <string name="status_disconnected">Terputus</string>
     <string name="status_connecting">Menyambung…</string>
     <string name="status_connected">Tersambung</string>
