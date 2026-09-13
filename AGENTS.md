@@ -663,8 +663,8 @@ run ujung `main` 34702351553 hijau):**
     izin notifikasi Android 13+ (diminta hanya bila perlu, lewat Activity Result API),
     pintasan pengaturan VPN/Always-on (subjudulnya sinkron dengan keadaan sistem lewat
     `GoBackend.isAlwaysOn`/`isLockdownEnabled`), konfirmasi Daftar ulang, salin
-    diagnostik, judul dua lapis 80sp menempel ke atas (`polishAppTitle()`), sisa isi
-    dipusatkan di ruang yang tersisa di bawahnya.
+    diagnostik, judul dua lapis satu baris (auto-size 48–80sp) menempel ke atas
+    (`polishAppTitle()`), sisa isi dipusatkan di ruang yang tersisa di bawahnya.
   - `VelumController.kt` — **orkestrasi** koneksi & uji, terpisah dari Activity agar tidak
     ikut mati saat Activity dibuat ulang (rotasi/proses lahir ulang).
   - `VelumApi.kt` — registrasi/hapus registrasi ke API upstream
