@@ -40,6 +40,10 @@ Bila fakta di §5 berubah, perbarui dokumen ini dalam **1 commit khusus** berjud
     pun. Sandbox bisa di-provision ulang antar-giliran sehingga riwayat lokal hilang
     sementara berkas kerja bertahan; `git add -A` di atas keadaan itu menelan seluruh
     riwayat sesi menjadi satu commit (§5).
+17. **Bila dua aturan berbenturan, urutannya ada di §10:** §1/§0 → §11 → §12 → §3 →
+    §7 → §6 → sisanya; aturan yang lebih spesifik menang atas yang lebih umum.
+    Kalimat yang berbunyi kewajiban tetap berstatus ATURAN walau tersimpan di §5
+    (lihat sub-bagian "Invariant & kewajiban yang mengikat" di akhir §5).
 
 ---
 
@@ -222,6 +226,10 @@ Bila tidak bisa → kembalikan perubahan yang tidak relevan.
 | Ubah `targetSdk` | | ✅ |
 | Ubah `applicationId`/signing | | ✅ |
 | Merge ke `main` | | ✅ |
+
+**Prasyarat atas seluruh tabel ini (diperjelas 2026-09-13).** Kolom "Boleh sendiri"
+baru berlaku **setelah perintah eksplisit turun** (§1). Sebelum itu agen tidak boleh
+menyentuh berkas apa pun — termasuk untuk "sekadar memperbarui dokumentasi".
 
 ### Pemicu reasoning (aktifkan setiap kali menghadapi masalah kompleks)
 
@@ -452,8 +460,18 @@ final** untuk kompilasi. Mitigasi wajib sebelum push:
    periksa karakter yang tidak seharusnya ada di sumber maupun dokumen:
 
    ```bash
-   grep -rnP '[\x{4e00}-\x{9fff}\x{0400}-\x{04ff}\x{3040}-\x{30ff}]' app/src/ docs/ *.md
+   python3 -c "import glob,re;p=re.compile('[\u4e00-\u9fff\u0400-\u04ff\u3040-\u30ff]');\
+   [print(f'{f}:{i}') for g in ['app/src/main/java/**/*.kt','app/src/test/**/*.kt',\
+   'docs/**/*.md','*.md'] for f in glob.glob(g,recursive=True) for i,l in \
+   enumerate(open(f,encoding='utf-8'),1) if p.search(l)]"
    ```
+
+   **Perintah `grep -P` yang pernah tertulis di sini TIDAK bisa dipakai** (diperbaiki
+   2026-09-13 setelah dijalankan persis sebagaimana tertulis): ia berhenti dengan
+   `grep: character code point value in \x{} or \o{} is too large`, **exit 2**.
+   Bahayanya bukan sekadar gagal — ia gagal **tanpa mencetak temuan apa pun**, jadi
+   keadaannya tampak "bersih". Pemeriksaan `python3` di atas teruji berjalan di
+   sandbox sesi ini (hasil: 0 pelanggaran).
 
    Bukan formalitas: karakter CJK pernah menyusup ke komentar `Prefs.open()` saat
    edit dilakukan lewat skrip python, dan **lolos dari semua gerbang mekanis lain**
@@ -608,7 +626,10 @@ Empat poin di atas WAJIB masuk laporan Fase 1 §6 sebelum minta perintah eksekus
   sub-bagian `Added/Changed/Fixed/Removed`. README hanya pointer, tidak memuat changelog.
 - **TODO.md**: tabel `No. | Item | Prioritas | Status`. Status `Selesai, menunggu validasi CI`
   → `Selesai tervalidasi (PR #N)` setelah CI hijau. Riwayat tidak dihapus; item baru =
-  baris baru.
+  baris baru. **Pengecualian (2026-09-13):** untuk **perubahan runtime**, transisi ke
+  `Selesai tervalidasi` dilarang sampai ada baris ledger di
+  `docs/verifikasi-perangkat.md` yang **vonisnya `LULUS`** (§12 butir 4) — CI hijau
+  hanya membuktikan kompilasi + unit test JVM + lint, bukan perilaku di perangkat.
 - **ADR**: keputusan arsitektur ditulis di `docs/adr/NNN-judul.md` (Status/Tanggal/Konteks/
   Keputusan/Konsekuensi) + indeks `docs/adr/README.md`. ADR lama tidak ditulis ulang;
   gunakan status `Superseded by NNN`.
@@ -1190,46 +1211,9 @@ sebagai riwayat):**
   menampilkan puluhan berkas "modified" adalah tanda **keadaan repo**, bukan tanda pekerjaan
   Anda — dan jangan dilaporkan ke maintainer sebagai "insiden di tengah pekerjaan" sebelum
   mtime-nya diperiksa, karena kejadiannya berlangsung sebelum perintah pertama giliran itu.
-- (2026-09-12, pasca-audit menyeluruh) **Tiga invariant konkurensi baru — wajib dijaga,
-  jangan di-"sederhanakan" kembali.**
-  1. **Semua sentuhan UI lewat `VelumController.onUi{}`**; tidak boleh ada pemanggilan
-     `ui.*` langsung dari thread latar. Sebelum audit, jalur ulangan uji (`runTraceTest`
-     yang dijadwalkan ke `testWorker`) menulis `TextView` tanpa `main.post` sementara
-     baris lain di berkas yang sama sudah dibungkus benar. Tidak crash hanya karena
-     kebetulan: kedua view target berukuran tetap (`0dp`+weight dan `match_parent`),
-     sehingga `View.checkForRelayout` mengambil jalur `invalidate()` dan tidak memanggil
-     `checkThread()`. Mengubah lebarnya jadi `wrap_content` = `CalledFromWrongThreadException`.
-  2. **`VelumTunnel` satu-satunya titik serialisasi *transisi tunnel*** (`@Synchronized`
-     pada `up`/`down`/`restart`/`refreshState`). Dua executor hidup berdampingan dan
-     **boleh** berjalan paralel — transisinya tidak saling menyela karena kunci ini, bukan
-     karena asumsi "tidak akan bersamaan". Pasangan down+up wajib lewat `restart()` yang
-     atomik, jangan dipanggil terpisah (guard `wasUp` di awal rotasi bersifat TOCTOU:
-     Putuskan di antaranya dulu bisa berakhir dengan tunnel hidup kembali setelah diminta
-     mati).
-
-     **Batas kunci itu — koreksi atas klaim yang pernah tertulis di sini.** Kunci
-     `@Synchronized` TIDAK melindungi dua hal lain yang juga menentukan hasil akhir: memo
-     niat (`Prefs.wasUp`) dan hidup/matinya `ReconnectMonitor`. Keduanya ditulis **di luar**
-     kunci, oleh pelaku yang berbeda (layar, ubin, receiver boot, pemantau), sehingga
-     interleaving tetap mungkin walau setiap transisi tunnel sudah serial. Versi bagian ini
-     sebelumnya menyebut "keamanannya datang dari kunci ini" tanpa batas — itu melebihkan
-     jaminan yang ada, dan cacat yang sebenarnya (temuan A2 audit ulang) justru bersembunyi
-     di belakang kalimat tersebut. Yang menutupnya adalah **generasi niat lintas pelaku**:
-     `VelumTunnel.bumpIntent()` / `intentStale(gen)` / `currentIntent`. Setiap pelaku yang
-     membawa niat baru menaikkan generasi SEBELUM bekerja, menyimpan angkanya, dan
-     memeriksa `intentStale` tepat sebelum menulis keadaan apa pun — termasuk sesudah jeda
-     panjang (proba endpoint ~6 detik, backoff sampai 60 detik). Pelaku yang menegakkan niat
-     yang sudah ada (`ReconnectMonitor`) membaca `currentIntent` tanpa menaikkannya.
-     Jangan mengembalikan generasi ini menjadi field privat satu kelas: itu persis keadaan
-     sebelum perbaikan, ketika ubin dan layar saling menimpa `wasUp` dan tunnel yang baru
-     dimatikan membangkitkan dirinya sendiri.
-  3. **Durasi koneksi milik tunnel (`VelumTunnel.upSinceElapsedMs`), bukan layar.**
-     Jangan mengembalikan jam `connectedSinceMs` ke Activity: manifest tanpa
-     `configChanges`, jadi layar dibuat ulang setiap rotasi dan jam milik layar mulai
-     dari nol — durasi tampil `00:00` padahal koneksi tidak pernah putus.
-  **Batas bukti (jujur):** ketiganya terverifikasi **statis** (baca kode + grep) dan
-  kompilasinya divalidasi CI; perilakunya di perangkat **belum diuji** (TODO 71) karena
-  sandbox tidak punya Android SDK/emulator (entri "Kondisi sandbox" di atas).
+- (2026-09-12, pasca-audit menyeluruh) **Tiga invariant konkurensi** — teks lengkapnya
+  DIPINDAH ke sub-bagian *"Invariant & kewajiban yang mengikat (berstatus ATURAN)"*
+  di akhir §5 (2026-09-13), karena ia aturan, bukan fakta. Lihat di sana.
 - (2026-09-12) **`androidx.core` kini dependensi TERDEKLARASI — versinya 1.13.0, dan itu
   bukan pilihan bebas.** `VelumInsets` mengimpor `androidx.core.view.ViewCompat`/
   `WindowInsetsCompat` sejak awal, tetapi katalog tidak menyatakannya, sehingga versi yang
@@ -1359,6 +1343,71 @@ sebagai riwayat):**
   (keluar 0, hanya mencetak pesan `push.autoSetupRemote`). Wajib memakai
   `git push -u origin <branch-sesi>` sesudah pemulihan.
 
+
+### Invariant & kewajiban yang mengikat (berstatus ATURAN, bukan fakta)
+
+**Status sub-bagian ini (2026-09-13).** Ia berada di dalam §5 agar dekat dengan
+buktinya, tetapi **berstatus aturan**: mengubahnya butuh frasa `ubah aturan …`
+(§10) walau letaknya di bagian fakta. Tanpa penegasan ini, invariant di bawah bisa
+diedit seenaknya lewat pintu "fakta §5 wajib diperbarui agen" — padahal inilah
+bagian yang paling menentukan benar tidaknya perilaku konkurensi aplikasi.
+
+- (2026-09-12, pasca-audit menyeluruh) **Tiga invariant konkurensi baru — wajib dijaga,
+  jangan di-"sederhanakan" kembali.**
+  1. **Semua sentuhan UI lewat `VelumController.onUi{}`**; tidak boleh ada pemanggilan
+     `ui.*` langsung dari thread latar. Sebelum audit, jalur ulangan uji (`runTraceTest`
+     yang dijadwalkan ke `testWorker`) menulis `TextView` tanpa `main.post` sementara
+     baris lain di berkas yang sama sudah dibungkus benar. Tidak crash hanya karena
+     kebetulan: kedua view target berukuran tetap (`0dp`+weight dan `match_parent`),
+     sehingga `View.checkForRelayout` mengambil jalur `invalidate()` dan tidak memanggil
+     `checkThread()`. Mengubah lebarnya jadi `wrap_content` = `CalledFromWrongThreadException`.
+  2. **`VelumTunnel` satu-satunya titik serialisasi *transisi tunnel*** (`@Synchronized`
+     pada `up`/`down`/`restart`/`refreshState`). Dua executor hidup berdampingan dan
+     **boleh** berjalan paralel — transisinya tidak saling menyela karena kunci ini, bukan
+     karena asumsi "tidak akan bersamaan". Pasangan down+up wajib lewat `restart()` yang
+     atomik, jangan dipanggil terpisah (guard `wasUp` di awal rotasi bersifat TOCTOU:
+     Putuskan di antaranya dulu bisa berakhir dengan tunnel hidup kembali setelah diminta
+     mati).
+
+     **Batas kunci itu — koreksi atas klaim yang pernah tertulis di sini.** Kunci
+     `@Synchronized` TIDAK melindungi dua hal lain yang juga menentukan hasil akhir: memo
+     niat (`Prefs.wasUp`) dan hidup/matinya `ReconnectMonitor`. Keduanya ditulis **di luar**
+     kunci, oleh pelaku yang berbeda (layar, ubin, receiver boot, pemantau), sehingga
+     interleaving tetap mungkin walau setiap transisi tunnel sudah serial. Versi bagian ini
+     sebelumnya menyebut "keamanannya datang dari kunci ini" tanpa batas — itu melebihkan
+     jaminan yang ada, dan cacat yang sebenarnya (temuan A2 audit ulang) justru bersembunyi
+     di belakang kalimat tersebut. Yang menutupnya adalah **generasi niat lintas pelaku**:
+     `VelumTunnel.bumpIntent()` / `intentStale(gen)` / `currentIntent`. Setiap pelaku yang
+     membawa niat baru menaikkan generasi SEBELUM bekerja, menyimpan angkanya, dan
+     memeriksa `intentStale` tepat sebelum menulis keadaan apa pun — termasuk sesudah jeda
+     panjang (proba endpoint ~6 detik, backoff sampai 60 detik). Pelaku yang menegakkan niat
+     yang sudah ada (`ReconnectMonitor`) membaca `currentIntent` tanpa menaikkannya.
+     Jangan mengembalikan generasi ini menjadi field privat satu kelas: itu persis keadaan
+     sebelum perbaikan, ketika ubin dan layar saling menimpa `wasUp` dan tunnel yang baru
+     dimatikan membangkitkan dirinya sendiri.
+  3. **Durasi koneksi milik tunnel (`VelumTunnel.upSinceElapsedMs`), bukan layar.**
+     Jangan mengembalikan jam `connectedSinceMs` ke Activity: manifest tanpa
+     `configChanges`, jadi layar dibuat ulang setiap rotasi dan jam milik layar mulai
+     dari nol — durasi tampil `00:00` padahal koneksi tidak pernah putus.
+  **Batas bukti (jujur):** ketiganya terverifikasi **statis** (baca kode + grep) dan
+  kompilasinya divalidasi CI; perilakunya di perangkat **belum diuji** (TODO 71) karena
+  sandbox tidak punya Android SDK/emulator (entri "Kondisi sandbox" di atas).
+
+**Pernyataan normatif lain yang tetap berada di entri bertanggal §5** — daftar ini
+dibuat agar tidak ada kewajiban yang lolos dari gerbang §10 hanya karena letaknya:
+
+| Letak (entri bertanggal) | Kewajiban yang mengikat |
+|---|---|
+| (2026-09-12) *"Tersambung" ≠ handshake terjadi* | Wajib `Connection: close` + `http.keepAlive=false`, dan menunggu `traffic().latestHandshakeMs > 0` sebelum uji |
+| (2026-09-13) *Tidak ada adb sama sekali* | Uji yang menuntut perintah di luar perangkat **tidak boleh** diserahkan ke maintainer |
+| (2026-09-12) *"PR Dependabot hijau" bisa menyesatkan* | CI sebuah PR wajib dibaca pada `head_sha`-nya, bukan pada nomor run historis |
+| (2026-09-13) *Artefak rilis yang dirujuk TODO 57 kedaluwarsa* | Path artifact/rilis wajib memakai pola `*.apk`, dan `head_sha` run wajib = ujung `main` |
+| (2026-09-13) *Branch sesi tidak punya upstream* | Wajib `git push -u origin <branch-sesi>`; `git push` tanpa argumen tidak mengirim apa pun |
+| (2026-09-13) *Sandbox ter-provision ulang* | Gerbang 0 wajib dijalankan sebelum **setiap** commit, bukan sekali per giliran |
+
+Daftar ini tidak menambah aturan baru — ia hanya memberi **status aturan** pada
+kalimat yang sejak awal memang berbunyi kewajiban.
+
 ## §6 Protokol Android: Presisi & Efisiensi Waktu (aktif 2026-09-11)
 
 Setiap detik pipeline CI mahal dan setiap iterasi yang gagal membuang waktu. §6 melengkapi
@@ -1456,7 +1505,9 @@ Permintaan masuk
 
 Protokol ini aktif sejak 2026-09-11 sampai maintainer menulis "stop protocol" atau
 memulai sesi baru. Bila ada aturan lain yang bertentangan dengan §6, §6 yang menang
-(kecuali §0 anti-pola dan §1 perintah eksplisit yang selalu mengikat).
+**kecuali** §0 anti-pola, §1 perintah eksplisit, §11, dan §12 — urutan lengkapnya
+ada di §10 (diperjelas 2026-09-13: redaksi lama hanya menyebut §0 dan §1, sehingga
+bertabrakan dengan klaim precedence di §11 dan §12).
 
 ## §7 Kontrak Per Jenis Tugas
 
@@ -1471,7 +1522,7 @@ di awal respons (`[KATEGORI: fix]`). Bila kategori salah, seluruh output tidak v
 | **docs** | Daftar berkas + alasan | Review mandiri | 0 (CI tidak jalan untuk `**.md`) | Dilarang ubah kode/config/workflow |
 | **ci/build** | Run acuan hijau + penjelasan perubahan | CI hijau di run pertama setelah push | Maks 2 kali perbaikan | Dilarang ubah kode aplikasi |
 | **chore** | Penjelasan mengapa perlu | CI hijau | Maks 1 kali perbaikan | Dilarang ubah logika bisnis |
-| **audit** | Commit/SHA yang diaudit + **daftar berkas yang benar-benar dibaca** (termasuk berkas uji, layout, manifest, build, workflow) | Laporan berstruktur: temuan bernomor, tingkat keparahan, `file:baris` persis, sebab→akibat, dan **bukti apa yang akan membatalkan temuan itu** | 0 (audit tidak mengubah kode) | Dilarang mengubah berkas apa pun. Dilarang mengklaim dampak sebelum membaca SEMUA jalur yang menulis string/perilaku terkait. Dilarang memakai ingatan sebagai bukti |
+| **audit** | Commit/SHA yang diaudit + **daftar berkas yang benar-benar dibaca** (termasuk berkas uji, layout, manifest, build, workflow) | Laporan berstruktur: temuan bernomor, tingkat keparahan, `file:baris` persis, sebab→akibat, dan **bukti apa yang akan membatalkan temuan itu** | 0 (audit tidak mengubah kode) | Dilarang mengubah berkas apa pun — **kecuali** fakta §5 yang terbukti kedaluwarsa selama audit: **catat** dulu, lalu perbarui pada commit `docs` tersendiri **setelah** mode audit berakhir (§10). Dilarang mengklaim dampak sebelum membaca SEMUA jalur yang menulis string/perilaku terkait. Dilarang memakai ingatan sebagai bukti |
 | **riset / investigasi** | Pertanyaan spesifik yang harus dijawab | Jawaban + bukti yang bisa diperiksa ulang orang lain (URL, tag/SHA upstream, keluaran perintah yang benar-benar dijalankan) + pernyataan eksplisit **apa yang tidak bisa dipastikan** dan mengapa | 0 | Dilarang menyimpulkan dari satu sumber bila sumber pembanding tersedia. Dilarang mengisi celah bukti dengan perkiraan yang diberi nada yakin |
 
 **Kenapa dua kategori ini baru ditambahkan (2026-09-13):** keduanya sudah berulang
@@ -1567,6 +1618,19 @@ disiplin.
   aturan atas inisiatif sendiri walau merasa ada yang kurang. Bila agen
   melihat celah aturan: laporkan sebagai temuan (mode `ANALISIS`), jangan
   langsung ubah.
+- **Urutan precedence (ditambahkan 2026-09-13).** Tiga bagian pernah masing-masing
+  mengklaim "saya yang menang" (§6, §11, §12) tanpa wasit bersama. Bila dua aturan
+  berbenturan, yang menang berurutan:
+  1. **§1 (perintah eksplisit) & §0 (anti-pola)** — selalu mengikat;
+  2. **§11 (kejujuran & anti-halusinasi)**;
+  3. **§12 (verifikasi perangkat)**;
+  4. **§3 (gerbang pra-commit, termasuk §3.5)**;
+  5. **§7 (kontrak per jenis tugas)**;
+  6. **§6 (presisi & efisiensi waktu)** — mengatur *cara* kerja, bukan *boleh
+     tidaknya* sesuatu dikerjakan;
+  7. bagian lainnya.
+  Bila dua aturan selevel, **yang lebih spesifik menang** atas yang lebih umum
+  (contoh: §12 butir 4 menang atas §4 untuk perubahan runtime).
 - **Fakta (§5)** boleh dan WAJIB diperbarui agen ketika menemukan informasi
   baru yang terverifikasi (run CI baru, perubahan struktur, jebakan baru).
   Format: tambah entri bertanggal, jangan hapus entri lama.
@@ -1672,7 +1736,10 @@ Perbaikan yang baru tervalidasi kompilasi oleh CI disebut "terkompilasi", bukan 
 
 **11.8 — Komentar, KDoc, CHANGELOG, dan TODO adalah klaim juga.**
 Bila kode berubah sehingga dokumen lama menjadi salah, dokumen ikut diperbaiki dalam
-commit yang sama (§4). Dilarang menulis "menjamin", "selalu", "tidak pernah", atau
+commit yang sama (§4). **Pengecualian (2026-09-13):** bila yang salah itu adalah
+**fakta §5**, ikuti §10 — pisahkan ke commit `docs: sinkronisasi AGENTS.md`
+tersendiri. Dua aturan itu tidak bisa dipenuhi sekaligus pada kasus itu; untuk fakta
+§5, §10 yang menang. Dilarang menulis "menjamin", "selalu", "tidak pernah", atau
 "aman" kecuali benar-benar berlaku untuk semua jalur kode yang ada. Klaim yang tidak
 dilakukan kode adalah bug dokumentasi — dan bug dokumentasi menular ke pembaca berikutnya.
 
