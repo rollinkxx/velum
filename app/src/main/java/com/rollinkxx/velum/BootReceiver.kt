@@ -73,14 +73,26 @@ class BootReceiver : BroadcastReceiver() {
         // sejak 2026-09-13 pengukurannya TIDAK lagi butuh adb: durasi percobaan dan
         // hasilnya direkam ke `Prefs.bootRecord` dan ditampilkan di baris "Boot" layar
         // diagnostik (uji F2 di docs/uji-perangkat.md).
+        // Niat pengguna dicatat SEBELUM pekerjaan dimulai, sama seperti pelaku lain
+        // (layar utama lewat `VelumController.nextIntent()`, ubin lewat `VelumTileService`).
+        // Tanpa ini percobaan boot bisa menghidupkan tunnel yang baru saja diminta mati:
+        // `up()` di sini dan `down()` dari layar sama-sama `@Synchronized`, sehingga tanpa
+        // penanda urutan keduanya sekadar berlomba memperoleh kunci — dan `down()` bisa
+        // kalah dari `up()` yang sudah telanjur berjalan.
+        val gen = VelumTunnel.bumpIntent()
         // Yang sudah dijaga di sini: kegagalan `up()` tidak menghalangi
-        // `ReconnectMonitor.ensure()`, jadi peristiwa jaringan berikutnya
-        // tetap punya peluang memulihkan tunnel.
+        // `ReconnectMonitor.ensure()` (bila niatnya masih yang terbaru), jadi peristiwa
+        // jaringan berikutnya tetap punya peluang memulihkan tunnel.
         Thread {
-            var berhasil = false
+            var hasil = VelumDiagnostics.BOOT_FAIL
             try {
-                VelumTunnel.up(context, prefs)
-                berhasil = true
+                if (VelumTunnel.intentStale(gen)) {
+                    Log.i(TAG, "$action: sambung ulang dibatalkan: ada niat pengguna yang lebih baru")
+                    hasil = VelumDiagnostics.BOOT_SKIPPED
+                } else {
+                    VelumTunnel.up(context, prefs)
+                    hasil = VelumDiagnostics.BOOT_OK
+                }
             } catch (e: Exception) {
                 Log.w(TAG, "$action: sambung ulang gagal", e)
             } finally {
@@ -92,8 +104,7 @@ class BootReceiver : BroadcastReceiver() {
                     prefs.writeBootRecordDurable(
                         VelumDiagnostics.encodeBoot(
                             VelumDiagnostics.Boot(
-                                if (berhasil) VelumDiagnostics.BOOT_OK
-                                else VelumDiagnostics.BOOT_FAIL,
+                                hasil,
                                 SystemClock.elapsedRealtime() - mulaiElapsed,
                                 mulaiEpoch
                             )
@@ -105,7 +116,12 @@ class BootReceiver : BroadcastReceiver() {
                 }
                 // Jaga sesi: bila peristiwa ini datang sebelum jaringan siap (khas saat
                 // boot), callback Available milik pemantau yang akan memulihkan.
-                ReconnectMonitor.ensure(context)
+                //
+                // Pemantau hanya dihidupkan bila niat boot MASIH yang terbaru: mendaftarkan
+                // monitor sesudah pengguna memutus akan membuat baris `Pemantau` terbaca
+                // "aktif" padahal ia baru saja meminta putus — persis baris yang dipakai
+                // membaca kebocoran niat.
+                if (!VelumTunnel.intentStale(gen)) ReconnectMonitor.ensure(context)
                 pending.finish()
             }
         }.start()
