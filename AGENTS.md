@@ -878,10 +878,15 @@ sebagai riwayat):**
   36, penghapusan popup tawaran, perbaikan uji koneksi, penggantian aturan AGENTS.md)
   masuk lewat **PR #14**; PR #15 berisi audit konkurensi + baris diagnostik layar-saja, dan
   PR #16 berisi perbaikan Data, Kecualikan Aplikasi, Selalu Aktif, dan tampilan layar utama.
-  **Keadaan per 2026-09-13: 2 PR Dependabot terbuka (#17 `setup-java` 5→6, #18
-  `androidx.core` 1.13.0→1.19.0), 0 issue, 0 tag, 0 release** (diverifikasi ulang:
-  `gh api repos/velum-tunnel/velum/tags` → 0, `.../releases` → 0)
-  (`gh api repos/…/git/refs/tags` → HTTP 404 karena namespace tag benar-benar kosong).
+  **Keadaan per 2026-09-13, diperbarui 23:38 UTC: 0 PR terbuka, 0 issue, 0 tag,
+  0 release.** *Koreksi atas kalimat yang sebelumnya tertulis di baris ini* ("2 PR
+  Dependabot terbuka (#17 `setup-java` 5→6, #18 `androidx.core` 1.13.0→1.19.0)"):
+  kedua PR itu **ditutup maintainer 2026-09-13 tanpa di-merge** — #18 pukul 16:48:04Z,
+  #17 pukul 16:48:26Z — dan branch `dependabot/*` sudah tidak ada di remote. Keduanya
+  **merah**, dengan sebab berbeda; rincinya dicatat sebagai entri bertanggal di bawah.
+  Tag & release diverifikasi ulang: `gh api repos/velum-tunnel/velum/tags` → 0,
+  `.../releases` → 0 (`gh api repos/…/git/refs/tags` → HTTP 404 karena namespace tag
+  benar-benar kosong).
   Ketiadaan rilis itu bukan kelalaian yang bisa dibereskan agen dari sandbox — lihat
   jebakan "artifact CI tidak bisa diunduh" di bawah.
 - **PR Dependabot: tidak ada lagi yang terbuka.** #5 (AGP 8.7.3 → 9.4.0) **ditutup**
@@ -892,6 +897,17 @@ sebagai riwayat):**
   Branch `dependabot/gradle/com.android.application-9.4.0` dibiarkan (agen tidak
   menyentuh branch `dependabot/*`, §1); GitHub membersihkannya sendiri.
   Bila Dependabot membuka PR AGP serupa lagi, cukup rujuk commit `42b94bb`.
+- (2026-09-13, 16:48 UTC) **Dua PR Dependabot ditutup tanpa merge — keduanya merah,
+  sebabnya berbeda.** #18 (`androidx.core` 1.13.0→1.19.0) gagal di job `verifikasi`
+  pada tiga langkah sekaligus: `Pengujian unit`, `Build debug APK`, dan `Build preview
+  APK (R8 aktif)` (run 34752623964; job `assembleRelease` ikut `skipped`) — jadi bump
+  itu memang memecahkan build, bukan sekadar menambah peringatan. #17 (`setup-java`
+  5→6) justru **lolos** job `verifikasi` dan gagal hanya di job `assembleRelease
+  (bertanda tangan)`, pada langkah "Build release APK bertanda tangan" (run
+  34752613118) — yakni di jalur yang bergantung Secrets, bukan di kode aplikasi.
+  Bila Dependabot kelak membuka lagi bump `androidx.core` di atas 1.13.0, anggap ia
+  merah sampai terbukti sebaliknya dan baca komentar di `gradle/libs.versions.toml`
+  (baris 9–19) sebelum menyetujuinya.
 - Sandbox: tanpa JDK/Gradle/Android SDK, dan **host build/Maven diblokir**
   (`services.gradle.org`, `repo1.maven.org`, `api.adoptium.net` → SSL_ERROR_SYSCALL),
   sehingga memasang toolchain sendiri pun mustahil — CI benar-benar satu-satunya jalan
