@@ -135,6 +135,11 @@ class MainActivity : AppCompatActivity(), VelumController.Ui {
      * pertama dan pendengarnya langsung dilepas. Layer software dipilih supaya
      * pendar dan gradien tampil identik di semua perangkat — aman karena ini satu
      * TextView statis yang tidak pernah diubah isinya.
+     *
+     * Lebar gradien diukur dari **teks**, bukan dari view: judul kini selebar layar
+     * (`match_parent`) dengan huruf di-auto-size dan dipusatkan, jadi gradien harus
+     * mengikuti hurufnya (dimulai dari tepi kiri teks) supaya tetap membentang
+     * gading→emas persis di atas huruf.
      */
     private fun polishAppTitle() {
         val title = findViewById<TextView>(R.id.appTitle)
@@ -142,13 +147,10 @@ class MainActivity : AppCompatActivity(), VelumController.Ui {
         title.viewTreeObserver.addOnPreDrawListener(object : ViewTreeObserver.OnPreDrawListener {
             override fun onPreDraw(): Boolean {
                 title.viewTreeObserver.removeOnPreDrawListener(this)
-                val width = if (title.width > 0) {
-                    title.width.toFloat()
-                } else {
-                    title.paint.measureText(title.text.toString())
-                }
+                val textWidth = title.paint.measureText(title.text.toString())
+                val offsetX = ((title.width - textWidth) / 2f).coerceAtLeast(0f)
                 title.paint.shader = LinearGradient(
-                    0f, 0f, width, 0f,
+                    offsetX, 0f, offsetX + textWidth, 0f,
                     resources.getColor(R.color.title_start, theme),
                     resources.getColor(R.color.title_end, theme),
                     Shader.TileMode.CLAMP

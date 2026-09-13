@@ -6,8 +6,9 @@
   karena tidak ada gulir — keputusan disengaja demi tampilan yang tidak "melompat".
 
   Cara menjaga agar tetap muat: tinggi ditekan (status sebaris, kartu rapat, baris
-  aksi 52dp). Susunan baru atas permintaan maintainer (H5): judul 80sp menempel ke
-  atas, sisa isi dipusatkan vertikal di ruang yang tersisa di bawahnya.
+  aksi 52dp). Susunan baru atas permintaan maintainer (H5): judul menempel ke atas
+  sebagai SATU baris penuh (auto-size 48–80sp) dengan sisa isi dipusatkan vertikal
+  di ruang yang tersisa di bawahnya.
 -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
@@ -22,34 +23,49 @@
     android:paddingBottom="12dp">
 
     <!-- Judul dua lapis: lapisan gelap sedikit turun memberi kesan timbul (3D),
-         lapisan depan bergradien gading-emas. Keduanya teks statis, digambar sekali. -->
+         lapisan depan bergradien gading-emas. Keduanya satu baris penuh (auto-size)
+         supaya tidak pernah membungkus ke dua baris; letter-spacing dikecilkan agar
+         proporsional. -->
     <FrameLayout
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content">
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:clipChildren="false">
 
-        <TextView
+        <androidx.appcompat.widget.AppCompatTextView
             android:id="@+id/appTitleShadow"
-            android:layout_width="wrap_content"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginStart="2dp"
-            android:layout_marginTop="3dp"
+            android:translationX="2dp"
+            android:translationY="3dp"
             android:fontFamily="sans-serif-light"
+            android:gravity="center_horizontal"
             android:includeFontPadding="false"
-            android:letterSpacing="0.34"
+            android:letterSpacing="0.15"
+            android:maxLines="1"
             android:text="@string/app_name"
             android:textColor="@color/title_shadow"
-            android:textSize="80sp" />
+            android:textSize="80sp"
+            app:autoSizeTextType="uniform"
+            app:autoSizeMinTextSize="48sp"
+            app:autoSizeMaxTextSize="80sp"
+            app:autoSizeStepGranularity="1sp" />
 
-        <TextView
+        <androidx.appcompat.widget.AppCompatTextView
             android:id="@+id/appTitle"
-            android:layout_width="wrap_content"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:fontFamily="sans-serif-light"
+            android:gravity="center_horizontal"
             android:includeFontPadding="false"
-            android:letterSpacing="0.34"
+            android:letterSpacing="0.15"
+            android:maxLines="1"
             android:text="@string/app_name"
             android:textColor="@color/fg"
-            android:textSize="80sp" />
+            android:textSize="80sp"
+            app:autoSizeTextType="uniform"
+            app:autoSizeMinTextSize="48sp"
+            app:autoSizeMaxTextSize="80sp"
+            app:autoSizeStepGranularity="1sp" />
     </FrameLayout>
 
     <!-- Sisa isi dipusatkan vertikal di ruang yang tersisa setelah judul menempel atas. -->
@@ -87,12 +103,13 @@
         android:paddingStart="14dp"
         android:paddingTop="8dp"
         android:paddingEnd="14dp"
-        android:paddingBottom="14dp">
+        android:paddingBottom="8dp">
 
-        <!-- Status disusun sebaris: titik + teks, memakan tinggi minimal. -->
+        <!-- Status disusun sebaris: titik + teks, tepat di tengah horizontal kartu. -->
         <LinearLayout
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:layout_gravity="center_horizontal"
             android:gravity="center_vertical"
             android:orientation="horizontal">
 
@@ -109,6 +126,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginStart="7dp"
                 android:fontFamily="sans-serif-medium"
+                android:includeFontPadding="false"
                 android:text="@string/status_disconnected"
                 android:textColor="@color/fg"
                 android:textSize="14sp" />
