@@ -20,14 +20,14 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 ### Changed
 - **Judul aplikasi membesar (30sp → 80sp) dan berkesan timbul 3D**: lapisan gelap sedikit
   turun di belakang lapisan bergradien emas, menempel ke atas layar. Judul dijamin **satu
-  baris penuh** lewat auto-size (48–80sp) + `maxLines=1` + letter-spacing dikecilkan
-  (0.34 → 0.15), jadi tidak pernah membungkus ke dua baris; gradien mengikuti hurufnya.
-  Keduanya teks statis yang digambar sekali, tanpa beban per-frame (prioritas kecepatan
-  dipertahankan); sisa isi dipusatkan vertikal di ruang yang tersisa.
+  baris penuh** lewat `maxLines=1` + `singleLine=true` + auto-size (48–80sp) + letter-spacing
+  dikecilkan (0.34 → 0.15), jadi tidak pernah membungkus ke dua baris; gradien mengikuti
+  hurufnya. Keduanya teks statis yang digambar sekali, tanpa beban per-frame (prioritas
+  kecepatan dipertahankan); sisa isi dipusatkan vertikal di ruang yang tersisa.
 - **Tagline diganti** "TUNNEL AMAN YANG RINGAN" → "PRIVAT, CEPAT, RINGAN".
-- **Status "Tersambung" disusun sebaris** (titik + teks 14sp, `includeFontPadding=false`)
-  tepat di tengah horizontal kartu, dengan padding kartu simetris (atas = bawah) supaya
-  rapi dan hemat tinggi.
+- **Status "Tersambung" disusun sebaris** (titik + teks 14sp, `includeFontPadding=false`,
+  `gravity="center"`) tepat di tengah horizontal kartu, dengan padding kartu simetris
+  (atas = bawah = 12dp) supaya rapi dan presisi.
 - **Layar utama menjadi tetap (tanpa menggulir)**: tinggi elemen ditekan agar muat satu
   layar. Konsekuensi diterima sadar — layar sangat pendek/skala huruf besar bisa
   terpotong.
