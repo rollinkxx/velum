@@ -1331,6 +1331,18 @@ sebagai riwayat):**
   (refspec fetch terbatas). Gerbang 0 (§3) adalah satu-satunya penjaganya. Klon juga
   sedalam satu commit: `.git/shallow` = ujung `main`, refspec hanya `main`, ±130 objek.
 
+- **(2026-09-13 23:10 UTC, insiden) Sandbox ter-provision ulang DI TENGAH giliran, untuk
+  ketiga kalinya yang tercatat.** Terjadi setelah 4 commit kode sudah ter-push (`2e8a12b`):
+  reflog hanya berisi `clone` 23:10:36 + `checkout` 23:10:37, dan HEAD kembali ke basis
+  `4cca724`. Yang menyelamatkan: (a) Gerbang 0 dijalankan dan menangkapnya SEBELUM commit,
+  sehingga tidak ada commit yatim ber-induk basis; (b) berkas kerja selamat dari snapshot,
+  terbukti dari `git diff --name-only FETCH_HEAD` yang hanya menyisakan 3 berkas dokumen
+  giliran itu. Pemulihan: fetch eksplisit → verifikasi diff → `reset --mixed
+  origin/<branch-sesi>`. **Jebakan baru yang perlu diingat:** konfigurasi upstream cabang
+  ikut lenyap bersama `.git`, sehingga `git push` tanpa argumen TIDAK mengirim apa pun
+  (keluar 0, hanya mencetak pesan `push.autoSetupRemote`). Wajib memakai
+  `git push -u origin <branch-sesi>` sesudah pemulihan.
+
 ## §6 Protokol Android: Presisi & Efisiensi Waktu (aktif 2026-09-11)
 
 Setiap detik pipeline CI mahal dan setiap iterasi yang gagal membuang waktu. §6 melengkapi
