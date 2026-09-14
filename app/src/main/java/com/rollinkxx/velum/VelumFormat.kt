@@ -163,7 +163,15 @@ object VelumFormat {
         val host = s.substring(0, idx)
         val port = s.substring(idx + 1)
         if (host.contains(':')) return null // IPv6 telanjang: wajib dibungkus [..]
-        if (!isIpv4(host) && !isDomainName(host)) return null
+        // Host yang isinya hanya angka dan titik adalah IP yang hendak ditulis pengguna
+        // — wajib lolos uji IPv4 ketat. Bila tidak, ia justru DITERIMA sebagai nama
+        // domain digit (mis. "999.1.1.1" sah sebagai label DNS) dan salah ketiknya baru
+        // terlihat belakangan sebagai kegagalan DNS — kabar buruk yang ditunda. Contoh
+        // yang ditolak di sini: "999.1.1.1", "01.2.3.4", atau satu angka telanjang.
+        val tampakIp = host.all { it.isDigit() || it == '.' }
+        if (tampakIp) {
+            if (!isIpv4(host)) return null
+        } else if (!isDomainName(host)) return null
         return if (isValidPort(port)) "$host:$port" else null
     }
 

@@ -174,8 +174,10 @@ class VelumFormatTest {
     @Test
     fun endpointManual_hostTidakSah_ditolak() {
         assertNull(VelumFormat.normalizeManualEndpoint(":2408")) // host kosong
-        assertNull(VelumFormat.normalizeManualEndpoint("999.1.1.1:2408")) // oktet >
-        assertNull(VelumFormat.normalizeManualEndpoint("01.2.3.4:2408")) // nol di depan
+        // Angka+titik semata diperlakukan sebagai niat IPv4: oktet >255/nol di depan
+        // wajib ditolak, bukan diperlakukan sebagai nama domain digit.
+        assertNull(VelumFormat.normalizeManualEndpoint("999.1.1.1:2408"))
+        assertNull(VelumFormat.normalizeManualEndpoint("01.2.3.4:2408"))
         assertNull(VelumFormat.normalizeManualEndpoint("-buruk-.example:2408"))
         assertNull(VelumFormat.normalizeManualEndpoint("dua..titik:2408"))
         // IPv6 telanjang ambigu dengan pemisah port: wajib kurung siku.
