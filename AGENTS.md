@@ -40,8 +40,8 @@ Bila fakta di §5 berubah, perbarui dokumen ini dalam **1 commit khusus** berjud
     pun. Sandbox bisa di-provision ulang antar-giliran sehingga riwayat lokal hilang
     sementara berkas kerja bertahan; `git add -A` di atas keadaan itu menelan seluruh
     riwayat sesi menjadi satu commit (§5).
-17. **Bila dua aturan berbenturan, urutannya ada di §10:** §1/§0 → §11 → §12 → §3 →
-    §7 → §6 → sisanya; aturan yang lebih spesifik menang atas yang lebih umum.
+17. **Bila dua aturan berbenturan, urutannya ada di §10:** §1/§0 → §9 → §11 → §12 →
+    §3 → §7 → §6 → sisanya; aturan yang lebih spesifik menang atas yang lebih umum.
     Kalimat yang berbunyi kewajiban tetap berstatus ATURAN walau tersimpan di §5
     (lihat sub-bagian "Invariant & kewajiban yang mengikat" di akhir §5).
 
@@ -1393,8 +1393,16 @@ bagian yang paling menentukan benar tidaknya perilaku konkurensi aplikasi.
   kompilasinya divalidasi CI; perilakunya di perangkat **belum diuji** (TODO 71) karena
   sandbox tidak punya Android SDK/emulator (entri "Kondisi sandbox" di atas).
 
-**Pernyataan normatif lain yang tetap berada di entri bertanggal §5** — daftar ini
-dibuat agar tidak ada kewajiban yang lolos dari gerbang §10 hanya karena letaknya:
+**Aturan umum yang lebih penting daripada tabel di bawah (ditambahkan 2026-09-13):**
+**setiap** kalimat di §5 yang berbunyi kewajiban — memuat kata *wajib*, *dilarang*,
+*tidak boleh*, atau *jangan pernah* — berstatus **ATURAN** dan tunduk pada §10,
+**tercantum di tabel berikut atau tidak**. Tanpa aturan umum ini, tabel di bawah
+selalu ketinggalan: ia hanya bertambah bila ada yang ingat menambahkannya, padahal
+entri bertanggal baru terus ditulis — terbukti pada hari tabel ini sendiri dibuat,
+delapan kewajiban lain sudah lolos darinya.
+
+Tabel di bawah karena itu adalah **contoh, bukan daftar lengkap** — ia menunjukkan
+bentuknya, bukan batasnya:
 
 | Letak (entri bertanggal) | Kewajiban yang mengikat |
 |---|---|
@@ -1418,7 +1426,10 @@ Setiap detik pipeline CI mahal dan setiap iterasi yang gagal membuang waktu. §6
 1. **Batch pertanyaan** — bila butuh informasi, tanyakan SEMUA sekaligus dalam satu pesan.
    Maksimal satu kali bertanya; tidak ada pertanyaan bertahap.
 2. **Smart defaults** — info yang tidak diberikan → pakai default stabil dan sebutkan di
-   awal respons. **Isi repo selalu menang atas default protokol**: `gradle/libs.versions.toml`
+   awal respons. **Pengecualian (2026-09-13):** default tidak boleh dipakai untuk
+   menutupi ketidakpastian. Bila keadaan memenuhi salah satu pemicu §9 — termasuk
+   "ketidakpastian > 50%" — berhenti dan eskalasi, jangan menebak default. **Isi repo
+   selalu menang atas default protokol**: `gradle/libs.versions.toml`
    adalah satu-satunya sumber kebenaran versi (§4). Default protokol (AGP 8.5.2, Gradle 8.7,
    Kotlin 2.0.0, compileSdk/targetSdk 34, minSdk 24, JDK 17, Kotlin DSL, version catalog)
    hanya dipakai bila katalog belum menetapkannya. Keadaan nyata repo: AGP 9.4.0,
@@ -1504,10 +1515,12 @@ Permintaan masuk
 ```
 
 Protokol ini aktif sejak 2026-09-11 sampai maintainer menulis "stop protocol" atau
-memulai sesi baru. Bila ada aturan lain yang bertentangan dengan §6, §6 yang menang
-**kecuali** §0 anti-pola, §1 perintah eksplisit, §11, dan §12 — urutan lengkapnya
-ada di §10 (diperjelas 2026-09-13: redaksi lama hanya menyebut §0 dan §1, sehingga
-bertabrakan dengan klaim precedence di §11 dan §12).
+memulai sesi baru. Bila ada aturan lain yang bertentangan dengan §6, §6 menang
+**hanya bila** ia tidak berbenturan dengan bagian yang lebih tinggi dalam urutan §10
+— jangan membaca kalimat ini sebagai daftar pengecualian yang lengkap.
+*(Diperjelas 2026-09-13: redaksi lama mendaftar pengecualian satu per satu — §0, §1,
+§11, §12 — dan daftar seperti itu selalu ketinggalan, karena §9, §3, dan §7 pun
+mengalahkan §6.)*
 
 ## §7 Kontrak Per Jenis Tugas
 
@@ -1519,7 +1532,7 @@ di awal respons (`[KATEGORI: fix]`). Bila kategori salah, seluruh output tidak v
 | **fix** | Bukti akar masalah (§3.5) + 1 kalimat sebab→akibat | CI hijau + akar hilang + regression test | Maks 2 kali perbaikan per bug individual (bukan per push; model paket §2 tetap berlaku) | Dilarang `try/catch`/`@Suppress` sebagai "fix" tanpa justifikasi di komentar |
 | **feat** | Spesifikasi + daftar edge case | CI hijau + test baru (atau argumen mengapa test lama cukup) | Maks 2 kali perbaikan per masalah yang muncul | Dilarang ubah kode existing kecuali perlu untuk integrasi |
 | **refactor** | Bukti perilaku tidak berubah (test lama tetap lulus) | CI hijau + diff tidak ubah perilaku observable | Maks 1 kali perbaikan | Dilarang ubah public API/signature/format data tanpa izin |
-| **docs** | Daftar berkas + alasan | Review mandiri | 0 (CI tidak jalan untuk `**.md`) | Dilarang ubah kode/config/workflow |
+| **docs** | Daftar berkas + alasan | Review mandiri | 0 — perubahan dokumen tidak memakan run Gradle; gerbang `dokumen` tetap berjalan dan wajib hijau | Dilarang ubah kode/config/workflow |
 | **ci/build** | Run acuan hijau + penjelasan perubahan | CI hijau di run pertama setelah push | Maks 2 kali perbaikan | Dilarang ubah kode aplikasi |
 | **chore** | Penjelasan mengapa perlu | CI hijau | Maks 1 kali perbaikan | Dilarang ubah logika bisnis |
 | **audit** | Commit/SHA yang diaudit + **daftar berkas yang benar-benar dibaca** (termasuk berkas uji, layout, manifest, build, workflow) | Laporan berstruktur: temuan bernomor, tingkat keparahan, `file:baris` persis, sebab→akibat, dan **bukti apa yang akan membatalkan temuan itu** | 0 (audit tidak mengubah kode) | Dilarang mengubah berkas apa pun — **kecuali** fakta §5 yang terbukti kedaluwarsa selama audit: **catat** dulu, lalu perbarui pada commit `docs` tersendiri **setelah** mode audit berakhir (§10). Dilarang mengklaim dampak sebelum membaca SEMUA jalur yang menulis string/perilaku terkait. Dilarang memakai ingatan sebagai bukti |
@@ -1613,24 +1626,30 @@ disiplin.
 
 ## §10 Meta-Aturan
 
-- **Aturan (§0–§4, §6–§12)** hanya boleh diubah atas perintah eksplisit
+- **Aturan (§0–§4, §6–§12, dan sub-bagian "Invariant & kewajiban yang mengikat" di
+  §5)** hanya boleh diubah atas perintah eksplisit
   maintainer dengan frasa "ubah aturan …". Agen tidak boleh "memperbaiki"
   aturan atas inisiatif sendiri walau merasa ada yang kurang. Bila agen
   melihat celah aturan: laporkan sebagai temuan (mode `ANALISIS`), jangan
   langsung ubah.
-- **Urutan precedence (ditambahkan 2026-09-13).** Tiga bagian pernah masing-masing
-  mengklaim "saya yang menang" (§6, §11, §12) tanpa wasit bersama. Bila dua aturan
-  berbenturan, yang menang berurutan:
+- **Urutan precedence (ditambahkan 2026-09-13; dikoreksi pada hari yang sama).** Empat
+  bagian pernah masing-masing mengklaim "saya yang menang" (§6, §9, §11, §12) tanpa
+  wasit bersama. Bila dua aturan berbenturan, yang menang berurutan:
   1. **§1 (perintah eksplisit) & §0 (anti-pola)** — selalu mengikat;
-  2. **§11 (kejujuran & anti-halusinasi)**;
-  3. **§12 (verifikasi perangkat)**;
-  4. **§3 (gerbang pra-commit, termasuk §3.5)**;
-  5. **§7 (kontrak per jenis tugas)**;
-  6. **§6 (presisi & efisiensi waktu)** — mengatur *cara* kerja, bukan *boleh
+  2. **§9 (eskalasi)** — "berhenti dan lapor" adalah perintah, bukan pilihan;
+  3. **§11 (kejujuran & anti-halusinasi)**;
+  4. **§12 (verifikasi perangkat)**;
+  5. **§3 (gerbang pra-commit, termasuk §3.5)**;
+  6. **§7 (kontrak per jenis tugas)**;
+  7. **§6 (presisi & efisiensi waktu)** — mengatur *cara* kerja, bukan *boleh
      tidaknya* sesuatu dikerjakan;
-  7. bagian lainnya.
+  8. bagian lainnya.
   Bila dua aturan selevel, **yang lebih spesifik menang** atas yang lebih umum
   (contoh: §12 butir 4 menang atas §4 untuk perubahan runtime).
+  *Koreksi atas draf pertama daftar ini:* §9 tidak tercantum sama sekali, padahal
+  §11.9 menyebut "§9 menang atas keinginan terlihat produktif" dan §6.2 menyuruh
+  memakai default tanpa bertanya — dua aturan itu hanya bisa didamaikan bila §9
+  berada di atas §6.
 - **Fakta (§5)** boleh dan WAJIB diperbarui agen ketika menemukan informasi
   baru yang terverifikasi (run CI baru, perubahan struktur, jebakan baru).
   Format: tambah entri bertanggal, jangan hapus entri lama.
