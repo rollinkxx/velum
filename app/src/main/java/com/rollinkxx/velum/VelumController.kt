@@ -284,6 +284,20 @@ class VelumController(context: Context, private val ui: Ui) {
                 ReconnectMonitor.ensure(app)
                 onUi { setBusy(false); applyState(VelumTunnel.state) }
             } catch (e: Exception) {
+               // Bersihkan HANYA bila niat percobaan ini masih yang terbaru.
+               // Tanpa cek ini, kegagalan yang terlambat (mis. registrasi atau proba
+               // endpoint yang timeout lama setelah pengguna sudah menekan Putuskan
+               // atau menekan Sambungkan lagi) ikut menulis: `wasUp = false`
+               // menimpa memo niat milik percobaan yang lebih baru, dan
+               // `ReconnectMonitor.stop` mematikan pemantau yang seharusnya tetap
+               // hidup — tunnel lalu bisa mati senyap tanpa pemulihan, persis
+               // kebocoran niat yang [VelumTunnel.bumpIntent] dirancang cegah.
+               // Percobaan yang kalah ini tidak boleh menyentuh keadaan bersama;
+               // pembersihan milik niat terbaru (jalur sukses, Putuskan, atau ubin).
+               if (stale(gen)) {
+                   Log.i(TAG, "kegagalan sambung diabaikan: ada niat pengguna yang lebih baru", e)
+                   return@submit
+               }
                 // Koneksi yang gagal tidak boleh meninggalkan TUN/VPN aktif tanpa
                 // niat yang tervalidasi dan tanpa pemantau yang konsisten.
                 prefs.wasUp = false
