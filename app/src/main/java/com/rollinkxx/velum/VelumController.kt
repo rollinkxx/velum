@@ -262,13 +262,33 @@ class VelumController(context: Context, private val ui: Ui) {
                     ui.refreshStaticInfo()
                 }
                 VelumTunnel.up(app, prefs)
+                // Tandai niat UP sebelum fallback endpoint: `restart()` memakai memo
+                // ini untuk memutuskan apakah ia boleh menyalakan tunnel kembali.
+                // Monitor belum diaktifkan sampai handshake tervalidasi di bawah.
+                prefs.wasUp = true
+                // State.UP hanya membuktikan antarmuka TUN berhasil dibuat. Endpoint
+                // yang dipilih lewat RTT TCP/443 belum membuktikan bahwa UDP/2408
+                // (WireGuard) dapat dilewati pada jaringan ini. Jangan menyatakan
+                // koneksi berhasil sebelum handshake nyata terlihat.
+                if (!awaitHandshake(CONNECT_HANDSHAKE_WAIT_MS)) {
+                    if (stale(gen)) return@submit
+                    if (!tryValidatedEndpointFallback(gen)) {
+                        throw IOException("endpoint WireGuard tidak menghasilkan handshake")
+                    }
+                }
                 // Niat dibaca ulang SETELAH up(): bila pengguna menekan Putuskan selama
-                // penyambungan, jangan menimpa niatnya dan jangan hidupkan pemantau.
+                // penyambungan, jangan menimpa niatnya dan jangan hidupkan pemantau lagi.
                 if (stale(gen)) return@submit
+                rememberWorkingEndpoint()
                 prefs.wasUp = true // memo untuk sambung ulang saat boot
                 ReconnectMonitor.ensure(app)
                 onUi { setBusy(false); applyState(VelumTunnel.state) }
             } catch (e: Exception) {
+                // Koneksi yang gagal tidak boleh meninggalkan TUN/VPN aktif tanpa
+                // niat yang tervalidasi dan tanpa pemantau yang konsisten.
+                prefs.wasUp = false
+                ReconnectMonitor.stop(app)
+                runCatching { VelumTunnel.down(app) }
                 fail(R.string.err_connect, e)
             }
         }
@@ -294,6 +314,32 @@ class VelumController(context: Context, private val ui: Ui) {
             throw IOException("registrasi dibatalkan")
         }
         VelumApi.register(prefs)
+    }
+
+    /**
+     * Mencoba kandidat berikutnya dan memvalidasinya dengan handshake WireGuard.
+     *
+     * RTT TCP/443 tetap dipakai hanya untuk mengurutkan kandidat agar percobaan
+     * tidak acak; keputusan akhir selalu dibuat oleh handshake UDP/2408. Endpoint
+     * tidak pernah dicatat sebagai [Prefs.workingEndpoint] sebelum validasi ini lolos.
+     */
+    private fun tryValidatedEndpointFallback(gen: Int): Boolean {
+        repeat(MAX_ENDPOINT_FALLBACKS) {
+            if (stale(gen) || !prefs.wasUp && VelumTunnel.state != Tunnel.State.UP) return false
+            if (!EndpointProbe.rotate(prefs, prefs.effectiveEndpoint)) return false
+            if (stale(gen)) return false
+            try {
+                VelumTunnel.restart(app, prefs)
+            } catch (e: Exception) {
+                Log.w(TAG, "gagal membangun ulang dengan kandidat endpoint", e)
+                return false
+            }
+            if (awaitHandshake(CONNECT_HANDSHAKE_WAIT_MS)) return true
+            // Bukti endpoint sebelumnya gagal; jangan biarkan ia terus mendapat
+            // prioritas pada percobaan berikutnya.
+            prefs.workingEndpoint = null
+        }
+        return false
     }
 
     fun disconnect() {
@@ -591,6 +637,8 @@ class VelumController(context: Context, private val ui: Ui) {
 
         /** Batas menunggu handshake sebelum uji trace dijalankan. */
         const val HANDSHAKE_WAIT_MS = 8000L
+        /** Validasi handshake saat connect memakai batas yang sama dengan uji otomatis. */
+        const val CONNECT_HANDSHAKE_WAIT_MS = 8000L
         /**
          * Percobaan kedua menunggu lebih lama: tunnel baru saja dibangun ulang dengan
          * endpoint yang berbeda, jadi wajar bila handshake-nya butuh beberapa detik lagi.
@@ -600,6 +648,8 @@ class VelumController(context: Context, private val ui: Ui) {
         /** Jeda ulangan bila hasil uji negatif padahal tunnel masih UP. */
         const val TEST_RETRY_MS = 1500L
         const val MAX_TEST_ATTEMPTS = 2
+        /** Batas rotasi aktual agar koneksi tidak menggantung terlalu lama. */
+        const val MAX_ENDPOINT_FALLBACKS = 3
         /** Jeda sebelum registrasi diulang satu kali. */
         const val REGISTER_RETRY_MS = 1500L
     }
