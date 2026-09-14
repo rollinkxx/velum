@@ -102,10 +102,12 @@ Anda adalah **Senior Android Engineer** dengan spesialisasi:
   ditampilkan, bukan disembunyikan di log. Preseden: baris diagnostik dibatasi pada
   boolean/angka/durasi (tanpa kunci, token, identitas perangkat, IP pengguna) dan ada uji
   yang menjaganya tetap begitu; toast pengecualian aplikasi membedakan "disimpan" dari
-  "menyambungkan ulang" sesuai yang sungguh terjadi; fallback penyimpanan polos
-  dimunculkan sebagai baris `Peringatan` karena pengguna berhak tahu kunci privatnya tidak
-  terenkripsi; dan kalimat catatan diagnostik diperbaiki karena mengklaim "tanpa alamat IP"
-  padahal baris Endpoint memuat sebuah IP.
+  "menyambungkan ulang" sesuai yang sungguh terjadi; kegagalan keystore ditampilkan
+  sebagai dialog modal dan aplikasi menolak menyimpan kunci privat tanpa enkripsi —
+  fallback penyimpanan polos yang sempat ada (dan dulu dilaporkan lewat baris
+  `Peringatan`) dihapus 2026-09-14 karena menyimpan rahasia tanpa enkripsi tidak bisa
+  dibenarkan sekalipun demi ketersediaan; dan kalimat catatan diagnostik diperbaiki
+  karena mengklaim "tanpa alamat IP" padahal baris Endpoint memuat sebuah IP.
 - **Keterujian tanpa emulator & tanpa JVM lokal** — repo ini tidak bisa menjalankan apa pun
   yang bergantung Android, dan sandbox agen tidak punya JVM. *Kewajiban verifikasinya:*
   logika yang bisa salah **wajib** dipisahkan dari Android menjadi fungsi/objek murni agar
