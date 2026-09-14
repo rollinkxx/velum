@@ -166,6 +166,20 @@ object VelumTunnel : Tunnel {
     }
 
     /**
+     * Cleanup khusus saat task aplikasi dihapus dari Recent Apps. Seluruh operasi
+     * berjalan dalam satu kunci tunnel dan aman dipanggil ulang.
+     */
+    @Synchronized
+    fun shutdownFromTaskRemoval(context: Context) {
+        val app = context.applicationContext
+        bumpIntent()
+        Prefs.of(app).wasUp = false
+        ReconnectMonitor.stop(app)
+        runCatching { down(app) }
+        StatusNotifier.hide(app)
+    }
+
+    /**
      * Mematikan lalu menyalakan tunnel dengan konfigurasi terbaru, sebagai **satu operasi
      * atomik** terhadap pelaku lain.
      *

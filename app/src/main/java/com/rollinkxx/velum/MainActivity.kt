@@ -56,7 +56,8 @@ class MainActivity : AppCompatActivity(), VelumController.Ui {
     private lateinit var vpnSettingsSub: TextView
 
     private val main = Handler(Looper.getMainLooper())
-
+    private var taskRemovalCheck: Runnable? = null
+    private var taskRemovalHandled = false
 
     /** Persetujuan VPN sistem; hasilnya diteruskan ke controller. */
     private val vpnLauncher = registerForActivityResult(
@@ -235,6 +236,19 @@ class MainActivity : AppCompatActivity(), VelumController.Ui {
     }
 
     override fun onDestroy() {
+        // Android tidak memanggil onTaskRemoved() pada Activity. Setelah Activity dihancurkan,
+        // beri sistem waktu menyelesaikan penghapusan task lalu bedakan rotasi/background
+        // (task masih terdaftar) dari swipe Recent Apps (task sudah hilang).
+        if (!isChangingConfigurations && !isFinishing && !taskRemovalHandled) {
+            val check = Runnable {
+                if (!hasLiveAppTask()) {
+                    taskRemovalHandled = true
+                    VelumTunnel.shutdownFromTaskRemoval(applicationContext)
+                }
+            }
+            taskRemovalCheck = check
+            main.postDelayed(check, 350L)
+        }
         if (::controller.isInitialized) controller.destroy()
         // shutdown(), BUKAN shutdownNow(): memotong restart() di tengah berarti
         // membiarkan tunnel turun padahal pengguna tidak pernah memintanya.
@@ -243,6 +257,12 @@ class MainActivity : AppCompatActivity(), VelumController.Ui {
         pulse?.cancel()
         super.onDestroy()
     }
+
+    /** API 21+: an empty app-task list is the observable signal after swipe removal. */
+    private fun hasLiveAppTask(): Boolean =
+        getSystemService(android.app.ActivityManager::class.java)?.appTasks?.any {
+            it.taskInfo.baseActivity?.packageName == packageName
+        } == true
 
     // ---------- Aksi yang masih milik UI ----------
 

@@ -225,3 +225,21 @@ Bila sebuah uji tidak dijalankan, tulis `tidak diuji` — jangan dikosongkan, da
 dianggap lulus.
 
 Agen yang merapikannya ke format ledger; Anda tidak perlu menulis ulang apa pun.
+
+
+## Kelompok I — Android 15: task Recent Apps dan ikon VPN
+
+Status: **belum diuji pada perangkat fisik oleh agen**. Jalankan pada Android 15 dengan
+notifikasi Velum diizinkan dan tunnel tersambung.
+
+| # | Langkah | Yang diharapkan | Bila berbeda |
+|---|---|---|---|
+| I1 | Buka Velum, sambungkan VPN, pastikan notifikasi/ikon VPN terlihat, lalu buka Recent Apps. | Tunnel dan notifikasi berada pada keadaan tersambung sebelum task dihapus. | Catat keadaan awal. |
+| I2 | Swipe kartu Velum dari Recent Apps. Jangan membuka aplikasi lain yang mengubah VPN. Tunggu 5 detik. | Tunnel berhenti, notifikasi Velum hilang, dan ikon status VPN sistem hilang. | Jika tunnel atau ikon tetap ada, catat waktu dan screenshot. |
+| I3 | Buka Pengaturan → VPN. | Velum tidak lagi tercatat sebagai VPN aktif; always-on yang sengaja dikonfigurasi tidak boleh diubah oleh fix ini. | Catat apakah always-on aktif. |
+| I4 | Buka Velum kembali. | Aplikasi terbuka tanpa auto-connect yang tidak diinginkan; status dan niat tersambung harus konsisten. | `Niat: Hidup` setelah task removal tanpa tindakan baru adalah bug. |
+| I5 | Setelah I2, matikan/hidupkan jaringan dan tekan ubin Quick Settings Velum. | Reconnect hanya terjadi bila pengguna memang memintanya melalui ubin; jaringan saja tidak boleh menghidupkan tunnel yang sudah dihentikan karena task removal. | Catat urutan tindakan dan hasil. |
+| I6 | Ulangi I2 dua kali dan lakukan rotasi/background biasa pada sesi lain. | Shutdown berulang tidak crash; rotasi/background normal tidak memutus tunnel. | Pisahkan hasil I2 dari uji rotasi agar diagnosis tidak rancu. |
+
+Bukti minimum: screenshot sebelum/sesudah, status Pengaturan → VPN, dan waktu relatif setiap tindakan.
+Jangan menyebut I1–I6 berhasil sebelum dijalankan pada perangkat fisik Android 15.
