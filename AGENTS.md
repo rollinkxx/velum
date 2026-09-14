@@ -42,6 +42,8 @@ Bila fakta di §5 berubah, perbarui dokumen ini dalam **1 commit khusus** berjud
     riwayat sesi menjadi satu commit (§5).
 17. **Bila dua aturan berbenturan, urutannya ada di §10:** §1/§0 → §9 → §11 → §12 →
     §3 → §7 → §6 → sisanya; aturan yang lebih spesifik menang atas yang lebih umum.
+    §10 sendiri adalah wasit, bukan peserta pengurutan. Eskalasi (§9 butir 4)
+    hanya bila urutan ini dan kaidah kekhususan tidak menyelesaikan benturan.
     Kalimat yang berbunyi kewajiban tetap berstatus ATURAN walau tersimpan di §5
     (lihat sub-bagian "Invariant & kewajiban yang mengikat" di akhir §5).
 
@@ -1344,6 +1346,19 @@ sebagai riwayat):**
   `git push -u origin <branch-sesi>` sesudah pemulihan.
 
 
+- **(2026-09-13) Skrip penyunting multi-berkas yang mati di tengah meninggalkan
+  keadaan setengah jadi.** Satu skrip python yang menyunting `AGENTS.md` gagal pada
+  pemeriksaan kewarasan terakhir: `s.count("aturan umum") == 2`, padahal frasa di
+  dalam dokumen tertulis **"Aturan umum"** (kapital di awal kalimat) dan `str.count`
+  peka huruf besar-kecil. Karena penulisan dilakukan di akhir skrip, `AGENTS.md`
+  **tidak tersentuh**; tetapi `TODO.md` keburu bertambah satu baris oleh skrip kedua
+  dalam panggilan yang sama, sehingga todo mencatat perubahan yang belum ada di
+  `AGENTS.md`. Fakta yang terpakai lagi nanti: (a) penulisan per berkas di akhir
+  skrip masing-masing membuat kegagalan tidak merusak berkas yang belum ditulis;
+  (b) `git diff --stat` sebelum commit memperlihatkan apakah keadaan akhir lengkap;
+  (c) pencocokan frasa dokumen dipakai dengan `re.findall("[Aa]turan umum", s)`,
+  bukan `s.count(...)` yang peka huruf.
+
 ### Invariant & kewajiban yang mengikat (berstatus ATURAN, bukan fakta)
 
 **Status sub-bagian ini (2026-09-13).** Ia berada di dalam §5 agar dekat dengan
@@ -1424,7 +1439,10 @@ Setiap detik pipeline CI mahal dan setiap iterasi yang gagal membuang waktu. §6
 ### Prinsip efisiensi waktu
 
 1. **Batch pertanyaan** — bila butuh informasi, tanyakan SEMUA sekaligus dalam satu pesan.
-   Maksimal satu kali bertanya; tidak ada pertanyaan bertahap.
+   Maksimal satu kali bertanya; tidak ada pertanyaan bertahap. **Pengecualian
+   (2026-09-13):** batas "satu kali bertanya" tidak berlaku untuk eskalasi §9 —
+   pemicu §9 dapat muncul beberapa kali dalam satu eksekusi, dan setiap
+   kemunculannya wajib dilaporkan.
 2. **Smart defaults** — info yang tidak diberikan → pakai default stabil dan sebutkan di
    awal respons. **Pengecualian (2026-09-13):** default tidak boleh dipakai untuk
    menutupi ketidakpastian. Bila keadaan memenuhi salah satu pemicu §9 — termasuk
@@ -1441,7 +1459,10 @@ Setiap detik pipeline CI mahal dan setiap iterasi yang gagal membuang waktu. §6
    (tujuan, asumsi/default, berkas terdampak, risiko) agar satu putaran persetujuan
    cukup. Setelah perintah: eksekusi lengkap, jangan menyuruh pengguna "lanjut ke
    langkah berikutnya". **Sekali jalan = semua berkas terdampak dalam 1 batch,
-   bukan 1 file per giliran.**
+   bukan 1 file per giliran.** **Pengecualian (2026-09-13):** bila pemicu §9
+   aktif di tengah eksekusi, berhenti di batas aman — jangan meninggalkan
+   perubahan setengah jadi yang belum ter-commit dan ter-push — lalu eskalasi
+   dengan menyebut pasalnya, dan lanjutkan setelah keputusan turun.
 5. **Antisipasi masalah turunan** — sertakan pencegahannya di respons/kode yang sama.
 6. **Sadari cache** — jangan merusak cache Gradle & dependensi di CI (lihat §3 langkah 7).
 7. **Kerja paralel** — bila beberapa berkas harus berubah, kerjakan semuanya dalam satu
@@ -1603,7 +1624,13 @@ situasi berikut:
 3. **Keputusan produk** — nama fitur, perilaku UX, apakah suatu edge case
    perlu ditangani, prioritas.
 4. **Kontradiksi antar aturan** — bila dua bagian AGENTS.md saling bertentangan
-   untuk kasus spesifik.
+   untuk kasus spesifik. **Pengecualian (2026-09-13):** eskalasi hanya bila
+   benturan itu **tidak** terselesaikan oleh urutan precedence §10 maupun oleh
+   kaidah "yang lebih spesifik menang". Bila salah satunya menyelesaikannya,
+   ikuti urutan itu dan sebutkan pasalnya di respons — jangan eskalasi.
+   *(Tanpa pengecualian ini, §9 mengalahkan §10 dalam urutan precedence yang
+   §10 ciptakan sendiri, sehingga setiap benturan wajib dieskalasi dan urutan
+   itu menjadi surat mati.)*
 5. **Ketidakpastian > 50%** — bila agen tidak bisa menulis kalimat "saya yakin
    ini akan berhasil karena …" dengan bukti konkret.
 6. **Aksi wajib-izin tambahan (§1)** — merge ke `main`, push paksa, hapus
@@ -1626,15 +1653,21 @@ disiplin.
 
 ## §10 Meta-Aturan
 
-- **Aturan (§0–§4, §6–§12, dan sub-bagian "Invariant & kewajiban yang mengikat" di
-  §5)** hanya boleh diubah atas perintah eksplisit
-  maintainer dengan frasa "ubah aturan …". Agen tidak boleh "memperbaiki"
+- **Aturan (§0–§4, §6–§12, dan setiap kalimat kewajiban di §5 — lihat aturan
+  umum di akhir §5, yang mencakup sub-bagian "Invariant & kewajiban yang
+  mengikat")** hanya boleh diubah atas perintah eksplisit maintainer dengan
+  frasa "ubah aturan …". Agen tidak boleh "memperbaiki"
   aturan atas inisiatif sendiri walau merasa ada yang kurang. Bila agen
   melihat celah aturan: laporkan sebagai temuan (mode `ANALISIS`), jangan
   langsung ubah.
 - **Urutan precedence (ditambahkan 2026-09-13; dikoreksi pada hari yang sama).** Empat
   bagian pernah masing-masing mengklaim "saya yang menang" (§6, §9, §11, §12) tanpa
-  wasit bersama. Bila dua aturan berbenturan, yang menang berurutan:
+  wasit bersama. Bila dua aturan berbenturan, yang menang berurutan.
+  **§10 adalah wasit, bukan peserta:** daftar di bawah ini adalah produk §10,
+  jadi §10 tidak diikutkan dalam pengurutan — ia menetapkan cara membacanya.
+  *(Ditegaskan 2026-09-13: tanpa kalimat ini, §10 jatuh ke "bagian lainnya" pada
+  peringkat terakhir daftarnya sendiri, sehingga §9 butir 4 mengalahkannya dan
+  urutan ini hampir tidak pernah dipakai.)*
   1. **§1 (perintah eksplisit) & §0 (anti-pola)** — selalu mengikat;
   2. **§9 (eskalasi)** — "berhenti dan lapor" adalah perintah, bukan pilihan;
   3. **§11 (kejujuran & anti-halusinasi)**;
@@ -1653,6 +1686,10 @@ disiplin.
 - **Fakta (§5)** boleh dan WAJIB diperbarui agen ketika menemukan informasi
   baru yang terverifikasi (run CI baru, perubahan struktur, jebakan baru).
   Format: tambah entri bertanggal, jangan hapus entri lama.
+  **Batasnya (2026-09-13):** pembaruan fakta tidak boleh mengubah kalimat
+  kewajiban di §5 (aturan umum di akhir §5, "tercantum di tabel atau tidak").
+  Bila sebuah fakta yang keliru hanya bisa dikoreksi dengan menyentuh kalimat
+  kewajiban, laporkan sebagai temuan (§9 butir 4) — jangan disunting.
 - **Ringkasan Eksekutif** wajib disinkronkan setiap kali aturan berubah.
 - Commit perubahan aturan/fakta: `docs: sinkronisasi AGENTS.md` (sudah
   ditetapkan di header dokumen).
