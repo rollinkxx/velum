@@ -6,7 +6,6 @@ import android.net.VpnService
 import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
-import android.util.Log
 import java.io.IOException
 import com.wireguard.android.backend.Tunnel
 import java.util.concurrent.ExecutorService
@@ -160,7 +159,7 @@ class VelumController(context: Context, private val ui: Ui) {
         try {
             executor.execute(block)
         } catch (_: RejectedExecutionException) {
-            Log.i(TAG, "pekerjaan dilewati: controller sudah dimatikan")
+            VelumLog.i(TAG, "pekerjaan dilewati: controller sudah dimatikan")
         }
     }
 
@@ -240,7 +239,7 @@ class VelumController(context: Context, private val ui: Ui) {
                         VelumApi.ensureWarpEnabled(prefs)
                         onUi { ui.refreshStaticInfo() }
                     } catch (e: Exception) {
-                        Log.w(TAG, "auto-heal akun gagal, lanjut tanpa heal", e)
+                        VelumLog.w(TAG, "auto-heal akun gagal, lanjut tanpa heal", e)
                     }
                 }
                 if (stale(gen)) return@submit
@@ -295,7 +294,7 @@ class VelumController(context: Context, private val ui: Ui) {
                // Percobaan yang kalah ini tidak boleh menyentuh keadaan bersama;
                // pembersihan milik niat terbaru (jalur sukses, Putuskan, atau ubin).
                if (stale(gen)) {
-                   Log.i(TAG, "kegagalan sambung diabaikan: ada niat pengguna yang lebih baru", e)
+                   VelumLog.i(TAG, "kegagalan sambung diabaikan: ada niat pengguna yang lebih baru", e)
                    return@submit
                }
                 // Koneksi yang gagal tidak boleh meninggalkan TUN/VPN aktif tanpa
@@ -320,7 +319,7 @@ class VelumController(context: Context, private val ui: Ui) {
             return
         } catch (first: Exception) {
             if (VelumError.kindOf(first) != VelumError.Kind.NETWORK) throw first
-            Log.i(TAG, "registrasi gagal, mengulang sekali setelah jeda", first)
+            VelumLog.i(TAG, "registrasi gagal, mengulang sekali setelah jeda", first)
         }
         try {
             Thread.sleep(REGISTER_RETRY_MS)
@@ -345,7 +344,7 @@ class VelumController(context: Context, private val ui: Ui) {
             try {
                 VelumTunnel.restart(app, prefs)
             } catch (e: Exception) {
-                Log.w(TAG, "gagal membangun ulang dengan kandidat endpoint", e)
+                VelumLog.w(TAG, "gagal membangun ulang dengan kandidat endpoint", e)
                 return false
             }
             if (awaitHandshake(CONNECT_HANDSHAKE_WAIT_MS)) return true
@@ -483,7 +482,7 @@ class VelumController(context: Context, private val ui: Ui) {
         val current = prefs.effectiveEndpoint ?: return
         if (prefs.workingEndpoint != current) {
             prefs.workingEndpoint = current
-            Log.i(TAG, "endpoint terbukti bekerja: $current")
+            VelumLog.d(TAG, "endpoint terbukti bekerja: $current")
         }
     }
 
@@ -590,13 +589,13 @@ class VelumController(context: Context, private val ui: Ui) {
                 // yang terukur, ATAU karena host efektif hasilnya sama dengan yang gagal.
                 // Keduanya berarti uji ulang memakai host yang sama — bukan "endpoint lama"
                 // seolah tidak ada yang berubah di Prefs.
-                Log.w(TAG, "endpoint efektif tidak berpindah; uji ulang memakai host yang sama")
+                VelumLog.w(TAG, "endpoint efektif tidak berpindah; uji ulang memakai host yang sama")
                 return
             }
             VelumTunnel.restart(app, prefs)
             onUi { ui.refreshStaticInfo() }
         } catch (e: Exception) {
-            Log.w(TAG, "putar endpoint & sambung ulang gagal", e)
+            VelumLog.w(TAG, "putar endpoint & sambung ulang gagal", e)
         } finally {
             onUi { testSuppressAuto = false }
         }

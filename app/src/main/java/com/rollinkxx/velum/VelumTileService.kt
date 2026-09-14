@@ -8,7 +8,6 @@ import android.os.Handler
 import android.os.Looper
 import android.service.quicksettings.Tile
 import android.service.quicksettings.TileService
-import android.util.Log
 import com.wireguard.android.backend.Tunnel
 import java.util.concurrent.Executors
 
@@ -69,7 +68,7 @@ class VelumTileService : TileService() {
                     val gen = VelumTunnel.bumpIntent()
                     if (wasUp) {
                         if (VelumTunnel.intentStale(gen)) {
-                            Log.i(TAG, "aksi ubin (putus) dibatalkan: ada niat yang lebih baru")
+                            VelumLog.i(TAG, "aksi ubin (putus) dibatalkan: ada niat yang lebih baru")
                         } else {
                             prefs.wasUp = false
                             ReconnectMonitor.stop(app)
@@ -80,7 +79,7 @@ class VelumTileService : TileService() {
                         // dalamnya, jadi diperiksa ulang tepat sebelum tunnel disentuh.
                         EndpointProbe.refresh(prefs)
                         if (VelumTunnel.intentStale(gen)) {
-                            Log.i(TAG, "aksi ubin (sambung) dibatalkan: ada niat yang lebih baru")
+                            VelumLog.i(TAG, "aksi ubin (sambung) dibatalkan: ada niat yang lebih baru")
                         } else {
                             VelumTunnel.up(app, prefs)
                             prefs.wasUp = true
@@ -89,7 +88,7 @@ class VelumTileService : TileService() {
                     }
                 }
             } catch (e: Exception) {
-                Log.w(TAG, "aksi ubin gagal", e)
+                VelumLog.w(TAG, "aksi ubin gagal", e)
             }
             updateTile()
         }

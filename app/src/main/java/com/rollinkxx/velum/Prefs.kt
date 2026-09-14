@@ -3,7 +3,6 @@ package com.rollinkxx.velum
 import android.annotation.SuppressLint
 import android.content.Context
 import android.content.SharedPreferences
-import android.util.Log
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
 import java.io.File
@@ -256,7 +255,7 @@ class Prefs(context: Context) {
             try {
                 return openEncrypted(ctx).also { migrateLegacy(ctx, it) }
             } catch (e: Exception) {
-                Log.w(TAG, "prefs terenkripsi gagal dibuka; berkas dikosongkan lalu dicoba ulang", e)
+                VelumLog.w(TAG, "prefs terenkripsi gagal dibuka; berkas dikosongkan lalu dicoba ulang", e)
                 deleteEncryptedFile(ctx)
                 return try {
                     openEncrypted(ctx).also { migrateLegacy(ctx, it) }
@@ -284,7 +283,7 @@ class Prefs(context: Context) {
             try {
                 File(File(ctx.applicationInfo.dataDir, "shared_prefs"), "$FILE.xml").delete()
             } catch (e: Exception) {
-                Log.w(TAG, "gagal mengosongkan berkas prefs rusak", e)
+                VelumLog.w(TAG, "gagal mengosongkan berkas prefs rusak", e)
             }
         }
 
@@ -326,9 +325,9 @@ class Prefs(context: Context) {
                 }
                 if (!ed.commit()) return
                 legacy.edit().clear().commit()
-                Log.i(TAG, "migrasi prefs lama selesai")
+                VelumLog.i(TAG, "migrasi prefs lama selesai")
             } catch (e: Exception) {
-                Log.w(TAG, "migrasi prefs lama gagal", e)
+                VelumLog.w(TAG, "migrasi prefs lama gagal", e)
             }
         }
     }

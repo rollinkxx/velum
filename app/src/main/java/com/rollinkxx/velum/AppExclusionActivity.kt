@@ -3,7 +3,6 @@ package com.rollinkxx.velum
 import android.content.Intent
 import android.graphics.Typeface
 import android.os.Bundle
-import android.util.Log
 import android.widget.Button
 import android.widget.CheckBox
 import android.widget.ImageButton
@@ -145,7 +144,7 @@ class AppExclusionActivity : AppCompatActivity() {
             try {
                 VelumTunnel.restart(app, prefs)
             } catch (e: Exception) {
-                Log.w(TAG, "gagal menyambungkan ulang setelah pengecualian disimpan", e)
+                VelumLog.w(TAG, "gagal menyambungkan ulang setelah pengecualian disimpan", e)
             }
         }
         finish()

@@ -1,7 +1,6 @@
 package com.rollinkxx.velum
 
 import android.os.SystemClock
-import android.util.Log
 import java.net.InetSocketAddress
 import java.net.Socket
 import java.util.concurrent.Callable
@@ -57,9 +56,9 @@ object EndpointProbe {
                     "$safeBest:$WG_PORT"
                 }
             prefs.speedEndpointAt = System.currentTimeMillis()
-            Log.i(TAG, "endpoint tercepat: ${prefs.effectiveEndpoint} (${ranked.size} terukur)")
+            VelumLog.d(TAG, "endpoint tercepat: ${prefs.effectiveEndpoint} (${ranked.size} terukur)")
         } catch (e: Exception) {
-            Log.w(TAG, "proba endpoint gagal, pakai endpoint lama", e)
+            VelumLog.w(TAG, "proba endpoint gagal, pakai endpoint lama", e)
         }
     }
 
@@ -88,7 +87,7 @@ object EndpointProbe {
                 wgPort = WG_PORT
             )
             if (d.host == null) {
-                Log.w(TAG, "putar endpoint: tidak ada kandidat lain yang terukur; Prefs tidak disentuh")
+                VelumLog.w(TAG, "putar endpoint: tidak ada kandidat lain yang terukur; Prefs tidak disentuh")
                 return false
             }
             // Endpoint yang tadinya dianggap terbukti bekerja BARU SAJA gagal handshake,
@@ -101,18 +100,18 @@ object EndpointProbe {
             prefs.speedEndpoint = d.speedEndpoint
             prefs.speedEndpointAt = System.currentTimeMillis()
             if (!d.changed) {
-                Log.w(
+                VelumLog.d(
                     TAG,
                     "putar endpoint: tidak ada perpindahan nyata (efektif ${d.effectiveHost} " +
                         "= yang gagal); bukti endpoint lama tetap dilepas"
                 )
                 false
             } else {
-                Log.i(TAG, "endpoint diputar ke ${prefs.effectiveEndpoint} (${ranked.size} kandidat terukur)")
+                VelumLog.d(TAG, "endpoint diputar ke ${prefs.effectiveEndpoint} (${ranked.size} kandidat terukur)")
                 true
             }
         } catch (e: Exception) {
-            Log.w(TAG, "putar endpoint gagal", e)
+            VelumLog.w(TAG, "putar endpoint gagal", e)
             false
         }
     }

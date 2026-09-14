@@ -6,7 +6,6 @@ import android.net.Network
 import android.net.NetworkCapabilities
 import android.net.VpnService
 import android.os.SystemClock
-import android.util.Log
 import com.wireguard.android.backend.Tunnel
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
@@ -77,7 +76,7 @@ object ReconnectMonitor {
         try {
             cm.registerDefaultNetworkCallback(cb)
         } catch (e: Exception) {
-            Log.w(TAG, "gagal mendaftar network callback", e)
+            VelumLog.w(TAG, "gagal mendaftar network callback", e)
             return
         }
         callback = cb
@@ -92,7 +91,7 @@ object ReconnectMonitor {
             context.applicationContext.getSystemService(ConnectivityManager::class.java)
                 ?.unregisterNetworkCallback(cb)
         } catch (e: Exception) {
-            Log.w(TAG, "gagal melepas network callback", e)
+            VelumLog.w(TAG, "gagal melepas network callback", e)
         }
     }
 
@@ -140,19 +139,19 @@ object ReconnectMonitor {
                 val prefs = try {
                     Prefs.of(app)
                 } catch (e: KeystoreUnavailableException) {
-                    Log.w(TAG, "pantulan dibatalkan: penyimpanan aman tidak tersedia", e)
+                    VelumLog.w(TAG, "pantulan dibatalkan: penyimpanan aman tidak tersedia", e)
                     return@execute
                 }
                 if (!prefs.wasUp || !prefs.isRegistered) return@execute
                 if (VelumTunnel.intentStale(gen)) {
-                    Log.i(TAG, "pantulan jaringan dibatalkan: ada niat pengguna yang lebih baru")
+                    VelumLog.i(TAG, "pantulan jaringan dibatalkan: ada niat pengguna yang lebih baru")
                     return@execute
                 }
                 if (VelumTunnel.state != Tunnel.State.UP) {
                     tryUpOnce(app, prefs, gen)
                     return@execute
                 }
-                Log.i(TAG, "jaringan $reason: memantul tunnel")
+                VelumLog.i(TAG, "jaringan $reason: memantul tunnel")
                 bounceWithBackoff(app, prefs, gen)
             } finally {
                 bouncing = false
@@ -184,7 +183,7 @@ object ReconnectMonitor {
                 // hasil yang masih segar <1 jam, jadi murah di jalur cepat ini).
                 EndpointProbe.refresh(prefs)
                 if (VelumTunnel.intentStale(gen)) {
-                    Log.i(TAG, "sambung ulang latar dibatalkan: ada niat pengguna yang lebih baru")
+                    VelumLog.i(TAG, "sambung ulang latar dibatalkan: ada niat pengguna yang lebih baru")
                     return
                 }
                 VelumTunnel.up(app, prefs)
@@ -192,10 +191,10 @@ object ReconnectMonitor {
                 // peristiwa jaringan susulan yang dipicu oleh kenaikan tunnel ini sendiri
                 // harus tetap tertahan debounce.
                 lastBounceMs = SystemClock.elapsedRealtime()
-                Log.i(TAG, "sambung ulang latar berhasil")
+                VelumLog.i(TAG, "sambung ulang latar berhasil")
             }
         } catch (e: Exception) {
-            Log.w(TAG, "sambung ulang latar gagal", e)
+            VelumLog.w(TAG, "sambung ulang latar gagal", e)
         }
     }
 
@@ -209,7 +208,7 @@ object ReconnectMonitor {
             }
             if (!wasUpSafe(app)) return // pengguna memutus di tengah pantulan
             if (VelumTunnel.intentStale(gen)) {
-                Log.i(TAG, "pantulan tunnel dihentikan: ada niat pengguna yang lebih baru")
+                VelumLog.i(TAG, "pantulan tunnel dihentikan: ada niat pengguna yang lebih baru")
                 return
             }
             try {
@@ -227,13 +226,13 @@ object ReconnectMonitor {
                     // peristiwa jaringan susulan lolos debounce dan memicu pantulan baru
                     // pada tunnel yang justru baru saja sehat.
                     lastBounceMs = SystemClock.elapsedRealtime()
-                    Log.i(TAG, "pantulan tunnel berhasil")
+                    VelumLog.i(TAG, "pantulan tunnel berhasil")
                     return
                 }
             } catch (e: Exception) {
-                Log.w(TAG, "pantulan tunnel gagal, coba lagi", e)
+                VelumLog.w(TAG, "pantulan tunnel gagal, coba lagi", e)
             }
         }
-        Log.w(TAG, "pantulan tunnel menyerah setelah ${BACKOFF_MS.size} percobaan")
+        VelumLog.w(TAG, "pantulan tunnel menyerah setelah ${BACKOFF_MS.size} percobaan")
     }
 }
