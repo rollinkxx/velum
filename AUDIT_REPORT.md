@@ -137,18 +137,23 @@ Sandbox: **tanpa JVM** (per AGENTS.md §5 — build hanya di CI). Tiap commit di
 |---|---|---|
 | [34850975713](https://github.com/velum-tunnel/velum/actions/runs/34850975713) | `0c0fa71` (P0) | ✅ success |
 | [34853427271](https://github.com/velum-tunnel/velum/actions/runs/34853427271) | `a57e0df` (kumulatif P0+P1.1+P1.2+P1.3+P2.1) | ✅ success |
-| [34855029326](https://github.com/velum-tunnel/velum/actions/runs/34855029326) | `172eef1` (kumulatif +P2.2) | ⏳ lihat catatan |
+| [34855029326](https://github.com/velum-tunnel/velum/actions/runs/34855029326) | `172eef1` (kumulatif +P2.2) | ❌ failure — 1 uji merah, diperbaiki oleh commit berikutnya |
+| [34858824381](https://github.com/velum-tunnel/velum/actions/runs/34858824381) | `640afce` (**tip**: P0–P3 lengkap) | ✅ success |
 
 > Run P1.1/P1.2/P1.3 dibatalkan otomatis oleh push berikutnya (concurrency
 > `cancel-in-progress: true` di repo — by design), sehingga bukti hijau yang berlaku
-> adalah run terakhir per titik kumulatif. Commit `b5c61ac` dan `b6d54cd` hanya
+> adalah run terakhir per titik kumulatif. Commit `b5c61ac`, `b6d54cd`, `58d4c5b` hanya
 > menyunting berkas `*.md`/`docs/**` yang memang dikecualikan dari pemicu CI
-> (`paths-ignore`) — tidak ada kode baru untuk diverifikasi di dalamnya.
+> (`paths-ignore`).
 >
-> **MENUNGGU KONFIRMASI:** status akhir run 34855029326 tidak sempat dibaca karena token
-> GitHub sandbox kedaluwarsa di tengah sesi (2026-09-14); akan diperiksa dan diperbarui
-> di sini begitu koneksi pulih. Bila merah, perbaikannya menyusul sebelum laporan ini
-> dianggap final.
+> **Temuan CI yang jujur — dan pelajarannya:** run 34855029326 (P2.2) MERAH pada
+> `VelumFormatTest.endpointManual_hostTidakSah_ditolak`. Ini bukan tes yang melindungi
+> perilaku lama, melainkan tes BARU yang saya tulis dengan asumsi keliru: validator
+> domain menerima label digit (`999.1.1.1` sah sebagai label DNS). Alih-alih mengubah
+> ekspektasi tes, bug asli diperbaiki di produk (commit `640afce`): host yang isinya
+> hanya angka+titik sekarang **wajib** lolos `isIpv4` ketat, sehingga salah ketik IP
+> (oktet >255, nol di depan) langsung ditolak di dialog — bukan gagal diam-diam di DNS.
+> Tesnya tetap persis seperti yang ditulis semula; kode yang menyesuaikan.
 
 ## ⚠️ Risiko Residual
 
