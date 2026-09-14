@@ -1334,7 +1334,7 @@ sebagai riwayat):**
   sedalam satu commit: `.git/shallow` = ujung `main`, refspec hanya `main`, ±130 objek.
 
 - **(2026-09-13 23:10 UTC, insiden) Sandbox ter-provision ulang DI TENGAH giliran, untuk
-  ketiga kalinya yang tercatat.** Terjadi setelah 4 commit kode sudah ter-push (`2e8a12b`):
+  keempat kalinya yang tercatat.** Terjadi setelah 4 commit kode sudah ter-push (`2e8a12b`):
   reflog hanya berisi `clone` 23:10:36 + `checkout` 23:10:37, dan HEAD kembali ke basis
   `4cca724`. Yang menyelamatkan: (a) Gerbang 0 dijalankan dan menangkapnya SEBELUM commit,
   sehingga tidak ada commit yatim ber-induk basis; (b) berkas kerja selamat dari snapshot,
@@ -1344,6 +1344,16 @@ sebagai riwayat):**
   ikut lenyap bersama `.git`, sehingga `git push` tanpa argumen TIDAK mengirim apa pun
   (keluar 0, hanya mencetak pesan `push.autoSetupRemote`). Wajib memakai
   `git push -u origin <branch-sesi>` sesudah pemulihan.
+  **Kejadian keempat, 2026-09-14 sekitar 02:26 UTC**, sesudah 15 commit ter-push
+  (`b83d862`): polanya sama persis dan pemulihannya kembali bekerja tanpa
+  kehilangan apa pun — `git diff --stat FETCH_HEAD` hanya menyisakan 3 berkas
+  dokumen yang sedang dikerjakan. **Jebakan baru yang muncul pada kejadian ini:**
+  bila sebuah skrip bash memakai heredoc (`git commit -q -F - <<'MSG' … MSG`) lalu
+  menulis `git push …` pada baris berikutnya, baris push itu **berada di luar
+  rantai `&&`** dan tetap dijalankan walau Gerbang 0 di awal rantai sudah menolak.
+  Kali ini tidak ada yang terkirim karena tidak ada commit baru, tetapi kebiasaan
+  ini bisa mengirim sesuatu yang belum diperiksa. Tulis `git push` di dalam rantai
+  `&&`, atau pasang `set -e` di awal skrip.
 
 
 - **(2026-09-13) Skrip penyunting multi-berkas yang mati di tengah meninggalkan
