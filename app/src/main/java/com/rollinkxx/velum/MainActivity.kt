@@ -10,15 +10,19 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
+import android.text.InputType
 import android.view.View
 import android.view.ViewTreeObserver
 import android.widget.Button
+import android.widget.EditText
+import android.widget.FrameLayout
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import com.wireguard.android.backend.Tunnel
+import java.util.concurrent.Executors
 
 /**
  * Satu layar: merender status yang diputuskan [VelumController] dan mengurus hal yang
@@ -41,6 +45,10 @@ class MainActivity : AppCompatActivity(), VelumController.Ui {
     private lateinit var vpnSettingsRow: View
     private lateinit var copyDiagRow: View
     private lateinit var exclusionsRow: View
+    private lateinit var endpointRow: View
+    private lateinit var endpointSub: TextView
+    /** Penyambungan ulang sesudah endpoint manual disimpan (pola layar pengecualian). */
+    private val endpointWorker = Executors.newSingleThreadExecutor()
     private lateinit var infoDuration: TextView
     private lateinit var infoEndpoint: TextView
     private lateinit var infoTest: TextView
@@ -108,6 +116,8 @@ class MainActivity : AppCompatActivity(), VelumController.Ui {
         vpnSettingsRow = findViewById(R.id.vpnSettings)
         copyDiagRow = findViewById(R.id.copyDiag)
         exclusionsRow = findViewById(R.id.exclusions)
+        endpointRow = findViewById(R.id.endpointManual)
+        endpointSub = findViewById(R.id.subEndpointManual)
         infoDuration = findViewById(R.id.infoDuration)
         infoEndpoint = findViewById(R.id.infoEndpoint)
         infoTest = findViewById(R.id.infoTest)
@@ -132,6 +142,7 @@ class MainActivity : AppCompatActivity(), VelumController.Ui {
         vpnSettingsRow.setOnClickListener { onOpenVpnSettings() }
         copyDiagRow.setOnClickListener { copyDiagnostics() }
         exclusionsRow.setOnClickListener { onOpenExclusions() }
+        endpointRow.setOnClickListener { showEndpointDialog() }
 
         refreshStaticInfo()
         requestNotificationPermissionIfNeeded()
@@ -225,6 +236,9 @@ class MainActivity : AppCompatActivity(), VelumController.Ui {
 
     override fun onDestroy() {
         if (::controller.isInitialized) controller.destroy()
+        // shutdown(), BUKAN shutdownNow(): memotong restart() di tengah berarti
+        // membiarkan tunnel turun padahal pengguna tidak pernah memintanya.
+        endpointWorker.shutdown()
         stopTicker()
         pulse?.cancel()
         super.onDestroy()
@@ -267,6 +281,90 @@ class MainActivity : AppCompatActivity(), VelumController.Ui {
     /** Membuka layar pemilihan aplikasi yang dikecualikan dari tunnel. */
     private fun onOpenExclusions() {
         startActivity(Intent(this, AppExclusionActivity::class.java))
+    }
+
+    /**
+     * Dialog endpoint manual: memaksa satu `host:port` dan melewati proba otomatis.
+     *
+     * Validasi ([VelumFormat.normalizeManualEndpoint], murni/teruji unit) terjadi saat
+     * Simpan — tombolnya dipasang sesudah `show()` supaya masukan yang salah memberi
+     * kesalahan pada kolom TANPA menutup dialog. Mengosongkan kolom (atau tombol Hapus)
+     * menghapus pilihan manual dan mengembalikan pemilihan otomatis.
+     */
+    private fun showEndpointDialog() {
+        val prefs = Prefs.of(this)
+        val input = EditText(this).apply {
+            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_URI
+            hint = getString(R.string.endpoint_hint)
+            setText(prefs.manualEndpoint.orEmpty())
+            setSingleLine()
+        }
+        val density = resources.displayMetrics.density
+        val wadah = FrameLayout(this).apply {
+            setPadding((20 * density).toInt(), (10 * density).toInt(), (20 * density).toInt(), 0)
+            addView(input)
+        }
+        val dialog = AlertDialog.Builder(this)
+            .setTitle(R.string.endpoint_dialog_title)
+            .setMessage(R.string.endpoint_dialog_body)
+            .setView(wadah)
+            .setNegativeButton(R.string.btn_cancel, null)
+            .setNeutralButton(R.string.endpoint_clear) { _, _ -> applyManualEndpoint(null) }
+            .setPositiveButton(R.string.btn_save, null)
+            .show()
+        dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+            val raw = input.text.toString().trim()
+            if (raw.isEmpty()) {
+                applyManualEndpoint(null)
+                dialog.dismiss()
+                return@setOnClickListener
+            }
+            val ternormalisasi = VelumFormat.normalizeManualEndpoint(raw)
+            if (ternormalisasi == null) {
+                input.error = getString(R.string.endpoint_invalid)
+            } else {
+                applyManualEndpoint(ternormalisasi)
+                dialog.dismiss()
+            }
+        }
+    }
+
+    /**
+     * Menerapkan endpoint manual dan memperbarui tampilan.
+     *
+     * Nilai hanya dibaca saat tunnel dibangun, jadi perubahan berlaku pada penyambungan
+     * berikutnya — KECUALI tunnel sedang naik: di sana penyambungan ulang dilakukan
+     * lewat [VelumTunnel.restart] (atomik terhadap pelaku lain, membaca ulang niat
+     * pengguna di tengah jalan), pola yang sama dengan penyimpanan pengecualian aplikasi.
+     */
+    private fun applyManualEndpoint(value: String?) {
+        val prefs = Prefs.of(this)
+        if (prefs.manualEndpoint == value) {
+            Toast.makeText(
+                this,
+                if (value == null) R.string.endpoint_cleared else R.string.endpoint_saved,
+                Toast.LENGTH_SHORT
+            ).show()
+            return
+        }
+        prefs.manualEndpoint = value
+        refreshStaticInfo()
+        if (controller.state == Tunnel.State.UP) {
+            Toast.makeText(this, R.string.endpoint_saved_restarting, Toast.LENGTH_SHORT).show()
+            endpointWorker.execute {
+                try {
+                    VelumTunnel.restart(applicationContext, prefs)
+                } catch (e: Exception) {
+                    VelumLog.w(TAG, "gagal menyambungkan ulang setelah endpoint manual disimpan", e)
+                }
+            }
+        } else {
+            Toast.makeText(
+                this,
+                if (value == null) R.string.endpoint_cleared else R.string.endpoint_saved,
+                Toast.LENGTH_SHORT
+            ).show()
+        }
     }
 
     /**
@@ -407,6 +505,9 @@ class MainActivity : AppCompatActivity(), VelumController.Ui {
         val prefs = Prefs.of(this)
         infoEndpoint.text = prefs.effectiveEndpoint ?: getString(R.string.value_none)
         infoTest.text = renderTest(prefs.lastTest)
+        // Subjudul baris endpoint menunjukkan nilai manualnya bila diisi — keputusan
+        // yang mematikan proba otomatis harus terlihat, bukan tersembunyi di prefs.
+        endpointSub.text = prefs.manualEndpoint ?: getString(R.string.sub_endpoint_manual)
     }
 
     override fun onConnectedVisual() {
@@ -555,6 +656,8 @@ class MainActivity : AppCompatActivity(), VelumController.Ui {
     }
 
     private companion object {
+        const val TAG = "Velum"
+
         /** Deteksi basi: tanpa perubahan trafik selama ini (ms) + handshake tua/tiada. */
         const val STALE_MS = 30_000L
     }

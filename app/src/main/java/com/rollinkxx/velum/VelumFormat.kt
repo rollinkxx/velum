@@ -127,4 +127,56 @@ object VelumFormat {
         val isV6 = host.contains(":") && host.count { it == ':' } > 1
         return isV4 || isV6
     }
+
+    /**
+     * Apakah [s] literal IPv4 SAH: empat oktet 0–255 tanpa nol di depan.
+     * Lebih ketat dari [isIpLiteral] (yang hanya membedakan literal vs nama domain) —
+     * dipakai untuk data yang masuk penyimpanan (kandidat DoH, endpoint manual).
+     */
+    fun isIpv4(s: String): Boolean {
+        val parts = s.split('.')
+        return parts.size == 4 && parts.all { p ->
+            p.isNotEmpty() && p.length <= 3 && p.all(Char::isDigit) &&
+                !(p.length > 1 && p.startsWith('0')) && p.toInt() <= 255
+        }
+    }
+
+    /**
+     * Menormalkan masukan endpoint manual pengguna menjadi `host:port` yang bisa dipakai
+     * WireGuard, atau `null` bila tidak sah. Diterima: IPv4, nama domain, atau IPv6
+     * dalam kurung siku; port wajib 1–65535. IPv6 telanjang (tanpa kurung) ditolak
+     * karena ambigu terhadap pemisah port — sejalan dengan `Peer.Builder.parseEndpoint`.
+     */
+    fun normalizeManualEndpoint(raw: String?): String? {
+        val s = raw?.trim().orEmpty()
+        if (s.isEmpty()) return null
+        if (s.startsWith("[")) {
+            val end = s.indexOf("]:").takeIf { it > 0 } ?: return null
+            val host = s.substring(1, end)
+            val port = s.substring(end + 2)
+            val v6Sah = host.count { it == ':' } >= 2 &&
+                host.all { it.isDigit() || it.lowercaseChar() in 'a'..'f' || it == ':' }
+            return if (v6Sah && isValidPort(port)) "[$host]:$port" else null
+        }
+        val idx = s.lastIndexOf(':')
+        if (idx <= 0 || idx == s.length - 1) return null
+        val host = s.substring(0, idx)
+        val port = s.substring(idx + 1)
+        if (host.contains(':')) return null // IPv6 telanjang: wajib dibungkus [..]
+        if (!isIpv4(host) && !isDomainName(host)) return null
+        return if (isValidPort(port)) "$host:$port" else null
+    }
+
+    /** Port 1–65535 (angka digit murni). */
+    private fun isValidPort(p: String): Boolean =
+        p.isNotEmpty() && p.length <= 5 && p.all(Char::isDigit) && p.toInt() in 1..65535
+
+    /** Nama domain yang layak jadi host endpoint (label non-kosong, karakter wajar). */
+    private fun isDomainName(s: String): Boolean {
+        if (s.isEmpty() || s.length > 253) return false
+        return s.split('.').all { label ->
+            label.isNotEmpty() && !label.startsWith('-') && !label.endsWith('-') &&
+                label.all { it.isLetterOrDigit() || it == '-' || it == '_' }
+        }
+    }
 }

@@ -47,6 +47,28 @@ class Prefs(context: Context) {
         get() = sp.getString(K_ENDPOINT, null)
         set(v) = sp.edit().putString(K_ENDPOINT, v).apply()
 
+    /**
+     * Endpoint pilihan pengguna ("host:port"), diisi lewat layar utama.
+     *
+     * Bila diisi, ia MENGATASI seluruh pemilihan otomatis: proba dilewati dan
+     * speed/working endpoint tidak lagi dipakai membangun tunnel. Dipertahankan oleh
+     * [clear] — ia pilihan milik pengguna, sama seperti [excludedApps], bukan milik
+     * registrasi.
+     */
+    var manualEndpoint: String?
+        get() = sp.getString(K_MANUAL_EP, null)
+        set(v) = sp.edit().putString(K_MANUAL_EP, v).apply()
+
+    /** Kandidat anycast hasil DoH terakhir (dipisah koma); null/kosong = daftar statis. */
+    var dohCandidates: String?
+        get() = sp.getString(K_DOH_EP, null)
+        set(v) = sp.edit().putString(K_DOH_EP, v).apply()
+
+    /** Kapan kandidat DoH terakhir diambil (epoch ms); basi setelah 24 jam. */
+    var dohCandidatesAt: Long
+        get() = sp.getLong(K_DOH_AT, 0L)
+        set(v) = sp.edit().putLong(K_DOH_AT, v).apply()
+
     /** Endpoint tercepat hasil proba (null = pakai endpoint registrasi). */
     var speedEndpoint: String?
         get() = sp.getString(K_SPEED_EP, null)
@@ -73,9 +95,13 @@ class Prefs(context: Context) {
         get() = VelumTestResult.decode(sp.getString(K_LAST_TEST, null))
         set(v) = sp.edit().putString(K_LAST_TEST, v?.encode()).apply()
 
-    /** Endpoint efektif: yang terbukti bekerja, lalu hasil proba, lalu endpoint registrasi. */
+    /**
+     * Endpoint efektif: pilihan **manual** pengguna, lalu yang terbukti bekerja, lalu
+     * hasil proba, lalu endpoint registrasi. Manual didahulukan karena ia satu-satunya
+     * nilai yang dipilih langsung oleh pengguna.
+     */
     val effectiveEndpoint: String?
-        get() = workingEndpoint ?: speedEndpoint ?: endpoint
+        get() = manualEndpoint ?: workingEndpoint ?: speedEndpoint ?: endpoint
 
     /** Paket aplikasi yang dikecualikan dari tunnel (split tunneling). */
     var excludedApps: Set<String>
@@ -181,16 +207,22 @@ class Prefs(context: Context) {
      * registrasi: baris `Boot` pada layar diagnostik adalah satu-satunya bukti tanpa-adb
      * untuk anggaran `goAsync()` (TODO 77), dan menghapusnya setiap kali pengguna menekan
      * Daftar ulang berarti menghilangkan ukuran yang belum sempat dibaca.
+     *
+     * [manualEndpoint] juga dipertahankan: ia disusun pengguna sama seperti daftar
+     * pengecualian, dan menghapusnya diam-diam akan membuat proba otomatis berjalan lagi
+     * padahal pengguna pernah dengan sengaja mematikannya.
      */
     @SuppressLint("ApplySharedPref")
     fun clear() {
         val keepUp = wasUp
         val keepExcluded = excludedApps
         val keepBoot = bootRecord
+        val keepManual = manualEndpoint
         val ed = sp.edit().clear()
         if (keepUp) ed.putBoolean(K_WAS_UP, true)
         if (keepExcluded.isNotEmpty()) ed.putStringSet(K_EXCLUDED, keepExcluded)
         if (keepBoot != null) ed.putString(K_BOOT, keepBoot)
+        if (keepManual != null) ed.putString(K_MANUAL_EP, keepManual)
         ed.commit()
     }
 
@@ -232,6 +264,9 @@ class Prefs(context: Context) {
         const val K_WAS_UP = "was_up"
         const val K_BOOT = "boot_last"
         const val K_EXCLUDED = "excluded_apps"
+        const val K_MANUAL_EP = "manual_ep"
+        const val K_DOH_EP = "doh_ep"
+        const val K_DOH_AT = "doh_at"
 
         /**
          * Membuka penyimpanan terenkripsi, hanya itu.

@@ -345,6 +345,10 @@ class VelumController(context: Context, private val ui: Ui) {
      * GoBackend sungguhan dan menjaga niat pengguna ([stale]).
      */
     private fun tryValidatedEndpointFallback(gen: Int): Boolean {
+        // Endpoint manual adalah keputusan pengguna: kegagalannya dilaporkan apa adanya
+        // (pesan jaringan menyebut endpoint yang dipakai), bukan diatasi diam-diam
+        // dengan endpoint lain yang justru tidak pernah diminta.
+        if (!prefs.manualEndpoint.isNullOrBlank()) return false
         val failingHost = prefs.effectiveEndpoint?.let(VelumFormat::hostPart)
         val ranked = EndpointProbe.measureRanked(prefs)
         val hasil = VelumVerifiedChoice.pickVerified(

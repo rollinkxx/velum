@@ -502,6 +502,69 @@
                 android:layout_marginStart="50dp"
                 android:background="@color/card_stroke" />
 
+            <!-- Baris "Endpoint manual": dialog host:port; proba otomatis dilewati bila diisi. -->
+            <LinearLayout
+                android:id="@+id/endpointManual"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="?attr/selectableItemBackground"
+                android:clickable="true"
+                android:focusable="true"
+                android:gravity="center_vertical"
+                android:minHeight="52dp"
+                android:orientation="horizontal"
+                android:paddingStart="16dp"
+                android:paddingEnd="12dp">
+
+                <ImageView
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
+                    android:contentDescription="@null"
+                    android:src="@drawable/ic_globe"
+                    app:tint="@color/accent" />
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="14dp"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:includeFontPadding="false"
+                        android:text="@string/btn_endpoint_manual"
+                        android:textColor="@color/fg"
+                        android:textSize="15sp" />
+
+                    <TextView
+                        android:id="@+id/subEndpointManual"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:ellipsize="end"
+                        android:includeFontPadding="false"
+                        android:maxLines="1"
+                        android:text="@string/sub_endpoint_manual"
+                        android:textColor="@color/muted"
+                        android:textSize="12sp" />
+                </LinearLayout>
+
+                <ImageView
+                    android:layout_width="16dp"
+                    android:layout_height="16dp"
+                    android:contentDescription="@null"
+                    android:src="@drawable/ic_chevron"
+                    app:tint="@color/outline" />
+            </LinearLayout>
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:layout_marginStart="50dp"
+                android:background="@color/card_stroke" />
+
             <LinearLayout
                 android:id="@+id/copyDiag"
                 android:layout_width="match_parent"

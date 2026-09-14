@@ -2,6 +2,7 @@ package com.rollinkxx.velum
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -140,6 +141,60 @@ class VelumFormatTest {
     @Test
     fun formatAge_negatifDianggapNol() {
         assertEquals("0 detik lalu", VelumFormat.formatAge(-10))
+    }
+
+    // ---------- validasi endpoint manual (kolom di dialog layar utama) ----------
+
+    @Test
+    fun endpointManual_bentukSah_diterimaApaAdanya() {
+        assertEquals("162.159.193.1:2408", VelumFormat.normalizeManualEndpoint("162.159.193.1:2408"))
+        assertEquals("engage.cloudflareclient.com:2408",
+            VelumFormat.normalizeManualEndpoint("engage.cloudflareclient.com:2408"))
+        assertEquals("[2606:4700:d0::1]:2408", VelumFormat.normalizeManualEndpoint("[2606:4700:d0::1]:2408"))
+        // Spasi pinggir dari ketikan pengguna wajar; dipangkas, bukan ditolak.
+        assertEquals("1.2.3.4:51820", VelumFormat.normalizeManualEndpoint("  1.2.3.4:51820  "))
+    }
+
+    @Test
+    fun endpointManual_kosong_berartiHapus_diTingkatPemanggil() {
+        assertNull(VelumFormat.normalizeManualEndpoint(""))
+        assertNull(VelumFormat.normalizeManualEndpoint("   "))
+        assertNull(VelumFormat.normalizeManualEndpoint(null))
+    }
+
+    @Test
+    fun endpointManual_portTidakSah_ditolak() {
+        assertNull(VelumFormat.normalizeManualEndpoint("162.159.193.1:0"))
+        assertNull(VelumFormat.normalizeManualEndpoint("162.159.193.1:65536"))
+        assertNull(VelumFormat.normalizeManualEndpoint("162.159.193.1:abc"))
+        assertNull(VelumFormat.normalizeManualEndpoint("162.159.193.1:"))
+        assertNull(VelumFormat.normalizeManualEndpoint("162.159.193.1")) // tanpa port
+    }
+
+    @Test
+    fun endpointManual_hostTidakSah_ditolak() {
+        assertNull(VelumFormat.normalizeManualEndpoint(":2408")) // host kosong
+        assertNull(VelumFormat.normalizeManualEndpoint("999.1.1.1:2408")) // oktet >
+        assertNull(VelumFormat.normalizeManualEndpoint("01.2.3.4:2408")) // nol di depan
+        assertNull(VelumFormat.normalizeManualEndpoint("-buruk-.example:2408"))
+        assertNull(VelumFormat.normalizeManualEndpoint("dua..titik:2408"))
+        // IPv6 telanjang ambigu dengan pemisah port: wajib kurung siku.
+        assertNull(VelumFormat.normalizeManualEndpoint("2606:4700:d0::1:2408"))
+        // Bukan heksadesimal IPv6.
+        assertNull(VelumFormat.normalizeManualEndpoint("[2606:4700:zz::1]:2408"))
+        // Kurung siku tanpa port.
+        assertNull(VelumFormat.normalizeManualEndpoint("[2606:4700:d0::1]"))
+    }
+
+    @Test
+    fun isIpv4_ketatTerhadapOktet() {
+        assertTrue(VelumFormat.isIpv4("162.159.193.1"))
+        assertTrue(VelumFormat.isIpv4("0.0.0.0"))
+        assertTrue(VelumFormat.isIpv4("255.255.255.255"))
+        assertTrue(!VelumFormat.isIpv4("256.1.1.1"))
+        assertTrue(!VelumFormat.isIpv4("1.2.3"))
+        assertTrue(!VelumFormat.isIpv4("1.2.3.4.5"))
+        assertTrue(!VelumFormat.isIpv4("1.2.3.a"))
     }
 
 }
