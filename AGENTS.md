@@ -1359,6 +1359,18 @@ sebagai riwayat):**
   (c) pencocokan frasa dokumen dipakai dengan `re.findall("[Aa]turan umum", s)`,
   bukan `s.count(...)` yang peka huruf.
 
+- **(2026-09-14) Menjalankan ulang workflow dari sandbox tidak bisa, dan pesannya
+  menyesatkan.** `gh run rerun <id> --failed` menolak dengan *"run ... cannot be
+  rerun; its workflow file may be broken"*, padahal `gh api
+  repos/<owner>/<repo>/actions/workflows/<berkas>` melaporkan workflow itu
+  `state: active` dan seluruh job serta langkahnya berjalan normal. `gh workflow run
+  <berkas> --ref <branch>` (pemicu `workflow_dispatch`) menolak dengan HTTP 403
+  *"Resource not accessible by integration"* — sama dengan seluruh endpoint
+  `code-scanning/*`, termasuk konfigurasi default setup CodeQL. Praktisnya: dari
+  sandbox, satu-satunya cara memicu ulang sebuah workflow adalah mendorong commit
+  baru ke branch, dan keadaan code scanning tidak bisa dibaca sama sekali (hanya
+  bisa disimpulkan dari ada tidaknya check-run yang bersangkutan).
+
 ### Invariant & kewajiban yang mengikat (berstatus ATURAN, bukan fakta)
 
 **Status sub-bagian ini (2026-09-13).** Ia berada di dalam §5 agar dekat dengan
