@@ -110,4 +110,14 @@ class VelumEndpointChoiceTest {
         // hostPart harus melepas port itu lagi, bukan menganggapnya bagian dari host.
         assertEquals(ipA, d.effectiveHost)
     }
+
+    @Test
+    fun pemenangLiteralIpv6_speedEndpointDibungkusKurungSiku() {
+        val ipv6 = "2606:4700:d0::1"
+        val d = putar(listOf(ipv6), current = ipA)
+        assertEquals(ipv6, d.host)
+        assertEquals("[$ipv6]:$port", d.speedEndpoint)
+        assertEquals(ipv6, d.effectiveHost)
+        assertTrue(d.changed)
+    }
 }

@@ -51,7 +51,11 @@ object EndpointProbe {
             val best = ranked.first()
             val regHost = prefs.endpoint?.let(VelumFormat::hostPart)
             prefs.speedEndpoint =
-                if (best == regHost || !VelumFormat.isIpLiteral(best)) null else "$best:$WG_PORT"
+                if (best == regHost || !VelumFormat.isIpLiteral(best)) null else {
+                    val isV6 = best.contains(":") && best.count { it == ':' } > 1
+                    val safeBest = if (isV6 && !best.startsWith("[")) "[$best]" else best
+                    "$safeBest:$WG_PORT"
+                }
             prefs.speedEndpointAt = System.currentTimeMillis()
             Log.i(TAG, "endpoint tercepat: ${prefs.effectiveEndpoint} (${ranked.size} terukur)")
         } catch (e: Exception) {

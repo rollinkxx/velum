@@ -121,7 +121,10 @@ object VelumFormat {
         return if (endpoint.count { it == ':' } == 1) endpoint.substringBeforeLast(":") else endpoint
     }
 
-    /** Apakah [host] literal IPv4 (bukan nama domain). */
-    fun isIpLiteral(host: String): Boolean =
-        host.all { it.isDigit() || it == '.' } && host.count { it == '.' } == 3
+    /** Apakah [host] literal IPv4 atau IPv6 (bukan nama domain). */
+    fun isIpLiteral(host: String): Boolean {
+        val isV4 = host.all { it.isDigit() || it == '.' } && host.count { it == '.' } == 3
+        val isV6 = host.contains(":") && host.count { it == ':' } > 1
+        return isV4 || isV6
+    }
 }

@@ -74,6 +74,7 @@ class VelumRegistrationTest {
     fun normalisasiEndpoint_ipv6DalamKurungSiku() {
         assertEquals("[fd00::1]:2408", VelumRegistration.normalizeEndpoint("[fd00::1]"))
         assertEquals("[fd00::1]:2408", VelumRegistration.normalizeEndpoint("[fd00::1]:2408"))
+        assertEquals("[fd00::1]:2408", VelumRegistration.normalizeEndpoint("fd00::1"))
         assertEquals("1.2.3.4:2408", VelumRegistration.normalizeEndpoint("1.2.3.4"))
         assertEquals("host:2408", VelumRegistration.normalizeEndpoint("  host  "))
     }

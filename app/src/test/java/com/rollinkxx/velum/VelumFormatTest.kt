@@ -98,8 +98,9 @@ class VelumFormatTest {
     }
 
     @Test
-    fun isIpLiteral_hanyaIPv4() {
+    fun isIpLiteral_ipv4DanIpv6() {
         assertTrue(VelumFormat.isIpLiteral("162.159.192.1"))
+        assertTrue(VelumFormat.isIpLiteral("2606:4700:d0::a29f:c001"))
         assertFalse(VelumFormat.isIpLiteral("engage.cloudflareclient.com"))
         assertFalse(VelumFormat.isIpLiteral("162.159.192"))
         assertFalse(VelumFormat.isIpLiteral(""))

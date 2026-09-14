@@ -56,7 +56,11 @@ object VelumEndpointChoice {
     ): Decision {
         val next = ranked.firstOrNull { it != currentHost }
             ?: return Decision(host = null, speedEndpoint = null, effectiveHost = currentHost, changed = false)
-        val speed = if (VelumFormat.isIpLiteral(next)) "$next:$wgPort" else null
+        val speed = if (VelumFormat.isIpLiteral(next)) {
+            val isV6 = next.contains(":") && next.count { it == ':' } > 1
+            val safeNext = if (isV6 && !next.startsWith("[")) "[$next]" else next
+            "$safeNext:$wgPort"
+        } else null
         // workingEndpoint dianggap sudah dikosongkan, jadi urutan jatuhnya adalah
         // speedEndpoint lalu endpoint registrasi — sama dengan Prefs.effectiveEndpoint.
         val effective = speed?.let(VelumFormat::hostPart) ?: registrationHost
