@@ -22,7 +22,6 @@ object VelumApi {
     class HttpError(val code: Int, message: String) : IOException(message)
 
     private const val BASE = VelumUpstream.BASE
-    private const val CLIENT_VERSION = VelumUpstream.CLIENT_VERSION
     private const val USER_AGENT = VelumUpstream.USER_AGENT
     const val DEFAULT_ENDPOINT = VelumUpstream.DEFAULT_ENDPOINT
 
@@ -173,9 +172,9 @@ object VelumApi {
             conn.requestMethod = method
             conn.connectTimeout = 15000
             conn.readTimeout = 15000
-            conn.setRequestProperty("User-Agent", USER_AGENT)
-            conn.setRequestProperty("CF-Client-Version", CLIENT_VERSION)
-            conn.setRequestProperty("Accept", "application/json")
+            // Header API hidup di satu tempat (VelumUpstream.API_HEADERS) dan dijaga
+            // unit test — jangan menambah header registrasi di sini secara terpisah.
+            for ((nama, nilai) in VelumUpstream.API_HEADERS) conn.setRequestProperty(nama, nilai)
             conn.setRequestProperty("Connection", "close")
             conn.useCaches = false
             if (bearer != null) conn.setRequestProperty("Authorization", "Bearer $bearer")
