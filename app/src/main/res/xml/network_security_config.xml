@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Konfigurasi keamanan jaringan Velum.
+
+  Dua keputusan sadar yang WAJIB dipahami sebelum mengubah berkas ini:
+
+  1. RUANG LINGKUP PIN sengaja hanya `api.cloudflareclient.com` — satu-satunya host
+     yang (a) menerima kredensial milik aplikasi (kunci publik registrasi, token
+     bearer) dan (b) isi responsnya langsung membentuk konfigurasi tunnel. Host uji
+     (`www.cloudflare.com`, `one.one.one.one`) dan DoH (`cloudflare-dns.com`) TIDAK
+     dipin: keduanya tidak membawa rahasia, dan setiap pin tambahan adalah permukaan
+     brick baru bila host-host itu berpindah infrastruktur.
+
+  2. PIN BUKAN sertifikat daun, melainkan kunci publik (SPKI, SHA-256/Base64) dari
+     ENAM CA penerbit yang benar-benar menerbitkan `cloudflareclient.com` (SAN
+     wildcard-nya mencakup host API) menurut log Certificate Transparency, diambil
+     2026-09-14 dari `api.certspotter.com/v1/issuances?domain=cloudflareclient.com`:
+       - WR1 & WE1  ("O=Google Trust Services")  — keluarga RSA/ECDSA jalur GTS;
+       - YR1, YR2, YE1, YE2 ("O=Let's Encrypt")  — keluarga RSA/ECDSA jalur LE.
+     Keenamnya adalah CA penerbit khusus Cloudflare di bawah akar masing-masing, dan
+     edge bisa menyajikan salah satunya kapan pun (kebijakan multi-CA Cloudflare).
+     Memin CA (bukan daun yang diputar ±90 hari) + menyertakan semua kandidat
+     penerbit = sertifikat daun boleh berganti-ganti tanpa menyentuh aplikasi.
+
+     Metode turunan (dapat diverifikasi ulang siapa pun):
+       sha256(SPKI DER) dari CA -> hex -> base64. Kesamaan nilai hex terhadap
+       `issuer.pubkey_sha256` milik certspotter dibuktikan dengan menghitung ulang
+       SPKI sertifikat daun yang PEM-nya ikut dalam respons CT (openssl, cocok).
+     Prosedur lengkap rotasi pin ada di SECURITY.md.
+
+  REMBESAN TERAKHIR: atribut `expiration`. Lewat tanggal itu seluruh set diabaikan
+  (fail-open oleh platform, bukan oleh kode kita). Ini sengaja: lebih baik aplikasi
+  lama turun ke validasi TLS biasa daripada brick permanen karena pin kedaluwarsa.
+  Konsekuensinya — pin WAJIB disegarkan setiap rilis (lihat SECURITY.md).
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false" />
+
+    <domain-config cleartextTrafficPermitted="false">
+        <domain includeSubdomains="false">api.cloudflareclient.com</domain>
+        <pin-set expiration="2027-03-31">
+            <!-- Google Trust Services: WR1 (RSA) -->
+            <pin digest="SHA-256">yDu9og255NN5GEf+Bwa9rTrqFQ0EydZ0r1FCh9TdAW4=</pin>
+            <!-- Google Trust Services: WE1 (ECDSA) -->
+            <pin digest="SHA-256">kIdp6NNEd8wsugYyyIYFsi1ylMCED3hZbSR8ZFsa/A4=</pin>
+            <!-- Let's Encrypt: YR1 (RSA) -->
+            <pin digest="SHA-256">LoMHBotttiDko50Gi13uXW71eIy7LAttI+rYT8wXF4w=</pin>
+            <!-- Let's Encrypt: YR2 (RSA) -->
+            <pin digest="SHA-256">nWN7PSep5XDQdge5zK24CnCRXHr3KvzhKEGxsdqCX9E=</pin>
+            <!-- Let's Encrypt: YE1 (ECDSA) -->
+            <pin digest="SHA-256">brzvtCELCIZUo4sD/qPX0ccRtPsd3DY6RfmxpOU9oB4=</pin>
+            <!-- Let's Encrypt: YE2 (ECDSA) -->
+            <pin digest="SHA-256">s/tdAOmUzd8syaTuqfgGvFcn6DzA5Cmb+Vby1ST+U3Y=</pin>
+        </pin-set>
+    </domain-config>
+</network-security-config>

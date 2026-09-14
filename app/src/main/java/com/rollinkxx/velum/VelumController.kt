@@ -6,7 +6,6 @@ import android.net.VpnService
 import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
-import android.util.Log
 import java.io.IOException
 import com.wireguard.android.backend.Tunnel
 import java.util.concurrent.ExecutorService
@@ -160,7 +159,7 @@ class VelumController(context: Context, private val ui: Ui) {
         try {
             executor.execute(block)
         } catch (_: RejectedExecutionException) {
-            Log.i(TAG, "pekerjaan dilewati: controller sudah dimatikan")
+            VelumLog.i(TAG, "pekerjaan dilewati: controller sudah dimatikan")
         }
     }
 
@@ -240,7 +239,7 @@ class VelumController(context: Context, private val ui: Ui) {
                         VelumApi.ensureWarpEnabled(prefs)
                         onUi { ui.refreshStaticInfo() }
                     } catch (e: Exception) {
-                        Log.w(TAG, "auto-heal akun gagal, lanjut tanpa heal", e)
+                        VelumLog.w(TAG, "auto-heal akun gagal, lanjut tanpa heal", e)
                     }
                 }
                 if (stale(gen)) return@submit
@@ -295,7 +294,7 @@ class VelumController(context: Context, private val ui: Ui) {
                // Percobaan yang kalah ini tidak boleh menyentuh keadaan bersama;
                // pembersihan milik niat terbaru (jalur sukses, Putuskan, atau ubin).
                if (stale(gen)) {
-                   Log.i(TAG, "kegagalan sambung diabaikan: ada niat pengguna yang lebih baru", e)
+                   VelumLog.i(TAG, "kegagalan sambung diabaikan: ada niat pengguna yang lebih baru", e)
                    return@submit
                }
                 // Koneksi yang gagal tidak boleh meninggalkan TUN/VPN aktif tanpa
@@ -320,7 +319,7 @@ class VelumController(context: Context, private val ui: Ui) {
             return
         } catch (first: Exception) {
             if (VelumError.kindOf(first) != VelumError.Kind.NETWORK) throw first
-            Log.i(TAG, "registrasi gagal, mengulang sekali setelah jeda", first)
+            VelumLog.i(TAG, "registrasi gagal, mengulang sekali setelah jeda", first)
         }
         try {
             Thread.sleep(REGISTER_RETRY_MS)
@@ -331,29 +330,61 @@ class VelumController(context: Context, private val ui: Ui) {
     }
 
     /**
-     * Mencoba kandidat berikutnya dan memvalidasinya dengan handshake WireGuard.
+     * Kandidat tercepat gagal handshake: coba kandidat terukur berikutnya satu per satu,
+     * masing-masing DIVERIFIKASI dengan handshake WireGuard singkat (batas
+     * [VERIFIED_HANDSHAKE_WAIT_MS] per kandidat, maksimal [MAX_ENDPOINT_FALLBACKS]).
      *
-     * RTT TCP/443 tetap dipakai hanya untuk mengurutkan kandidat agar percobaan
-     * tidak acak; keputusan akhir selalu dibuat oleh handshake UDP/2408. Endpoint
-     * tidak pernah dicatat sebagai [Prefs.workingEndpoint] sebelum validasi ini lolos.
+     * Pengukuran RTT dilakukan SEKALI di awal ([EndpointProbe.measureRanked]) lalu
+     * kandidat dipasang tanpa mengukur ulang — versi sebelumnya mengukur ulang pada
+     * setiap percobaan, sehingga rotasi bisa menyita waktu tiga kali anggaran proba.
+     * RTT tetap hanya prioritas percobaan; keputusan akhir selalu handshake UDP/2408,
+     * dan [Prefs.workingEndpoint] tidak pernah diisi sebelum handshake itu terlihat.
+     *
+     * Urutan percobaan dan arti pemenangnya dihitung [VelumVerifiedChoice] (murni,
+     * teruji unit dengan handshake tiruan); fungsi ini mengeksekusinya terhadap
+     * GoBackend sungguhan dan menjaga niat pengguna ([stale]).
      */
     private fun tryValidatedEndpointFallback(gen: Int): Boolean {
-        repeat(MAX_ENDPOINT_FALLBACKS) {
-            if (stale(gen) || !prefs.wasUp && VelumTunnel.state != Tunnel.State.UP) return false
-            if (!EndpointProbe.rotate(prefs, prefs.effectiveEndpoint)) return false
-            if (stale(gen)) return false
-            try {
-                VelumTunnel.restart(app, prefs)
-            } catch (e: Exception) {
-                Log.w(TAG, "gagal membangun ulang dengan kandidat endpoint", e)
-                return false
+        // Endpoint manual adalah keputusan pengguna: kegagalannya dilaporkan apa adanya
+        // (pesan jaringan menyebut endpoint yang dipakai), bukan diatasi diam-diam
+        // dengan endpoint lain yang justru tidak pernah diminta.
+        if (!prefs.manualEndpoint.isNullOrBlank()) return false
+        val failingHost = prefs.effectiveEndpoint?.let(VelumFormat::hostPart)
+        val ranked = EndpointProbe.measureRanked(prefs)
+        val hasil = VelumVerifiedChoice.pickVerified(
+            ranked = ranked,
+            skip = failingHost,
+            maxCandidates = MAX_ENDPOINT_FALLBACKS
+        ) { host ->
+            // Niat lebih baru, atau pemasangan yang tidak memindahkan endpoint efektif,
+            // berarti kandidat ini memang tidak layak dicoba — BUKAN handshake gagal.
+            if (stale(gen) || !EndpointProbe.applyCandidate(prefs, host, failingHost)) {
+                return@pickVerified false
             }
-            if (awaitHandshake(CONNECT_HANDSHAKE_WAIT_MS)) return true
-            // Bukti endpoint sebelumnya gagal; jangan biarkan ia terus mendapat
-            // prioritas pada percobaan berikutnya.
-            prefs.workingEndpoint = null
+            val ok = try {
+                VelumTunnel.restart(app, prefs)
+                awaitHandshake(VERIFIED_HANDSHAKE_WAIT_MS)
+            } catch (e: Exception) {
+                VelumLog.w(TAG, "gagal membangun ulang dengan kandidat endpoint", e)
+                false
+            }
+            if (ok && !stale(gen)) {
+                // Hanya sesudah handshake nyata endpoint ini layak dicatat terbukti.
+                rememberWorkingEndpoint()
+                true
+            } else {
+                // Bukti endpoint ini gagal; jangan biarkan ia terus diprioritaskan.
+                prefs.workingEndpoint = null
+                false
+            }
         }
-        return false
+        if (stale(gen)) return false
+        if (hasil.winner == null) {
+            VelumLog.d(TAG, "rotasi tervalidasi: tidak ada kandidat yang lolos handshake (dicoba: ${hasil.attempted.size})")
+            return false
+        }
+        VelumLog.d(TAG, "endpoint terverifikasi handshake: ${prefs.effectiveEndpoint} (${hasil.attempted.size} dicoba)")
+        return true
     }
 
     fun disconnect() {
@@ -483,7 +514,7 @@ class VelumController(context: Context, private val ui: Ui) {
         val current = prefs.effectiveEndpoint ?: return
         if (prefs.workingEndpoint != current) {
             prefs.workingEndpoint = current
-            Log.i(TAG, "endpoint terbukti bekerja: $current")
+            VelumLog.d(TAG, "endpoint terbukti bekerja: $current")
         }
     }
 
@@ -590,13 +621,13 @@ class VelumController(context: Context, private val ui: Ui) {
                 // yang terukur, ATAU karena host efektif hasilnya sama dengan yang gagal.
                 // Keduanya berarti uji ulang memakai host yang sama — bukan "endpoint lama"
                 // seolah tidak ada yang berubah di Prefs.
-                Log.w(TAG, "endpoint efektif tidak berpindah; uji ulang memakai host yang sama")
+                VelumLog.w(TAG, "endpoint efektif tidak berpindah; uji ulang memakai host yang sama")
                 return
             }
             VelumTunnel.restart(app, prefs)
             onUi { ui.refreshStaticInfo() }
         } catch (e: Exception) {
-            Log.w(TAG, "putar endpoint & sambung ulang gagal", e)
+            VelumLog.w(TAG, "putar endpoint & sambung ulang gagal", e)
         } finally {
             onUi { testSuppressAuto = false }
         }
@@ -642,6 +673,7 @@ class VelumController(context: Context, private val ui: Ui) {
                 (e as? VelumApi.HttpError)?.code?.toString() ?: detail
             )
             VelumError.Kind.SERVICE_BLOCKED -> app.getString(R.string.err_connect_closed)
+            VelumError.Kind.KEYSTORE -> app.getString(R.string.err_keystore)
             VelumError.Kind.UNKNOWN -> app.getString(resId, detail)
         }
     }
@@ -653,6 +685,16 @@ class VelumController(context: Context, private val ui: Ui) {
         const val HANDSHAKE_WAIT_MS = 8000L
         /** Validasi handshake saat connect memakai batas yang sama dengan uji otomatis. */
         const val CONNECT_HANDSHAKE_WAIT_MS = 8000L
+        /**
+         * Batas verifikasi handshake untuk SETIAP kandidat pengganti pada rotasi.
+         * Sengaja lebih ketat dari [CONNECT_HANDSHAKE_WAIT_MS]: kandidat utama diberi
+         * waktu lebih karena pembangunan tunnel pertama + resolusi DNS bisa lambat di
+         * jaringan nyata, tetapi kandidat pengganti diuji pada tunnel yang baru dibangun
+         * ulang dengan host literal — handshake WireGuard pertama memang seharusnya
+         * terjadi dalam hitungan satu-dua detik; lebih dari itu berarti jaringan ini
+         * tidak meneruskan UDP ke endpoint itu.
+         */
+        const val VERIFIED_HANDSHAKE_WAIT_MS = 3000L
         /**
          * Percobaan kedua menunggu lebih lama: tunnel baru saja dibangun ulang dengan
          * endpoint yang berbeda, jadi wajar bila handshake-nya butuh beberapa detik lagi.

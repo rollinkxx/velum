@@ -21,6 +21,13 @@ object VelumError {
         SERVER_REJECT,
 
         /**
+         * Penyimpanan terenkripsi perangkat tidak bisa dipakai — bukan salah jaringan
+         * dan bukan salah server; kunci privat tidak akan disimpan tanpa enkripsi,
+         * jadi pengguna diminta memperbaiki keystore lalu mendaftar ulang.
+         */
+        KEYSTORE,
+
+        /**
          * Sistem menolak/menutup layanan VPN milik aplikasi (bukan salah jaringan).
          *
          * Sejak `targetSdk` 36 izin layanan latar depan diperketat, dan Android bisa
@@ -50,6 +57,10 @@ object VelumError {
         // Harus sebelum IOException: HttpError adalah IOException juga.
         is VelumApi.HttpError ->
             if (VelumUpstream.isClientRejected(e.code)) Kind.SERVER_REJECT else Kind.UNKNOWN
+        // Juga sebelum IOException: kegagalan keystore bukanlah masalah jaringan, dan
+        // melaporkannya sebagai "Kesalahan jaringan" menyuruh pengguna mengganti Wi-Fi
+        // untuk masalah yang tidak ada hubungannya dengan jaringan.
+        is KeystoreUnavailableException -> Kind.KEYSTORE
         is UnknownHostException, is SocketTimeoutException, is ConnectException -> Kind.NETWORK
         // Penanda layanan diperiksa SEBELUM memutuskan "ini masalah jaringan".
         // Penolakan layanan latar depan bisa datang terbungkus IOException (mis. dari

@@ -28,6 +28,17 @@
     <string name="sub_vpn_settings_on_lockdown">Aktif · blokir tanpa VPN</string>
     <string name="sub_vpn_settings_off">Nonaktif</string>
     <string name="sub_exclusions">Lewatkan tunnel untuk aplikasi tertentu</string>
+    <!-- Baris & dialog endpoint manual: memaksa satu endpoint dan melewati proba. -->
+    <string name="btn_endpoint_manual">Endpoint manual</string>
+    <string name="sub_endpoint_manual">Pemilihan otomatis · proba tiap jam</string>
+    <string name="endpoint_dialog_title">Endpoint manual</string>
+    <string name="endpoint_dialog_body">Isi host:port untuk memaksa Velum memakai endpoint itu — proba otomatis dilewati sepenuhnya. Kosongkan (atau Hapus) untuk kembali ke pemilihan otomatis.</string>
+    <string name="endpoint_hint">mis. 162.159.193.1:2408</string>
+    <string name="endpoint_invalid">Format tidak sah. Gunakan host:port, mis. 162.159.193.1:2408 atau [2606:4700:d0::1]:2408.</string>
+    <string name="endpoint_saved">Endpoint manual disimpan; berlaku pada penyambungan berikutnya.</string>
+    <string name="endpoint_saved_restarting">Endpoint manual disimpan · menyambungkan ulang…</string>
+    <string name="endpoint_cleared">Endpoint manual dihapus; pemilihan otomatis dipakai lagi.</string>
+    <string name="endpoint_clear">Hapus</string>
     <string name="sub_copy_diag">Ringkasan tanpa kunci &amp; alamat IP Anda</string>
     <string name="title_excluded">Kecualikan aplikasi</string>
     <string name="btn_save">Simpan</string>
@@ -71,5 +82,10 @@
     <string name="err_connect_closed">Sambungan ditutup sistem. Periksa "Always-on VPN" dan blokir koneksi tanpa VPN pada pengaturan VPN, lalu coba lagi.</string>
     <string name="err_network">Kesalahan jaringan: %1$s</string>
     <string name="err_server_reject">Layanan menolak klien ini (HTTP %1$s). Versi Velum perlu diperbarui.</string>
+    <!-- Keystore perangkat gagal dibuka: kunci privat tidak akan disimpan tanpa enkripsi. -->
+    <string name="err_keystore_title">Penyimpanan aman tidak tersedia</string>
+    <string name="err_keystore_body">Penyimpanan aman tidak tersedia. Daftar ulang diperlukan.\n\nAndroid Keystore perangkat ini gagal dibuka, sehingga kunci privat tidak dapat disimpan terenkripsi — dan Velum tidak akan menyimpannya tanpa enkripsi. Nyalakan ulang perangkat, buka Velum kembali, lalu daftarkan ulang.</string>
+    <string name="err_keystore">Penyimpanan aman tidak tersedia. Nyalakan ulang perangkat lalu daftar ulang.</string>
+    <string name="btn_close_app">Tutup aplikasi</string>
     <string name="reset_done">Registrasi dihapus. Tekan Sambungkan untuk mendaftar ulang.</string>
 </resources>

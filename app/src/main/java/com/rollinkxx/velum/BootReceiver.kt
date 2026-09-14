@@ -5,7 +5,6 @@ import android.content.Context
 import android.content.Intent
 import android.net.VpnService
 import android.os.SystemClock
-import android.util.Log
 
 /**
  * Menyambung ulang tunnel tanpa campur tangan pengguna pada dua peristiwa:
@@ -31,10 +30,17 @@ class BootReceiver : BroadcastReceiver() {
         ) {
             return
         }
-        val prefs = Prefs.of(context)
+        // Tanpa keystore, tidak ada registrasi yang sah untuk dipulihkan dan tidak ada
+        // tempat untuk merekam diagnostik: berhenti diam, jangan bertindak apa pun.
+        val prefs = try {
+            Prefs.of(context)
+        } catch (e: KeystoreUnavailableException) {
+            VelumLog.w(TAG, "$action: sambung ulang dibatalkan: penyimpanan aman tidak tersedia", e)
+            return
+        }
         if (!prefs.isRegistered || !prefs.wasUp) return
         if (VpnService.prepare(context) != null) {
-            Log.w(TAG, "$action: persetujuan VPN tidak ada, sambung ulang dibatalkan")
+            VelumLog.w(TAG, "$action: persetujuan VPN tidak ada, sambung ulang dibatalkan")
             // Dicatat juga ke diagnostik: "kenapa tunnel tidak menyambung sendiri setelah
             // boot" harus bisa dijawab dari layar, bukan hanya dari logcat yang tidak
             // terbaca tanpa adb. Tidak ada durasi yang diukur karena tidak ada percobaan.
@@ -87,14 +93,14 @@ class BootReceiver : BroadcastReceiver() {
             var hasil = VelumDiagnostics.BOOT_FAIL
             try {
                 if (VelumTunnel.intentStale(gen)) {
-                    Log.i(TAG, "$action: sambung ulang dibatalkan: ada niat pengguna yang lebih baru")
+                    VelumLog.i(TAG, "$action: sambung ulang dibatalkan: ada niat pengguna yang lebih baru")
                     hasil = VelumDiagnostics.BOOT_SKIPPED
                 } else {
                     VelumTunnel.up(context, prefs)
                     hasil = VelumDiagnostics.BOOT_OK
                 }
             } catch (e: Exception) {
-                Log.w(TAG, "$action: sambung ulang gagal", e)
+                VelumLog.w(TAG, "$action: sambung ulang gagal", e)
             } finally {
                 // Direkam SEBELUM `pending.finish()`: sesudah itu proses boleh dibunuh
                 // kapan saja. `Prefs.bootRecord` memakai `commit()` karena alasan yang sama.
@@ -112,7 +118,7 @@ class BootReceiver : BroadcastReceiver() {
                     )
                 } catch (e: Exception) {
                     // Diagnostik tidak boleh menjadi alasan gagalnya pemulihan tunnel.
-                    Log.w(TAG, "$action: gagal merekam hasil boot", e)
+                    VelumLog.w(TAG, "$action: gagal merekam hasil boot", e)
                 }
                 // Jaga sesi: bila peristiwa ini datang sebelum jaringan siap (khas saat
                 // boot), callback Available milik pemantau yang akan memulihkan.

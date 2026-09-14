@@ -3,7 +3,6 @@ package com.rollinkxx.velum
 import android.content.Intent
 import android.graphics.Typeface
 import android.os.Bundle
-import android.util.Log
 import android.widget.Button
 import android.widget.CheckBox
 import android.widget.ImageButton
@@ -39,7 +38,15 @@ class AppExclusionActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_app_exclusion)
         VelumInsets.applySystemBars(findViewById(R.id.root))
-        prefs = Prefs.of(this)
+        // Tanpa keystore tidak ada penyimpanan untuk dibaca/ditulis: layar ini tidak
+        // bisa bekerja, jadi tutup setelah menjelaskannya — bukan berpura-pura kosong.
+        prefs = try {
+            Prefs.of(this)
+        } catch (e: KeystoreUnavailableException) {
+            Toast.makeText(this, R.string.err_keystore_title, Toast.LENGTH_LONG).show()
+            finish()
+            return
+        }
         list = findViewById(R.id.appList)
 
         val excluded = prefs.excludedApps
@@ -137,7 +144,7 @@ class AppExclusionActivity : AppCompatActivity() {
             try {
                 VelumTunnel.restart(app, prefs)
             } catch (e: Exception) {
-                Log.w(TAG, "gagal menyambungkan ulang setelah pengecualian disimpan", e)
+                VelumLog.w(TAG, "gagal menyambungkan ulang setelah pengecualian disimpan", e)
             }
         }
         finish()

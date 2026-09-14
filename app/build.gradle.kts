@@ -108,7 +108,11 @@ android {
     }
 
     buildFeatures {
-        buildConfig = false
+        // Diperlukan oleh VelumLog: gerbang BuildConfig.DEBUG membuat log level
+        // sensitif (d/i) mati total pada release/preview tanpa biaya runtime
+        // (konstanta compile-time). Satu-satunya kelas yang dihasilkan adalah
+        // BuildConfig itu sendiri — ukurannya tidak berarti di samping .so.
+        buildConfig = true
         viewBinding = false
     }
 

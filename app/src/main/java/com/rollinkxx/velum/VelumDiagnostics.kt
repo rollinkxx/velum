@@ -40,14 +40,6 @@ object VelumDiagnostics {
         /** Hasil uji terakhir yang sudah siap dibaca (mis. "Aktif · DC SIN · 15:25"). */
         val lastTest: String? = null,
         /**
-         * Apakah penyimpanan jatuh ke berkas POLOS karena keystore perangkat gagal,
-         * sehingga kunci privat tersimpan tanpa enkripsi.
-         *
-         * Bernilai bawaan `false` supaya ringkasan tetap 9 baris pada keadaan normal;
-         * baris peringatan hanya muncul ketika memang ada yang perlu diperingatkan.
-         */
-        val plaintextFallback: Boolean = false,
-        /**
          * Niat tersimpan ([Prefs.wasUp]): apakah tunnel DIHARAPKAN hidup. Dibandingkan
          * dengan [state] inilah ketahuan apakah niat bocor — Status `Terputus` sementara
          * Niat `Hidup` berarti sesuatu akan menyambungkannya lagi tanpa diminta.
@@ -177,8 +169,5 @@ object VelumDiagnostics {
         // bukan IP PoP Cloudflare, tetapi bagi aplikasi yang menawarkan privasi kalimat yang
         // bisa dibantah dengan menunjuk laporannya sendiri adalah kerugian yang tak perlu.
         append("Catatan     : tanpa kunci privat, identitas perangkat, atau alamat IP Anda").append('\n')
-        if (s.plaintextFallback) {
-            append("Peringatan  : penyimpanan TIDAK terenkripsi (keystore perangkat gagal)").append('\n')
-        }
     }
 }

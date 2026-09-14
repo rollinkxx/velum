@@ -43,3 +43,18 @@
 # tetap bisa dibaca setelah dipulihkan dengan mapping.txt.
 -keepattributes SourceFile,LineNumberTable
 -renamesourcefileattribute SourceFile
+
+# --- Penebangan ---
+# Lapis kedua dari gerbang BuildConfig.DEBUG di VelumLog: buang metode log level
+# sensitif pada varian yang diperkecil, SEKALIGUS pemanggilan android.util.Log.d/v
+# bawaan yang mungkin luput (mis. dari kode yang belum pindah ke VelumLog).
+# Log.w/e sengaja dipertahankan: tanpa adb, keduanya satu-satunya jejak kegagalan
+# di perangkat — dan keduanya tidak dipakai untuk data sensitif (lihat VelumLog).
+-assumenosideeffects class android.util.Log {
+    public static int v(...);
+    public static int d(...);
+}
+-assumenosideeffects class com.rollinkxx.velum.VelumLog {
+    public *** d(...);
+    public *** i(...);
+}

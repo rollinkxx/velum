@@ -40,6 +40,21 @@ class VelumErrorTest {
     }
 
     @Test
+    fun kegagalanKeystore_bukanDituduhMasalahJaringan() {
+        // KeystoreUnavailableException adalah IOException, tetapi ia tidak pernah berarti
+        // jaringan putus — dan SERVICE_MARKERS tidak boleh menangkapnya sebagai
+        // penolakan layanan latar depan.
+        assertEquals(
+            VelumError.Kind.KEYSTORE,
+            VelumError.kindOf(KeystoreUnavailableException(SecurityException("keystore?")))
+        )
+        assertEquals(
+            VelumError.Kind.KEYSTORE,
+            VelumError.kindOf(KeystoreUnavailableException(RuntimeException("gagal total")))
+        )
+    }
+
+    @Test
     fun kegagalanTakDikenal_dan_null() {
         assertEquals(VelumError.Kind.UNKNOWN, VelumError.kindOf(IllegalStateException("aneh")))
         assertEquals(VelumError.Kind.UNKNOWN, VelumError.kindOf(null))

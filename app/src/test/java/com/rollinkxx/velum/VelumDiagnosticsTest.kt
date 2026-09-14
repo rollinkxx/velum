@@ -72,22 +72,10 @@ class VelumDiagnosticsTest {
         // 13 baris = 9 baris semula + 4 baris keadaan internal (Niat, Pemantau, Proses,
         // Boot) yang ditambahkan 2026-09-13 atas persetujuan maintainer, karena pengujian
         // dilakukan di perangkat tanpa adb. Angka ini memang HARUS diperbarui oleh fitur
-        // tersebut; yang dijaga tetap adalah maksud aslinya — baris Peringatan hanya muncul
-        // bila perlu (lihat uji di bawah).
+        // tersebut. (Baris "Peringatan: penyimpanan polos" pernah menambah satu baris,
+        // tetapi fallback polos sudah dihapus: kunci privat tidak pernah lagi tersimpan
+        // tanpa enkripsi, jadi tidak ada lagi yang perlu diperingatkan.)
         assertEquals(13, teks.trim().lines().size)
-    }
-
-    @Test
-    fun penyimpananPolos_dimunculkanSebagaiPeringatan() {
-        val teks = VelumDiagnostics.render(contoh.copy(plaintextFallback = true))
-        assertTrue(teks.contains("Peringatan  : penyimpanan TIDAK terenkripsi"))
-        // Maksud asli uji ini dipertahankan lewat SELISIH, bukan angka mutlak: baris
-        // Peringatan tepat satu baris lebih panjang daripada ringkasan normal, dan hanya
-        // muncul bila memang perlu. Angka mutlaknya (14 dan 13) mengikuti penambahan empat
-        // baris keadaan internal 2026-09-13.
-        assertEquals(14, teks.trim().lines().size)
-        assertEquals(13, VelumDiagnostics.render(contoh).trim().lines().size)
-        assertEquals(1, teks.trim().lines().size - VelumDiagnostics.render(contoh).trim().lines().size)
     }
 
     // ---------- keadaan internal (ditambahkan 2026-09-13; maintainer menguji tanpa adb) ----------
