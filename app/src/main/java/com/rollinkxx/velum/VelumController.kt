@@ -330,29 +330,57 @@ class VelumController(context: Context, private val ui: Ui) {
     }
 
     /**
-     * Mencoba kandidat berikutnya dan memvalidasinya dengan handshake WireGuard.
+     * Kandidat tercepat gagal handshake: coba kandidat terukur berikutnya satu per satu,
+     * masing-masing DIVERIFIKASI dengan handshake WireGuard singkat (batas
+     * [VERIFIED_HANDSHAKE_WAIT_MS] per kandidat, maksimal [MAX_ENDPOINT_FALLBACKS]).
      *
-     * RTT TCP/443 tetap dipakai hanya untuk mengurutkan kandidat agar percobaan
-     * tidak acak; keputusan akhir selalu dibuat oleh handshake UDP/2408. Endpoint
-     * tidak pernah dicatat sebagai [Prefs.workingEndpoint] sebelum validasi ini lolos.
+     * Pengukuran RTT dilakukan SEKALI di awal ([EndpointProbe.measureRanked]) lalu
+     * kandidat dipasang tanpa mengukur ulang — versi sebelumnya mengukur ulang pada
+     * setiap percobaan, sehingga rotasi bisa menyita waktu tiga kali anggaran proba.
+     * RTT tetap hanya prioritas percobaan; keputusan akhir selalu handshake UDP/2408,
+     * dan [Prefs.workingEndpoint] tidak pernah diisi sebelum handshake itu terlihat.
+     *
+     * Urutan percobaan dan arti pemenangnya dihitung [VelumVerifiedChoice] (murni,
+     * teruji unit dengan handshake tiruan); fungsi ini mengeksekusinya terhadap
+     * GoBackend sungguhan dan menjaga niat pengguna ([stale]).
      */
     private fun tryValidatedEndpointFallback(gen: Int): Boolean {
-        repeat(MAX_ENDPOINT_FALLBACKS) {
-            if (stale(gen) || !prefs.wasUp && VelumTunnel.state != Tunnel.State.UP) return false
-            if (!EndpointProbe.rotate(prefs, prefs.effectiveEndpoint)) return false
-            if (stale(gen)) return false
-            try {
+        val failingHost = prefs.effectiveEndpoint?.let(VelumFormat::hostPart)
+        val ranked = EndpointProbe.measureRanked(prefs)
+        val hasil = VelumVerifiedChoice.pickVerified(
+            ranked = ranked,
+            skip = failingHost,
+            maxCandidates = MAX_ENDPOINT_FALLBACKS
+        ) { host ->
+            // Niat lebih baru, atau pemasangan yang tidak memindahkan endpoint efektif,
+            // berarti kandidat ini memang tidak layak dicoba — BUKAN handshake gagal.
+            if (stale(gen) || !EndpointProbe.applyCandidate(prefs, host, failingHost)) {
+                return@pickVerified false
+            }
+            val ok = try {
                 VelumTunnel.restart(app, prefs)
+                awaitHandshake(VERIFIED_HANDSHAKE_WAIT_MS)
             } catch (e: Exception) {
                 VelumLog.w(TAG, "gagal membangun ulang dengan kandidat endpoint", e)
-                return false
+                false
             }
-            if (awaitHandshake(CONNECT_HANDSHAKE_WAIT_MS)) return true
-            // Bukti endpoint sebelumnya gagal; jangan biarkan ia terus mendapat
-            // prioritas pada percobaan berikutnya.
-            prefs.workingEndpoint = null
+            if (ok && !stale(gen)) {
+                // Hanya sesudah handshake nyata endpoint ini layak dicatat terbukti.
+                rememberWorkingEndpoint()
+                true
+            } else {
+                // Bukti endpoint ini gagal; jangan biarkan ia terus diprioritaskan.
+                prefs.workingEndpoint = null
+                false
+            }
         }
-        return false
+        if (stale(gen)) return false
+        if (hasil.winner == null) {
+            VelumLog.d(TAG, "rotasi tervalidasi: tidak ada kandidat yang lolos handshake (dicoba: ${hasil.attempted.size})")
+            return false
+        }
+        VelumLog.d(TAG, "endpoint terverifikasi handshake: ${prefs.effectiveEndpoint} (${hasil.attempted.size} dicoba)")
+        return true
     }
 
     fun disconnect() {
@@ -653,6 +681,16 @@ class VelumController(context: Context, private val ui: Ui) {
         const val HANDSHAKE_WAIT_MS = 8000L
         /** Validasi handshake saat connect memakai batas yang sama dengan uji otomatis. */
         const val CONNECT_HANDSHAKE_WAIT_MS = 8000L
+        /**
+         * Batas verifikasi handshake untuk SETIAP kandidat pengganti pada rotasi.
+         * Sengaja lebih ketat dari [CONNECT_HANDSHAKE_WAIT_MS]: kandidat utama diberi
+         * waktu lebih karena pembangunan tunnel pertama + resolusi DNS bisa lambat di
+         * jaringan nyata, tetapi kandidat pengganti diuji pada tunnel yang baru dibangun
+         * ulang dengan host literal — handshake WireGuard pertama memang seharusnya
+         * terjadi dalam hitungan satu-dua detik; lebih dari itu berarti jaringan ini
+         * tidak meneruskan UDP ke endpoint itu.
+         */
+        const val VERIFIED_HANDSHAKE_WAIT_MS = 3000L
         /**
          * Percobaan kedua menunggu lebih lama: tunnel baru saja dibangun ulang dengan
          * endpoint yang berbeda, jadi wajar bila handshake-nya butuh beberapa detik lagi.

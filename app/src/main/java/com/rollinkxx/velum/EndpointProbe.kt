@@ -131,6 +131,42 @@ object EndpointProbe {
         }
     }
 
+    /**
+     * Host terurut dari tercepat (endpoint registrasi + kandidat anycast); kosong bila
+     * proba gagal total. Blocking ≤ ~6 detik.
+     *
+     * Diekspos untuk jalur verifikasi handshake di [VelumController]: pengukuran
+     * dilakukan SEKALI per rotasi, lalu kandidat dipasang satu per satu lewat
+     * [applyCandidate] sampai ada yang lolos handshake. (Jalur `rotate` yang lama
+     * mengukur ulang pada SETIAP percobaan fallback — hingga 3 × 6 detik.)
+     */
+    fun measureRanked(prefs: Prefs): List<String> = measure(prefs.endpoint)
+
+    /**
+     * Memasang [host] hasil [measureRanked] sebagai kandidat aktif di [prefs] TANPA
+     * mengukur ulang, memakai aturan keputusan yang persis sama dengan [rotate]
+     * ([VelumEndpointChoice]): nama domain tidak pernah menjadi `speedEndpoint`,
+     * literal IPv6 dibungkus kurung siku, dan bukti "terbukti bekerja" untuk host
+     * sebelumnya selalu dilepas — pemanggil sedang mencari pengganti justru karena
+     * host itu gagal handshake.
+     *
+     * @return true bila pemasangan benar-benar memindahkan endpoint efektif; `false`
+     *   berarti kandidat ini tidak mengubah apa pun dan tidak layak diuji handshake.
+     */
+    fun applyCandidate(prefs: Prefs, host: String, failingHost: String?): Boolean {
+        val d = VelumEndpointChoice.rotate(
+            ranked = listOf(host),
+            currentHost = failingHost,
+            registrationHost = prefs.endpoint?.let(VelumFormat::hostPart),
+            wgPort = WG_PORT
+        )
+        if (d.host == null) return false
+        prefs.workingEndpoint = null
+        prefs.speedEndpoint = d.speedEndpoint
+        prefs.speedEndpointAt = System.currentTimeMillis()
+        return d.changed
+    }
+
     /** Host terurut dari tercepat; kosong bila semua gagal. Blocking ≤ ~6 detik. */
     private fun measure(registered: String?): List<String> {
         val hosts = LinkedHashSet<String>()
