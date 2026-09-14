@@ -49,7 +49,7 @@ Kelompok A–G (29 uji) masih menunggu perangkat.
 | A — status & durasi | A1–A5 | V1 | TODO 56, 67, 68, 71 |
 | B — niat pengguna lintas pelaku | B1–B5 | V1 (lewat baris `Niat`/`Pemantau`) | TODO 67, 71, 74 |
 | C — pengecualian aplikasi | C1–C4 | V1 (lewat `cdn-cgi/trace` di browser) | TODO 71, 74 |
-| D — penyimpanan & registrasi | D1–D3 | V1 (lewat baris `Peringatan`) | TODO 68, 75 |
+| D — penyimpanan & registrasi | D1–D3 | V1 (lewat dialog keystore; baris `Peringatan` sudah dihapus bersama fallback polos, 2026-09-14) | TODO 68, 75 |
 | E — rotasi endpoint | E1–E3 | V1 | TODO 63, 71 |
 | F — boot & pembaruan | F1–F5 | V1 (lewat baris `Boot`) | TODO 71, 77 |
 | G — izin & kegagalan | G1–G4 | V1 | TODO 56, 67 |

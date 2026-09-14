@@ -72,12 +72,14 @@ adalah **hapus pemasangan dulu** — dan itu menghapus registrasi serta daftar p
 jadi Anda harus daftar ulang. `Niat` dan pengecualian memang dipertahankan oleh
 `Prefs.clear()`, tetapi penghapusan pemasangan dari sistem menghapus seluruh penyimpanan.
 
-**5. Yang diperiksa pertama kali setelah terpasang: baris `Peringatan`.** R8 aktif pada
-release (`isMinifyEnabled` + `isShrinkResources`), dan R8 baru benar-benar teruji saat
-runtime — ia bisa membuang kode yang ternyata dipakai (misalnya Tink di balik
-`EncryptedSharedPreferences`). Bila baris `Peringatan : penyimpanan TIDAK terenkripsi`
-muncul padahal perangkat Anda normal, itu tanda R8 merusak jalur kripto, bukan keystore
-perangkat yang rusak. Laporkan segera; itu alasan varian `preview` ada di repo ini.
+**5. Yang diperiksa pertama kali setelah terpasang: aplikasi terbuka NORMAL, tanpa dialog
+keystore.** R8 aktif pada release (`isMinifyEnabled` + `isShrinkResources`), dan R8 baru
+benar-benar teruji saat runtime — ia bisa membuang kode yang ternyata dipakai (misalnya
+Tink di balik `EncryptedSharedPreferences`). Sejak 2026-09-14 tidak ada lagi fallback
+polos: bila penyimpanan terenkripsi gagal dibuka, aplikasi menampilkan dialog modal
+**"Penyimpanan aman tidak tersedia. Daftar ulang diperlukan."** lalu menutup diri.
+Bila dialog itu muncul padahal perangkat Anda normal, itu tanda R8 merusak jalur kripto,
+bukan keystore perangkat yang rusak. Laporkan segera; itu alasan varian `preview` ada.
 
 **6. Alternatif bila release bermasalah:** artifact `app-preview` isinya **sama** dengan
 release (R8 + shrink, `isDebuggable = false`, `initWith(release)`) tetapi ditandatangani
@@ -145,7 +147,7 @@ lakukan secepat yang wajar, lalu baca baris `Niat`.
 | # | Tingkat | Langkah | Yang diharapkan | Bila berbeda |
 |---|---|---|---|---|
 | D1 | V1 | Susun daftar pengecualian (2 aplikasi). Sambungkan. Lalu **Daftar ulang**. Setelah selesai, buka Pengecualian lagi. | Kedua aplikasi **masih tercentang**. Tunnel diputus selama pendaftaran ulang | Daftar kosong = `clear()` menghapus pilihan Anda |
-| D2 | V1 | Buka diagnostik, periksa ada/tidaknya baris `Peringatan`. | **Tidak ada** baris `Peringatan : penyimpanan TIDAK terenkripsi` | Ada baris itu = keystore perangkat gagal, kunci privat tersimpan tanpa enkripsi. **Laporkan segera** — dan perlu daftar ulang sekali (konsekuensi yang diketahui, TODO 78) |
+| D2 | V1 | Buka aplikasi seperti biasa. | Aplikasi terbuka normal **tanpa** dialog "Penyimpanan aman tidak tersedia. Daftar ulang diperlukan." | Dialog itu muncul = keystore perangkat (atau jalur kripto hasil R8) gagal. Sejak 2026-09-14 kunci privat TIDAK pernah disimpan tanpa enkripsi — aplikasi menolak bekerja dalam keadaan itu. **Laporkan segera** bila muncul di perangkat normal |
 | D3 | V1 | Paksa aplikasi berhenti (Pengaturan → Aplikasi → Velum → **Paksa berhenti**) **tepat saat** menekan Sambungkan/Daftar ulang. Buka lagi. | Aplikasi tetap bisa dipakai: atau tersambung penuh, atau kembali ke keadaan sebelum itu — **tidak campuran** (mis. terdaftar tapi tidak bisa menyambung) | Keadaan campuran = penulisan penyimpanan tidak atomik |
 
 ## Kelompok E — rotasi endpoint (V1)
@@ -191,6 +193,8 @@ logcat sama sekali** — angkanya ada di baris `Boot`.
 | H5 | V1 | Buka aplikasi; periksa judul besar + tagline baru, dan pastikan seluruh isi (sampai "Salin diagnostik") terlihat **tanpa menggulir** pada ponsel biasa. | Judul "Velum" besar berkesan timbul; tagline "PRIVAT, CEPAT, RINGAN"; status satu baris; layar **tidak bisa digulir** dan tidak ada yang terpotong | Ada isi terpotong/tertutup bilah bawah = layar tidak muat; layar bisa digulir = ScrollView tidak diganti |
 | H6a | V1 | Prasyarat: perangkat sudah terdaftar **dan** pernah tersambung. Hidupkan ulang ponsel — atau pasang pembaruan aplikasi di atas yang lama, karena itu memicu receiver yang sama — lalu buka aplikasi dan salin diagnostik. | Baris `Boot` terisi, mis. `Boot : 0,8 detik · berhasil · 9 menit lalu`; labelnya salah satu dari `berhasil`, `GAGAL`, `dilewati (izin VPN tidak ada)`, atau `dibatalkan (niat pengguna lebih baru)` | Baris tetap `belum ada percobaan` padahal prasyaratnya terpenuhi = receiver tidak menulis rekaman. Bila prasyaratnya belum terpenuhi, baris itu wajar kosong dan uji **belum dapat dinilai** — bukan kegagalan |
 | H6b | V1 | Catat baris `Boot` lebih dulu, lalu tekan **Daftar ulang**, tunggu pesan "Registrasi dihapus. Tekan Sambungkan untuk mendaftar ulang.", dan salin diagnostik lagi. | Baris `Boot` **masih ada dengan durasi dan outcome yang identik** — hanya bagian umurnya yang bertambah | Baris berubah menjadi `belum ada percobaan` = `prefs.clear()` menghapus rekaman boot, regresi atas perbaikan `13e75bd` |
+| H7 | V1 | Buka baris **Endpoint manual**. (a) Isi `162.159.193.1:2408`, Simpan: subjudul baris menampilkan nilai itu dan baris `Endpoint` ikut berubah. (b) Buka lagi, isi `999.1.1.1:abc`, Simpan: kolom menolak dengan pesan format, dialog **tidak tertutup**. (c) Sambungkan - aplikasi menyambung dengan endpoint itu. (d) Hapus lewat tombol Hapus: subjudul kembali ke teks otomatis. | (a) nilai tersimpan & tampil, (b) ditolak tanpa menutup dialog, (c) tersambung memakai endpoint manual, (d) kembali otomatis | Isi salah diterima/diarahkan diam-diam ke endpoint lain = validasi bocor; subjudul tidak berubah = tampilan basi |
+| H8 | V1 | **Hapus data aplikasi** (atau pasang ulang), lalu Sambungkan sampai `Status: Tersambung`. | Registrasi berhasil dan tunnel naik — ini sekaligus membuktikan (i) header klien baru (`CF-Client-Version: a-6.35-4471`, `User-Agent: WARP for Android`) diterima upstream, dan (ii) pin sertifikat `api.cloudflareclient.com` tidak menolak sertifikat asli Cloudflare | Gagal `HTTP 403/426` = header perlu disegarkan lagi; gagal TLS/`SSLHandshakeException` = pin usang, rotasi mengikuti `SECURITY.md` |
 
 ## Yang TIDAK bisa Anda uji — dan jangan dicoba
 
@@ -202,7 +206,7 @@ agen (AGENTS.md §12, "Kewajiban mengubah V3 menjadi V1").
 |---|---|---|
 | `adb shell dumpsys package … \| grep foregroundServiceType` | Butuh adb | Sudah dipastikan dari sumber: manifest tidak lagi mendeklarasikannya, dan library upstream tidak memanggil `startForeground()` sama sekali. Yang tersisa adalah **akibatnya** di runtime → diuji lewat A4/A5 (baris `Proses`) |
 | `adb logcat` per-tag untuk semua kelompok | Butuh adb | Baris diagnostik `Niat`/`Pemantau`/`Proses`/`Boot` |
-| `adb shell run-as … ls shared_prefs/` (memeriksa berkas penyimpanan) | Butuh adb + build debug | Baris `Peringatan` di diagnostik (D2) |
+| `adb shell run-as … ls shared_prefs/` (memeriksa berkas penyimpanan) | Butuh adb + build debug | Dialog "Penyimpanan aman tidak tersedia" (D2) — dan tidak ada lagi berkas polos yang perlu dicari: fallback polos sudah dihapus 2026-09-14 |
 | `adb reboot`, `adb install -r` | Butuh adb | Mulai ulang perangkat lewat menu sistem (F1), pasang APK menimpa lewat pengelola berkas (F4) |
 | Mengukur jendela race ~1 detik antar-thread | Bukan pengamatan manusia | Gejalanya yang diuji (B1/B2) lewat baris `Niat` |
 | `grep 'broadcast timeout'` di logcat | Butuh adb | Pengamatan langsung (F5) + durasi di baris `Boot` (F2) |

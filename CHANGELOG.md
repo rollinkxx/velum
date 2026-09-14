@@ -5,7 +5,33 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 
 ## [Unreleased]
 
+### Security
+- **Header registrasi disegarkan**: `CF-Client-Version` `a-6.10-2158` → `a-6.35-4471`
+  dan `User-Agent` `okhttp/3.12.1` → `WARP for Android` — versi lama berisiko ditolak
+  upstream (HTTP 426/403). Header kini dihimpun sebagai satu peta konstan
+  (`VelumUpstream.API_HEADERS`) dan dijaga unit test.
+- **Fallback penyimpanan polos dihapus total**: kunci privat tidak pernah lagi tersimpan
+  tanpa enkripsi. Bila keystore gagal, aplikasi melempar `KeystoreUnavailableException`,
+  menampilkan dialog "Penyimpanan aman tidak tersedia. Daftar ulang diperlukan.", lalu
+  berhenti; berkas prefs rusak dipulihkan sekali dengan mengosongkannya.
+- **Certificate pinning** untuk `api.cloudflareclient.com` lewat
+  `network_security_config` (SPKI enam CA penerbit Cloudflare dari log CT, kedaluwarsa
+  2027-03-31 sebagai rembesan anti-brick); prosedur rotasi di `SECURITY.md`.
+- **Log sensitif diredam**: wrapper `VelumLog` mematikan level d/i pada build
+  non-debug (gerbang `BuildConfig.DEBUG`), log yang memuat alamat IP endpoint diturunkan
+  ke level itu, dan R8 ikut membuang `Log.d`/`Log.v` pada varian yang diperkecil.
+
 ### Added
+- **Rotasi endpoint terverifikasi handshake**: kandidat pengganti hanya dipakai setelah
+  handshake WireGuard singkat (≤3 detik per kandidat, maksimal 3) benar-benar terlihat;
+  pengukuran RTT kini dilakukan sekali per rotasi (dulu diulang per percobaan).
+- **Kandidat anycast disegarkan dari DNS-over-HTTPS** (`cloudflare-dns.com`), basi
+  24 jam, dengan fallback ke daftar statis bila DoH gagal.
+- **Endpoint manual** di layar utama: kolom `host:port` tervalidasi (IPv4/domain/IPv6
+  berkurung), mengalahkan proba otomatis dan dipertahankan oleh Daftar ulang.
+- **Dokumen keamanan & privasi**: `SECURITY.md` (rotasi pin) dan `PRIVACY.md` (izin,
+  visibilitas paket tanpa `QUERY_ALL_PACKAGES`, aliran data); checklist uji perangkat
+  menyusul (D2, H7, H8) menyesuaikan perilaku baru.
 - **Baris Data menampilkan total pemakaian sesi** (↓/↑ kumulatif sejak tunnel naik)
   di samping laju — total muncul seketika karena dibaca langsung dari penghitung
   backend, dan reset otomatis tiap tunnel dibangun ulang (satu sesi).
