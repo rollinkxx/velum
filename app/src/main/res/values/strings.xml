@@ -71,5 +71,10 @@
     <string name="err_connect_closed">Sambungan ditutup sistem. Periksa "Always-on VPN" dan blokir koneksi tanpa VPN pada pengaturan VPN, lalu coba lagi.</string>
     <string name="err_network">Kesalahan jaringan: %1$s</string>
     <string name="err_server_reject">Layanan menolak klien ini (HTTP %1$s). Versi Velum perlu diperbarui.</string>
+    <!-- Keystore perangkat gagal dibuka: kunci privat tidak akan disimpan tanpa enkripsi. -->
+    <string name="err_keystore_title">Penyimpanan aman tidak tersedia</string>
+    <string name="err_keystore_body">Penyimpanan aman tidak tersedia. Daftar ulang diperlukan.\n\nAndroid Keystore perangkat ini gagal dibuka, sehingga kunci privat tidak dapat disimpan terenkripsi — dan Velum tidak akan menyimpannya tanpa enkripsi. Nyalakan ulang perangkat, buka Velum kembali, lalu daftarkan ulang.</string>
+    <string name="err_keystore">Penyimpanan aman tidak tersedia. Nyalakan ulang perangkat lalu daftar ulang.</string>
+    <string name="btn_close_app">Tutup aplikasi</string>
     <string name="reset_done">Registrasi dihapus. Tekan Sambungkan untuk mendaftar ulang.</string>
 </resources>

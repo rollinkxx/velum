@@ -39,7 +39,15 @@ class AppExclusionActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_app_exclusion)
         VelumInsets.applySystemBars(findViewById(R.id.root))
-        prefs = Prefs.of(this)
+        // Tanpa keystore tidak ada penyimpanan untuk dibaca/ditulis: layar ini tidak
+        // bisa bekerja, jadi tutup setelah menjelaskannya — bukan berpura-pura kosong.
+        prefs = try {
+            Prefs.of(this)
+        } catch (e: KeystoreUnavailableException) {
+            Toast.makeText(this, R.string.err_keystore_title, Toast.LENGTH_LONG).show()
+            finish()
+            return
+        }
         list = findViewById(R.id.appList)
 
         val excluded = prefs.excludedApps

@@ -135,7 +135,14 @@ object ReconnectMonitor {
         val gen = VelumTunnel.currentIntent
         worker.execute {
             try {
-                val prefs = Prefs.of(app)
+                // Tanpa keystore tidak ada niat sah yang bisa dibaca; jangan bertindak
+                // otomatis dalam keadaan itu.
+                val prefs = try {
+                    Prefs.of(app)
+                } catch (e: KeystoreUnavailableException) {
+                    Log.w(TAG, "pantulan dibatalkan: penyimpanan aman tidak tersedia", e)
+                    return@execute
+                }
                 if (!prefs.wasUp || !prefs.isRegistered) return@execute
                 if (VelumTunnel.intentStale(gen)) {
                     Log.i(TAG, "pantulan jaringan dibatalkan: ada niat pengguna yang lebih baru")
@@ -153,9 +160,19 @@ object ReconnectMonitor {
         }
     }
 
+    /**
+     * Niat tersimpan, atau `false` bila penyimpanannya sendiri tidak bisa dibuka:
+     * dalam keadaan itu tidak ada tindakan otomatis yang dibenarkan.
+     */
+    private fun wasUpSafe(app: Context): Boolean = try {
+        Prefs.of(app).wasUp
+    } catch (e: KeystoreUnavailableException) {
+        false
+    }
+
     /** Menyalakan tunnel yang mati padahal diniatkan UP (mis. proses lahir ulang). */
     private fun tryUpOnce(app: Context, prefs: Prefs, gen: Int) {
-        if (!Prefs.of(app).wasUp) return // pengguna memutus di tengah jalan
+        if (!wasUpSafe(app)) return // pengguna memutus di tengah jalan
         try {
             VelumTunnel.refreshState(app)
             if (VelumTunnel.state == Tunnel.State.UP) return
@@ -190,7 +207,7 @@ object ReconnectMonitor {
             } catch (_: InterruptedException) {
                 return
             }
-            if (!Prefs.of(app).wasUp) return // pengguna memutus di tengah pantulan
+            if (!wasUpSafe(app)) return // pengguna memutus di tengah pantulan
             if (VelumTunnel.intentStale(gen)) {
                 Log.i(TAG, "pantulan tunnel dihentikan: ada niat pengguna yang lebih baru")
                 return

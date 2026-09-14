@@ -31,7 +31,14 @@ class BootReceiver : BroadcastReceiver() {
         ) {
             return
         }
-        val prefs = Prefs.of(context)
+        // Tanpa keystore, tidak ada registrasi yang sah untuk dipulihkan dan tidak ada
+        // tempat untuk merekam diagnostik: berhenti diam, jangan bertindak apa pun.
+        val prefs = try {
+            Prefs.of(context)
+        } catch (e: KeystoreUnavailableException) {
+            Log.w(TAG, "$action: sambung ulang dibatalkan: penyimpanan aman tidak tersedia", e)
+            return
+        }
         if (!prefs.isRegistered || !prefs.wasUp) return
         if (VpnService.prepare(context) != null) {
             Log.w(TAG, "$action: persetujuan VPN tidak ada, sambung ulang dibatalkan")

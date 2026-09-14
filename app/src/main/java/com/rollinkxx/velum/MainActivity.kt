@@ -114,6 +114,18 @@ class MainActivity : AppCompatActivity(), VelumController.Ui {
         infoData = findViewById(R.id.infoData)
         vpnSettingsSub = findViewById(R.id.subVpnSettings)
 
+        // Controller membuka penyimpanan terenkripsi lewat Prefs.of: bila keystore
+        // perangkat gagal, tidak ada tempat aman untuk kunci privat dan aplikasi tidak
+        // boleh berpura-pura bisa dipakai. Dialog modal menjelaskannya, lalu aplikasi
+        // ditutup — tanpa listener apa pun terpasang, jadi tidak ada interaksi yang
+        // bisa menyentuh controller yang tidak pernah jadi.
+        controller = try {
+            VelumController(this, this)
+        } catch (e: KeystoreUnavailableException) {
+            showKeystoreUnavailableDialog()
+            return
+        }
+
         toggleButton.setOnClickListener { onToggle() }
         testButton.setOnClickListener { controller.runTest() }
         resetRow.setOnClickListener { onReset() }
@@ -121,11 +133,25 @@ class MainActivity : AppCompatActivity(), VelumController.Ui {
         copyDiagRow.setOnClickListener { copyDiagnostics() }
         exclusionsRow.setOnClickListener { onOpenExclusions() }
 
-        controller = VelumController(this, this)
-
         refreshStaticInfo()
         requestNotificationPermissionIfNeeded()
         polishAppTitle()
+    }
+
+    /**
+     * Keystore perangkat gagal dibuka: kunci privat tidak bisa disimpan terenkripsi.
+     * Non-modal dibatalkan (setCancelable(false)) karena TIDAK ada jalan memakai
+     * aplikasi tanpa penyimpanan aman — satu-satunya aksi adalah menutup aplikasi,
+     * dan setelah keystore pulih (umumnya dengan menyalakan ulang perangkat) pengguna
+     * kembali dan mendaftar ulang.
+     */
+    private fun showKeystoreUnavailableDialog() {
+        AlertDialog.Builder(this)
+            .setTitle(R.string.err_keystore_title)
+            .setMessage(R.string.err_keystore_body)
+            .setCancelable(false)
+            .setPositiveButton(R.string.btn_close_app) { _, _ -> finish() }
+            .show()
     }
 
     /**
@@ -166,6 +192,9 @@ class MainActivity : AppCompatActivity(), VelumController.Ui {
 
     override fun onStart() {
         super.onStart()
+        // Bila inisialisasi gagal karena keystore (dialog wajib sedang tampil), tidak ada
+        // controller untuk dikontak — menunggu pengguna menutup aplikasi dari dialog.
+        if (!::controller.isInitialized) return
         visible = true
         controller.applyCurrentState()
         // Pulihkan tiker & denyut bila tunnel masih UP dari sesi sebelumnya.
@@ -195,7 +224,7 @@ class MainActivity : AppCompatActivity(), VelumController.Ui {
     }
 
     override fun onDestroy() {
-        controller.destroy()
+        if (::controller.isInitialized) controller.destroy()
         stopTicker()
         pulse?.cancel()
         super.onDestroy()
@@ -262,10 +291,6 @@ class MainActivity : AppCompatActivity(), VelumController.Ui {
                 // Ikut disertakan: tanpa ini laporan gangguan dari perangkat hanya memuat
                 // keadaan saat itu, bukan alasan uji terakhir gagal.
                 lastTest = renderTest(Prefs.of(this).lastTest),
-                // Kejujuran keamanan: bila keystore perangkat gagal dan penyimpanan jatuh
-                // ke berkas polos, pengguna dan penerima laporan berhak tahu — selama ini
-                // keadaan itu hanya tercatat di logcat yang tidak dibaca siapa pun.
-                plaintextFallback = Prefs.of(this).isPlainFallback,
                 // Keadaan internal — ditambahkan 2026-09-13 atas persetujuan maintainer
                 // karena pengujian dilakukan di perangkat TANPA adb. Baris-baris ini yang
                 // mengubah uji konkurensi dan daya tahan proses dari "tidak bisa diperiksa"

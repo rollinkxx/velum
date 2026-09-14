@@ -9,8 +9,13 @@ import androidx.security.crypto.MasterKey
 import java.io.File
 
 /**
- * Penyimpanan data registrasi. Terenkripsi (AndroidX Security + Tink) dengan
- * fallback polos bila keystore perangkat gagal; data era polos dimigrasi sekali.
+ * Penyimpanan data registrasi. **Hanya** terenkripsi (AndroidX Security + Tink);
+ * data era polos (berkas lama) dimigrasi sekali.
+ *
+ * Tidak ada fallback ke berkas polos: kunci privat dan token tidak boleh pernah
+ * tertulis tanpa enkripsi. Bila keystore perangkat gagal dibuka, [open] melempar
+ * [KeystoreUnavailableException] dan UI meminta pengguna menyalakan ulang perangkat
+ * lalu mendaftar ulang.
  */
 class Prefs(context: Context) {
     private val sp: SharedPreferences = open(context.applicationContext)
@@ -131,17 +136,6 @@ class Prefs(context: Context) {
             !peerPublicKey.isNullOrEmpty() && !endpoint.isNullOrEmpty()
 
     /**
-     * Apakah penyimpanan jatuh ke berkas POLOS karena keystore perangkat gagal.
-     *
-     * Fallback itu sengaja ada dan menyelamatkan aplikasi dari tidak bisa dipakai sama
-     * sekali, tetapi konsekuensinya nyata: kunci privat dan token tersimpan TANPA enkripsi.
-     * Pengguna berhak tahu, jadi keadaannya ikut dilaporkan di diagnostik — sebelumnya
-     * hanya tercatat di logcat yang tidak dibaca siapa pun.
-     */
-    val isPlainFallback: Boolean
-        get() = plainFallback
-
-    /**
      * Menulis seluruh hasil registrasi dalam SATU transaksi.
      *
      * Sebelumnya ketujuh bidang ditulis satu per satu lewat `apply()`. Proses yang mati di
@@ -205,15 +199,17 @@ class Prefs(context: Context) {
         @Volatile
         private var instance: Prefs? = null
 
-        /** Terisi bila `open()` jatuh ke penyimpanan polos; dibaca lewat [isPlainFallback]. */
-        @Volatile
-        private var plainFallback = false
-
         /**
          * Satu instance per proses. Membuka prefs terenkripsi itu mahal (baca + dekripsi
          * seluruh nilai untuk pengecekan migrasi), sehingga dipakai bersama oleh UI,
          * [ReconnectMonitor], dan [BootReceiver].
+         *
+         * Melempar [KeystoreUnavailableException] bila keystore perangkat tidak bisa
+         * dipakai — sengaja TIDAK menyimpan apa pun dalam keadaan itu (tidak ada
+         * fallback polos), jadi instance yang gagal juga tidak di-cache: pemanggilan
+         * berikutnya mencoba membuka lagi dari awal.
          */
+        @Throws(KeystoreUnavailableException::class)
         fun of(context: Context): Prefs =
             instance ?: synchronized(this) {
                 instance ?: Prefs(context.applicationContext).also { instance = it }
@@ -221,12 +217,6 @@ class Prefs(context: Context) {
 
         const val TAG = "Velum"
         const val FILE = "velum"
-        /**
-         * Berkas cadangan bila keystore perangkat gagal. SENGAJA berbeda nama dari [FILE]
-         * supaya store terenkripsi dan store polos tidak pernah berbagi satu berkas —
-         * lihat penjelasan di `open()`.
-         */
-        const val FILE_PLAIN = "velum_plain"
         const val LEGACY_FILE = "warp"
         const val K_PRIV = "private_key"
         const val K_ID = "device_id"
@@ -244,47 +234,58 @@ class Prefs(context: Context) {
         const val K_BOOT = "boot_last"
         const val K_EXCLUDED = "excluded_apps"
 
+        /**
+         * Membuka penyimpanan terenkripsi, hanya itu.
+         *
+         * Kegagalan pertama dicoba pulihkan SEKALI: penyebab tersering adalah berkas
+         * prefs terenkripsi yang rusak (mis. penulisan yang terputus di tengah), yang
+         * membuat `create()` gagal SELAMANYA sehingga aplikasi tidak bisa menyimpan apa
+         * pun. Berkas yang sudah terbukti tidak terbaca untuk kunci ini tidak menyimpan
+         * apa pun yang masih bisa diselamatkan, jadi ia dikosongkan lalu pembukaan
+         * diulang — data registrasinya memang hilang, tetapi aplikasi bisa mendaftar
+         * ulang (persis konsekuensi yang dipilih untuk perangkat era fallback polos:
+         * daftar ulang SEKALI).
+         *
+         * Kegagalan kedua berarti keystore-nya yang bermasalah. Di sini SENGAJA tidak
+         * ada fallback ke berkas polos (kunci privat tidak boleh tersimpan tanpa
+         * enkripsi, berapa pun harganya): lempar [KeystoreUnavailableException] dan
+         * biarkan pemanggil menjelaskannya ke pengguna.
+         */
+        @Throws(KeystoreUnavailableException::class)
         private fun open(ctx: Context): SharedPreferences {
-            val encrypted = try {
-                val masterKey = MasterKey.Builder(ctx)
-                    .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
-                    .build()
-                EncryptedSharedPreferences.create(
-                    ctx,
-                    FILE,
-                    masterKey,
-                    EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
-                    EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
-                )
+            try {
+                return openEncrypted(ctx).also { migrateLegacy(ctx, it) }
             } catch (e: Exception) {
-                Log.w(TAG, "prefs terenkripsi gagal, fallback polos", e)
-                null
+                Log.w(TAG, "prefs terenkripsi gagal dibuka; berkas dikosongkan lalu dicoba ulang", e)
+                deleteEncryptedFile(ctx)
+                return try {
+                    openEncrypted(ctx).also { migrateLegacy(ctx, it) }
+                } catch (kedua: Exception) {
+                    throw KeystoreUnavailableException(kedua)
+                }
             }
-            if (encrypted == null) {
-                // Dicatat agar bisa dilaporkan ke pengguna lewat diagnostik, bukan hanya
-                // ke logcat: kunci privat kini tersimpan tanpa enkripsi.
-                plainFallback = true
-                // NAMA BERKAS SENGAJA BERBEDA dari store terenkripsi. Sebelumnya fallback
-                // ini memakai `FILE` yang sama, dan itu rusak dua arah:
-                // - `EncryptedSharedPreferences` mengenkripsi NAMA kunci juga
-                //   (`PrefKeyEncryptionScheme.AES256_SIV`), jadi pembacaan polos atas
-                //   berkas terenkripsi melihat ciphertext di bawah nama ciphertext —
-                //   `getString("private_key")` null, `isRegistered` false, dan pengguna
-                //   dipaksa daftar ulang padahal datanya masih ada di berkas itu;
-                // - tulisan polos berikutnya lalu bercampur ke berkas yang sama, sehingga
-                //   bila keystore pulih, `EncryptedSharedPreferences.create` harus
-                //   mendekripsi berkas berisi entri polos → gagal lagi → fallback lagi.
-                // Konsekuensi yang diterima (dan dikorbankan secara sadar): perangkat yang
-                // SUDAH terlanjur jatuh ke fallback sebelum perubahan ini kehilangan data
-                // polosnya di berkas lama dan perlu daftar ulang SEKALI. Tidak ada migrasi
-                // heuristik dari berkas lama, karena membedakan "berkas polos era lama"
-                // dari "berkas terenkripsi" berarti menebak — dan tebakan yang salah di
-                // sini merusak data yang sebenarnya masih bisa dibaca.
-                Log.w(TAG, "penyimpanan polos dipakai: $FILE_PLAIN (kunci privat TIDAK terenkripsi)")
-                return ctx.getSharedPreferences(FILE_PLAIN, Context.MODE_PRIVATE)
+        }
+
+        private fun openEncrypted(ctx: Context): SharedPreferences {
+            val masterKey = MasterKey.Builder(ctx)
+                .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
+                .build()
+            return EncryptedSharedPreferences.create(
+                ctx,
+                FILE,
+                masterKey,
+                EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+                EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
+            )
+        }
+
+        /** Menghapus berkas terenkripsi yang sudah terbukti tidak bisa dibuka. */
+        private fun deleteEncryptedFile(ctx: Context) {
+            try {
+                File(File(ctx.applicationInfo.dataDir, "shared_prefs"), "$FILE.xml").delete()
+            } catch (e: Exception) {
+                Log.w(TAG, "gagal mengosongkan berkas prefs rusak", e)
             }
-            migrateLegacy(ctx, encrypted)
-            return encrypted
         }
 
         /** Keberadaan berkas era lama, tanpa membuka/dekripsi isinya. */
