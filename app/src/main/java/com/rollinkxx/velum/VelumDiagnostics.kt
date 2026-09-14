@@ -91,7 +91,19 @@ object VelumDiagnostics {
     const val BOOT_FAIL = "gagal"
     const val BOOT_NO_VPN = "tanpa-izin"
 
-    private val BOOT_OUTCOMES = setOf(BOOT_OK, BOOT_FAIL, BOOT_NO_VPN)
+    /**
+     * Percobaan dibatalkan karena pelaku lain (layar utama, ubin pengaturan cepat)
+     * menyatakan niat yang lebih baru — mis. pengguna menekan Putuskan sementara
+     * percobaan sambung ulang boot masih berjalan.
+     *
+     * Sengaja DIBEDAKAN dari [BOOT_FAIL]: pada keadaan ini tunnel tidak gagal
+     * menyambung, ia memang tidak boleh dinyalakan lagi. Mencampur keduanya membuat
+     * baris `Boot` menuduh `up()` gagal padahal yang terjadi adalah pembatalan yang
+     * benar.
+     */
+    const val BOOT_SKIPPED = "dibatalkan"
+
+    private val BOOT_OUTCOMES = setOf(BOOT_OK, BOOT_FAIL, BOOT_NO_VPN, BOOT_SKIPPED)
 
     /** Format simpan: `outcome|durationMs|atEpochMs`. Dipakai [Prefs.bootRecord]. */
     fun encodeBoot(b: Boot): String = "${b.outcome}|${b.durationMs}|${b.atEpochMs}"
@@ -118,6 +130,7 @@ object VelumDiagnostics {
         BOOT_OK -> "berhasil"
         BOOT_FAIL -> "GAGAL"
         BOOT_NO_VPN -> "dilewati (izin VPN tidak ada)"
+        BOOT_SKIPPED -> "dibatalkan (niat pengguna lebih baru)"
         else -> outcome
     }
 

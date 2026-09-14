@@ -35,9 +35,14 @@ komputer untuk logcat/dumpsys). Karena itu:
 
 ## Status saat ini
 
-**Sebagian uji sudah dijalankan** (kelompok H, branch `arena/01a098b1-velum`,
-laporan maintainer 2026-09-13): H1/H2/H3/H4 `LULUS`, H5 `TIDAK SESUAI HARAPAN`
-(menunggu uji ulang). Kelompok A–G (29 uji) masih menunggu perangkat.
+**Kelompok H lengkap, semuanya `LULUS`** (laporan maintainer 2026-09-13 dan
+2026-09-14): H1/H2/H3/H4 `LULUS` pada 2026-09-13 (`arena/01a098b1-velum`);
+H5 `TIDAK SESUAI HARAPAN` pada 2026-09-13 lalu `LULUS` pada 2026-09-14 setelah
+percobaan ke-4 diuji ulang di perangkat, pada APK 12.805.481 (run 34769929069,
+berisi PR #20). H6a/H6b `LULUS` pada 2026-09-14 pada APK yang sama: rekaman boot
+tercipta (`0,8 detik · berhasil`) dan selamat dari `prefs.clear()`. Dengan ini
+keempat commit kode PR #20 telah teruji perangkat semuanya.
+Kelompok A–G (29 uji) masih menunggu perangkat.
 
 | Kelompok | Uji | Tingkat | Menutup utang di |
 |---|---|---|---|
@@ -72,6 +77,11 @@ hasil — ganti atau hapus saat dipakai.
 | 2026-09-13 | Android 14 (perangkat maintainer) | H3 | V1 | Maintainer: "H3 terverifikasi seperti yang diharapkan" — aplikasi tercentang naik ke atas di bawah label "Dikecualikan dari tunnel". | LULUS | — |
 | 2026-09-13 | Android 14 (perangkat maintainer) | H4 | V1 | Maintainer: "H4 ini juga terverifikasi" — subjudul "Selalu aktif" mengikuti keadaan sistem saat tersambung. | LULUS | — |
 | 2026-09-13 | Android 14 (perangkat maintainer) | H5 | V1 | Percobaan 1: judul kecil, "Tersambung" makan tempat. Percobaan 2: seluruh isi naik ke atas sehingga bagian bawah kosong (di luar scope). Percobaan 3: judul 80sp membungkus jadi dua baris ("Velu" / "m") dan letter-spacing terlalu lebar. | TIDAK SESUAI HARAPAN | **Koreksi atas kesalahan agen** (percobaan 2 scope §0; percobaan 3 tidak mensimulasikan lebar teks vs layar). Percobaan 4 (audit & refaktor hierarki layout): judul satu baris penuh (`maxLines=1`+`singleLine=true`, auto-size 48–80sp, letter-spacing 0.15, `includeFontPadding=false`), judul+tagline satu kolom header rata tengah (gap 4dp), badge status `gravity="center_vertical"` di tengah kartu, padding kartu simetris 10dp/16dp. Menunggu uji ulang maintainer |
+| 2026-09-14 | Android 14 (perangkat maintainer) | H1 | V1 | Maintainer pada APK 12.805.481 (run 34769929069, berisi PR #20): "trafik langsung muncul & sudah memakai koma" — baris `Total` tampil segera dan laju muncul tanpa jeda. Pemisah desimal **koma** mengikuti perbaikan `2e8a12b`; sebelumnya titik karena `String.format(Locale.US, …)`, sehingga koma ini sekaligus membuktikan bahwa APK yang terpasang benar yang baru, bukan sisa build lama. | LULUS | — |
+| 2026-09-14 | Android 14 (perangkat maintainer) | H2 | V1 | Maintainer pada APK yang sama: "sejauh ini tidak ada lompatan" — laju bergerak tanpa loncatan selama unduhan berjalan (angka tidak dicatat). Selisih terhadap indikator status bar tidak dinilai karena sudah disepakati pada 2026-09-13. | LULUS | — |
+| 2026-09-14 | Android 14 (perangkat maintainer) | H5 | V1 | Maintainer pada APK yang sama, percobaan ke-4: judul "Velum" **satu baris penuh** (tidak membungkus seperti percobaan ke-3), tagline "PRIVAT, CEPAT, RINGAN" utuh, status satu baris, layar **tidak bisa digulir**, tidak ada yang terpotong atau tertutup bilah bawah sampai tombol "Salin diagnostik" terlihat penuh. | LULUS | Menutup TODO 103 & 117; syarat yang ditetapkan maintainer untuk merge PR #20 terpenuhi |
+| 2026-09-14 | Android 14 (perangkat maintainer) | H6a | V1 | Salinan diagnostik: `Boot : 0,8 detik · berhasil · 9 menit lalu`, bersama `Niat : Hidup · aksi ke-1`, `Status : Tersambung`, `Proses : hidup 09:03`. Rekaman boot tercipta setelah perangkat dihidupkan ulang; durasi 0,8 detik jauh di bawah anggaran `goAsync()` 10 detik yang menjadi alasan baris ini diselamatkan (TODO 77). | LULUS | — |
+| 2026-09-14 | Android 14 (perangkat maintainer) | H6b | V1 | Setelah menekan "Daftar ulang" dan menunggu pesan "Registrasi dihapus. Tekan Sambungkan untuk mendaftar ulang.", salinan kedua: `Boot : 0,8 detik · berhasil · 10 menit lalu` — durasi dan outcome **identik**, hanya umur yang bertambah. `Niat : Mati · aksi ke-3`, `Pemantau : mati`, `Status : Terputus`, `Endpoint : -`. Sebelum `13e75bd`, `unregister()` → `prefs.clear()` menghapus baris ini. | LULUS | Menutup TODO 122 |
 
 ## Tidak terverifikasi oleh siapa pun — status permanen `hanya nalar`
 

@@ -28,7 +28,7 @@
     <string name="sub_vpn_settings_on_lockdown">Aktif · blokir tanpa VPN</string>
     <string name="sub_vpn_settings_off">Nonaktif</string>
     <string name="sub_exclusions">Lewatkan tunnel untuk aplikasi tertentu</string>
-    <string name="sub_copy_diag">Ringkasan tanpa kunci &amp; alamat IP</string>
+    <string name="sub_copy_diag">Ringkasan tanpa kunci &amp; alamat IP Anda</string>
     <string name="title_excluded">Kecualikan aplikasi</string>
     <string name="btn_save">Simpan</string>
     <string name="excluded_saved">Daftar pengecualian disimpan.</string>
@@ -38,7 +38,7 @@
     <string name="excluded_section_on">Dikecualikan dari tunnel</string>
     <string name="excluded_section_off">Aplikasi lain</string>
     <string name="tile_label">Velum</string>
-    <string name="diag_copied">Ringkasan disalin (tanpa kunci &amp; alamat IP)</string>
+    <string name="diag_copied">Ringkasan disalin (tanpa kunci &amp; alamat IP Anda)</string>
     <string name="err_no_settings">Pengaturan VPN tidak tersedia di perangkat ini</string>
     <string name="notif_channel">Status koneksi</string>
     <string name="notif_connected">Tersambung — lalu lintas lewat Velum</string>
