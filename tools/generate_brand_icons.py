@@ -6,6 +6,9 @@ ROOT = Path(__file__).resolve().parents[1]
 RES = ROOT / "app/src/main/res"
 SOURCE = RES / "drawable/logo_velum_header.png"
 DENSITIES = {"mdpi": 48, "hdpi": 72, "xhdpi": 96, "xxhdpi": 144, "xxxhdpi": 192}
+# Pusat geometris crop sedikit lebih tinggi daripada pusat visual monogram V.
+# Offset proporsional ini menjaga semua density, adaptive, dan notifikasi tetap seragam.
+VISUAL_OFFSET_Y = 0.055
 
 # The title logo contains the exact V mark above the wordmark. The source PNG
 # has stray transparent-color pixels outside the visible mark, so use the
@@ -60,7 +63,10 @@ def foreground(size: int) -> Image.Image:
     canvas = Image.new("RGBA", (size, size), (0, 0, 0, 0))
     scale = min((size * 0.78) / mark.width, (size * 0.78) / mark.height)
     resized = mark.resize((round(mark.width * scale), round(mark.height * scale)), Image.Resampling.LANCZOS)
-    canvas.alpha_composite(resized, ((size - resized.width) // 2, (size - resized.height) // 2))
+    offset_y = round(size * VISUAL_OFFSET_Y)
+    x = (size - resized.width) // 2
+    y = (size - resized.height) // 2 + offset_y
+    canvas.alpha_composite(resized, (x, y))
     return canvas
 
 for density, size in DENSITIES.items():
