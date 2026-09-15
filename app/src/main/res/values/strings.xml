@@ -63,7 +63,7 @@
     <string name="test_running">Menguji…</string>
     <string name="test_on">Aktif — lalu lintas lewat Velum</string>
     <string name="test_off">Belum aktif</string>
-    <string name="test_on_dc">Aktif - DC %1$s · %2$s</string>
+    <string name="test_on_dc">DC %1$s · %2$s</string>
     <string name="test_off_time">Belum aktif · %1$s</string>
     <string name="test_failed">Gagal menguji</string>
     <string name="test_no_data_time">Belum ada data · %1$s</string>

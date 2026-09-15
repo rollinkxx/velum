@@ -117,7 +117,7 @@ object VelumApi {
     )
 
     /** Anggaran total: cadangan tidak boleh menambah waktu tunggu tanpa batas. */
-    private const val TRACE_BUDGET_MS = 14_000L
+    private const val TRACE_BUDGET_MS = 7_000L
 
     /** Mengambil dan mem-parse cdn-cgi/trace (mengikuti jalur koneksi saat ini). Blocking. */
     @Throws(IOException::class)
@@ -142,8 +142,8 @@ object VelumApi {
     private fun fetchTraceFrom(url: String): VelumFormat.TraceInfo {
         val conn = (URL(url).openConnection() as HttpURLConnection)
         try {
-            conn.connectTimeout = 8000
-            conn.readTimeout = 8000
+            conn.connectTimeout = 4000
+            conn.readTimeout = 4000
             conn.setRequestProperty("User-Agent", USER_AGENT)
             // Soket baru untuk setiap uji: jangan pakai koneksi dari sebelum tunnel aktif.
             conn.setRequestProperty("Connection", "close")

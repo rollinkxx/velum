@@ -1,14 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Siluet monogram V yang sama dengan simbol pada logo title; tanpa background. -->
-<vector xmlns:android="http://schemas.android.com/apk/res/android"
-    android:width="24dp"
-    android:height="24dp"
-    android:viewportWidth="24"
-    android:viewportHeight="24">
-    <path
-        android:fillColor="#FFFFFFFF"
-        android:pathData="M4.9,5.6 L8.2,5.6 L13.1,12.8 L14.3,15.2 C13.2,17.2 11.7,17.7 10.6,15.4 Z" />
-    <path
-        android:fillColor="#FFFFFFFF"
-        android:pathData="M16.4,5.6 L19.8,5.6 L15.2,14 C14.2,15.8 13.4,17.1 12.2,17.3 C13.2,16.5 13.7,15.5 14.2,14 Z" />
-</vector>
+<!-- Siluet monogram V identik dengan logo title untuk notifikasi/status bar. -->
+<bitmap xmlns:android="http://schemas.android.com/apk/res/android"
+    android:src="@drawable/logo_velum_mark_notification"
+    android:gravity="center" />

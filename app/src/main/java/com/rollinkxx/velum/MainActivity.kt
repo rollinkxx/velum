@@ -501,7 +501,7 @@ class MainActivity : AppCompatActivity(), VelumController.Ui {
         startPulse()
         refreshStaticInfo()
         refreshAlwaysOn()
-        messageView.text = ConnectedSubtitle.forSession(this, VelumTunnel.upSinceElapsedMs)
+        messageView.text = ""
         // Notifikasi status sengaja TIDAK diposting dari sini. `VelumTunnel.onStateChange`
         // yang melakukannya, supaya tunnel yang tersambung lewat ubin pengaturan cepat
         // atau receiver boot (tanpa Activity sama sekali) tetap punya notifikasi, dan
@@ -541,10 +541,7 @@ class MainActivity : AppCompatActivity(), VelumController.Ui {
         when (state) {
             Tunnel.State.UP -> {
                 statusView.setText(R.string.status_connected)
-                messageView.text = ConnectedSubtitle.forSession(
-                    this,
-                    VelumTunnel.upSinceElapsedMs
-                )
+                messageView.text = ""
                 statusView.setTextColor(getColor(R.color.ok))
                 statusDot.setBackgroundResource(R.drawable.dot_ok)
                 statusDot.contentDescription = getString(R.string.cd_status_up)

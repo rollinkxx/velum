@@ -1,14 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Lapisan monokrom Android 13+: siluet V pita yang sama, tanpa gradien atau bayangan. -->
-<vector xmlns:android="http://schemas.android.com/apk/res/android"
-    android:width="108dp"
-    android:height="108dp"
-    android:viewportWidth="108"
-    android:viewportHeight="108">
-    <path
-        android:fillColor="#FFFFFFFF"
-        android:pathData="M22,25 L37,25 L54,61 L60,73 C56,83 49,85 43,74 Z" />
-    <path
-        android:fillColor="#FFFFFFFF"
-        android:pathData="M69,25 L86,25 L65,68 C61,77 57,82 51,83 C56,79 58,74 60,68 Z" />
-</vector>
+<!-- Siluet monokrom dari simbol V logo title untuk Android 13+. -->
+<bitmap xmlns:android="http://schemas.android.com/apk/res/android"
+    android:src="@drawable/logo_velum_mark_monochrome"
+    android:gravity="center" />
