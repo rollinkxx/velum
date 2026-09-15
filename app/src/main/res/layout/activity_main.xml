@@ -39,12 +39,12 @@
             android:contentDescription="@string/cd_app_logo"
             android:maxHeight="120dp"
             android:scaleType="centerInside"
-            android:src="@drawable/logo_velum" />
+            android:src="@drawable/logo_velum_header" />
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
+            android:layout_marginTop="0dp"
             android:fontFamily="sans-serif-medium"
             android:letterSpacing="0.28"
             android:text="@string/app_tagline"
