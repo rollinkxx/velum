@@ -2,6 +2,7 @@
 <resources>
     <string name="app_name">Velum</string>
     <string name="app_tagline">Privat, cepat, ringan</string>
+    <string name="cd_app_logo">Logo Velum</string>
     <string name="status_disconnected">Terputus</string>
     <string name="status_connecting">Menyambung…</string>
     <string name="status_connected">Tersambung</string>

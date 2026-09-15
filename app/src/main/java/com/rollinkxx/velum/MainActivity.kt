@@ -3,8 +3,6 @@ package com.rollinkxx.velum
 import android.animation.ValueAnimator
 import android.app.Activity
 import android.content.Intent
-import android.graphics.LinearGradient
-import android.graphics.Shader
 import android.os.Build
 import android.os.Bundle
 import android.os.Handler
@@ -12,7 +10,6 @@ import android.os.Looper
 import android.os.SystemClock
 import android.text.InputType
 import android.view.View
-import android.view.ViewTreeObserver
 import android.widget.Button
 import android.widget.EditText
 import android.widget.FrameLayout
@@ -147,7 +144,6 @@ class MainActivity : AppCompatActivity(), VelumController.Ui {
 
         refreshStaticInfo()
         requestNotificationPermissionIfNeeded()
-        polishAppTitle()
     }
 
     /**
@@ -166,41 +162,6 @@ class MainActivity : AppCompatActivity(), VelumController.Ui {
             .show()
     }
 
-    /**
-     * Membuat judul aplikasi tampil elegan: gradien gading→emas dengan pendar hangat.
-     *
-     * Gradien butuh lebar yang sudah terukur, jadi baru diterapkan pada `onPreDraw`
-     * pertama dan pendengarnya langsung dilepas. Layer software dipilih supaya
-     * pendar dan gradien tampil identik di semua perangkat — aman karena ini satu
-     * TextView statis yang tidak pernah diubah isinya.
-     *
-     * Lebar gradien diukur dari **teks**, bukan dari view: judul kini selebar layar
-     * (`match_parent`) dengan huruf di-auto-size dan dipusatkan, jadi gradien harus
-     * mengikuti hurufnya (dimulai dari tepi kiri teks) supaya tetap membentang
-     * gading→emas persis di atas huruf.
-     */
-    private fun polishAppTitle() {
-        val title = findViewById<TextView>(R.id.appTitle)
-        title.setLayerType(View.LAYER_TYPE_SOFTWARE, null)
-        title.viewTreeObserver.addOnPreDrawListener(object : ViewTreeObserver.OnPreDrawListener {
-            override fun onPreDraw(): Boolean {
-                title.viewTreeObserver.removeOnPreDrawListener(this)
-                val textWidth = title.paint.measureText(title.text.toString())
-                val offsetX = ((title.width - textWidth) / 2f).coerceAtLeast(0f)
-                title.paint.shader = LinearGradient(
-                    offsetX, 0f, offsetX + textWidth, 0f,
-                    resources.getColor(R.color.title_start, theme),
-                    resources.getColor(R.color.title_end, theme),
-                    Shader.TileMode.CLAMP
-                )
-                title.paint.setShadowLayer(
-                    12f, 0f, 2f, resources.getColor(R.color.title_glow, theme)
-                )
-                title.invalidate()
-                return true
-            }
-        })
-    }
 
     override fun onStart() {
         super.onStart()

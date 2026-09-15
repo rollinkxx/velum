@@ -6,7 +6,7 @@
 
   Hirarki bersih (audit & refaktor 2026-09-13), dua bagian utama:
     root (vertikal, center_horizontal)
-    ├─ header (vertikal, wrap_content, center) : judul dua lapis + tagline
+    ├─ header (vertikal, wrap_content, center) : logo + tagline
     └─ isi   (vertikal, weight=1, center)      : pembatas, kartu status, tombol, menu
 
   Tinggi ditekan (status sebaris, kartu rapat, baris aksi 52dp) agar semua muat.
@@ -23,67 +23,23 @@
     android:paddingEnd="20dp"
     android:paddingBottom="12dp">
 
-    <!-- ===== Header: judul + tagline dalam satu kolom rata tengah ===== -->
+    <!-- ===== Header: logo premium + tagline dalam satu kolom rata tengah ===== -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:gravity="center_horizontal"
         android:orientation="vertical">
 
-        <!--
-          Judul dua lapis (kesan timbul 3D): lapisan gelap bergeser sedikit turun di
-          belakang lapisan depan bergradien gading-emas. Keduanya WAJIB satu baris:
-          maxLines=1 + singleLine=true + auto-size 48-80sp (mengecil otomatis bila
-          layar sempit) + letter-spacing 0.15. includeFontPadding=false menghapus
-          ruang kosong bawaan font.
-
-          Lebar judul sengaja match_parent (bukan wrap_content): auto-size hanya bisa
-          mengecil bila lebarnya terbatas; teks dipusatkan (gravity center_horizontal)
-          sehingga secara visual tetap pas di tengah layar.
-        -->
-        <FrameLayout
+        <ImageView
+            android:id="@+id/appLogo"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:clipChildren="false">
-
-            <androidx.appcompat.widget.AppCompatTextView
-                android:id="@+id/appTitleShadow"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:translationX="2dp"
-                android:translationY="3dp"
-                android:fontFamily="sans-serif-light"
-                android:gravity="center_horizontal"
-                android:includeFontPadding="false"
-                android:letterSpacing="0.15"
-                android:maxLines="1"
-                android:singleLine="true"
-                android:text="@string/app_name"
-                android:textColor="@color/title_shadow"
-                android:textSize="80sp"
-                app:autoSizeTextType="uniform"
-                app:autoSizeMinTextSize="48sp"
-                app:autoSizeMaxTextSize="80sp"
-                app:autoSizeStepGranularity="1sp" />
-
-            <androidx.appcompat.widget.AppCompatTextView
-                android:id="@+id/appTitle"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:fontFamily="sans-serif-light"
-                android:gravity="center_horizontal"
-                android:includeFontPadding="false"
-                android:letterSpacing="0.15"
-                android:maxLines="1"
-                android:singleLine="true"
-                android:text="@string/app_name"
-                android:textColor="@color/fg"
-                android:textSize="80sp"
-                app:autoSizeTextType="uniform"
-                app:autoSizeMinTextSize="48sp"
-                app:autoSizeMaxTextSize="80sp"
-                app:autoSizeStepGranularity="1sp" />
-        </FrameLayout>
+            android:layout_marginTop="2dp"
+            android:adjustViewBounds="true"
+            android:contentDescription="@string/cd_app_logo"
+            android:maxHeight="190dp"
+            android:scaleType="centerInside"
+            android:src="@drawable/logo_velum" />
 
         <TextView
             android:layout_width="wrap_content"
