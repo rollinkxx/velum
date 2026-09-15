@@ -7,6 +7,7 @@
     <!-- Permukaan kartu -->
     <color name="card">#1A2230</color>
     <color name="card_stroke">#2A3442</color>
+    <color name="status_divider">#596473</color>
     <color name="outline">#3A4656</color>
 
     <!-- Aksen amber-emas -->

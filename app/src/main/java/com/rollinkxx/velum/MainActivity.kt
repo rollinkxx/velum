@@ -403,7 +403,7 @@ class MainActivity : AppCompatActivity(), VelumController.Ui {
         try {
             startActivity(Intent("android.settings.VPN_SETTINGS"))
         } catch (e: Exception) {
-            messageView.setText(R.string.err_no_settings)
+            setMessageRes(R.string.err_no_settings)
         }
     }
 
@@ -446,11 +446,17 @@ class MainActivity : AppCompatActivity(), VelumController.Ui {
     }
 
     override fun setMessageRes(resId: Int) {
-        messageView.setText(resId)
+        renderMessage(getString(resId))
     }
 
     override fun setMessage(text: String) {
-        messageView.text = text
+        renderMessage(text)
+    }
+
+    /** Subtitle hanya mengambil ruang saat benar-benar memiliki pesan untuk ditampilkan. */
+    private fun renderMessage(text: CharSequence?) {
+        messageView.text = text ?: ""
+        messageView.visibility = if (messageView.text.isNullOrEmpty()) View.GONE else View.VISIBLE
     }
 
     /**
@@ -501,7 +507,7 @@ class MainActivity : AppCompatActivity(), VelumController.Ui {
         startPulse()
         refreshStaticInfo()
         refreshAlwaysOn()
-        messageView.text = ""
+        renderMessage("")
         // Notifikasi status sengaja TIDAK diposting dari sini. `VelumTunnel.onStateChange`
         // yang melakukannya, supaya tunnel yang tersambung lewat ubin pengaturan cepat
         // atau receiver boot (tanpa Activity sama sekali) tetap punya notifikasi, dan
@@ -541,7 +547,7 @@ class MainActivity : AppCompatActivity(), VelumController.Ui {
         when (state) {
             Tunnel.State.UP -> {
                 statusView.setText(R.string.status_connected)
-                messageView.text = ""
+                renderMessage("")
                 statusView.setTextColor(getColor(R.color.ok))
                 statusDot.setBackgroundResource(R.drawable.dot_ok)
                 statusDot.contentDescription = getString(R.string.cd_status_up)
