@@ -85,6 +85,10 @@ class VelumController(context: Context, private val ui: Ui) {
     @Volatile
     private var testInFlight = false
 
+    /** Status utama sementara saat pengguna menekan tombol Uji koneksi. */
+    @Volatile
+    private var buttonTestStatusShown = false
+
     /**
      * Menekan auto-uji selama pemutaran endpoint. Diset/lepas lewat [onUi] (lihat
      * [rotateEndpointAndReconnect]) supaya urutannya pasti terhadap applyState.
@@ -464,8 +468,11 @@ class VelumController(context: Context, private val ui: Ui) {
         cancelPendingTest(invalidate = false)
         val job = testJobId.incrementAndGet()
         testInFlight = true
+        if (fromButton) {
+            buttonTestStatusShown = true
+            onUi { ui.setStatusText(R.string.test_on) }
+        }
         onUi { ui.setTestTextRes(R.string.test_waiting) }
-        if (fromButton) onUi { ui.setMessageRes(R.string.test_waiting) }
         submit(testWorker) {
             val waitMs = if (attempt == 0) HANDSHAKE_WAIT_MS else HANDSHAKE_WAIT_RETRY_MS
             val ready = awaitHandshake(waitMs)
@@ -561,7 +568,10 @@ class VelumController(context: Context, private val ui: Ui) {
             TestAction.DROP -> {
                 onUi {
                     ui.showTest(prefs.lastTest)
-                    if (fromButton) ui.setMessage("")
+                    if (fromButton) {
+                        buttonTestStatusShown = false
+                        ui.render(VelumTunnel.state)
+                    }
                 }
             }
             TestAction.PUBLISH, TestAction.PUBLISH_NO_DATA -> {
@@ -574,6 +584,10 @@ class VelumController(context: Context, private val ui: Ui) {
                 prefs.lastTest = result
                 onUi {
                     ui.showTest(result)
+                    if (fromButton) {
+                        buttonTestStatusShown = false
+                        ui.render(VelumTunnel.state)
+                    }
                     // "Belum ada data" juga diberitahukan saat uji otomatis: pengguna melihat
                     // status "Tersambung" tetapi tidak ada yang berjalan, dan tanpa penjelasan
                     // keadaan itu tampak seperti kegagalan yang tidak bisa ditindaklanjuti.
@@ -646,7 +660,13 @@ class VelumController(context: Context, private val ui: Ui) {
         pendingTest = null
         if (invalidate && testInFlight) {
             testInFlight = false
-            onUi { ui.showTest(prefs.lastTest) }
+            onUi {
+                ui.showTest(prefs.lastTest)
+                if (buttonTestStatusShown) {
+                    buttonTestStatusShown = false
+                    ui.render(VelumTunnel.state)
+                }
+            }
         }
     }
 
