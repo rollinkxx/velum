@@ -3,13 +3,13 @@
   Palet khusus ikon peluncur, sengaja terpisah dari colors.xml (UI).
   Dipakai lapisan adaptif (mipmap-anydpi-v26) dan harus sama dengan PNG legacy di
   mipmap-*/ic_launcher{,_round}.png (API 24-25) yang dibangkitkan dari kanvas yang
-  sama: kartu gelap + cincin emas + monogram "V".
+  sama: kartu gelap + cincin platinum + monogram "V" silver/blue.
 -->
 <resources>
     <color name="icon_bg_top">#0B0F15</color>
     <color name="icon_bg_bottom">#1E2A3A</color>
-    <color name="icon_ring_start">#FFF8E6</color>
-    <color name="icon_ring_end">#B47A1E</color>
-    <color name="icon_monogram_start">#FFF2CE</color>
-    <color name="icon_monogram_end">#CE8F26</color>
+    <color name="icon_ring_start">#F3F6FA</color>
+    <color name="icon_ring_end">#6B778A</color>
+    <color name="icon_monogram_start">#F5F7FA</color>
+    <color name="icon_monogram_end">#245DCE</color>
 </resources>
