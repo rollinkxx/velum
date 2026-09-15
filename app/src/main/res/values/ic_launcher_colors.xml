@@ -1,9 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
   Palet khusus ikon peluncur, sengaja terpisah dari colors.xml (UI).
-  Dipakai lapisan adaptif (mipmap-anydpi-v26) dan harus sama dengan PNG legacy di
-  mipmap-*/ic_launcher{,_round}.png (API 24-25) yang dibangkitkan dari kanvas yang
-  sama: kartu gelap + cincin platinum + monogram "V" silver/blue.
+  Dipakai sebagai palet dokumentasi ikon; PNG legacy di mipmap-*/ic_launcher{,_round}.png
+  dibangkitkan dari kanvas yang sama: kartu gelap + monogram V pita silver/blue.
 -->
 <resources>
     <color name="icon_bg_top">#0B0F15</color>
