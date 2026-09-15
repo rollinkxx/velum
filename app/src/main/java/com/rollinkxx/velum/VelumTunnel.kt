@@ -130,7 +130,7 @@ object VelumTunnel : Tunnel {
     private fun updateNotification(newState: Tunnel.State) {
         val ctx = appContext ?: return
         if (newState == Tunnel.State.UP) {
-            StatusNotifier.show(ctx, ctx.getString(R.string.notif_connected))
+            StatusNotifier.show(ctx)
         } else {
             StatusNotifier.hide(ctx)
         }

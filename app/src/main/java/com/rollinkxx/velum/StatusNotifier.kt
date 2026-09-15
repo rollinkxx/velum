@@ -25,7 +25,7 @@ object StatusNotifier {
     private const val CHANNEL_ID = "status"
     private const val NOTIF_ID = 42
 
-    fun show(context: Context, detail: String) {
+    fun show(context: Context) {
         val mgr = context.getSystemService(NotificationManager::class.java) ?: return
         if (Build.VERSION.SDK_INT >= 26) {
             mgr.createNotificationChannel(
@@ -51,7 +51,7 @@ object StatusNotifier {
         val notif = builder
             .setSmallIcon(R.drawable.ic_launcher_tile)
             .setContentTitle(context.getString(R.string.app_name))
-            .setContentText(detail)
+            .setContentText(ConnectedSubtitle.forSession(context, VelumTunnel.upSinceElapsedMs))
             .setContentIntent(tap)
             .setOngoing(true)
             .setOnlyAlertOnce(true) // pembaruan teks tidak perlu mengganggu lagi
