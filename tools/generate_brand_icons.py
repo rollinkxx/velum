@@ -1,5 +1,6 @@
 from pathlib import Path
 from PIL import Image
+from collections import deque
 
 ROOT = Path(__file__).resolve().parents[1]
 RES = ROOT / "app/src/main/res"
@@ -19,6 +20,39 @@ top = max(0, top - pad_y)
 right = min(source.width, right + pad_x)
 bottom = min(source.height, bottom + pad_y)
 mark = source.crop((left, top, right, bottom))
+
+# Remove isolated glow/pixel components below the mark. Keep the largest
+# connected alpha component so the real V silhouette remains unchanged while
+# detached white dots cannot reach launcher or notification sizes.
+alpha = mark.getchannel("A")
+ap = alpha.load()
+mw, mh = mark.size
+seen = bytearray(mw * mh)
+largest = set()
+for y in range(mh):
+    for x in range(mw):
+        idx = y * mw + x
+        if seen[idx] or ap[x, y] < 24:
+            continue
+        queue = deque([(x, y)])
+        seen[idx] = 1
+        component = set()
+        while queue:
+            cx, cy = queue.popleft()
+            component.add((cx, cy))
+            for nx, ny in ((cx - 1, cy), (cx + 1, cy), (cx, cy - 1), (cx, cy + 1)):
+                if 0 <= nx < mw and 0 <= ny < mh:
+                    ni = ny * mw + nx
+                    if not seen[ni] and ap[nx, ny] >= 24:
+                        seen[ni] = 1
+                        queue.append((nx, ny))
+        if len(component) > len(largest):
+            largest = component
+clean_alpha = Image.new("L", (mw, mh), 0)
+clean_pixels = clean_alpha.load()
+for x, y in largest:
+    clean_pixels[x, y] = ap[x, y]
+mark.putalpha(clean_alpha)
 
 # Make the launcher foreground square while preserving the original mark's
 # proportions and transparent surroundings. This avoids the rigid hand-drawn V.
