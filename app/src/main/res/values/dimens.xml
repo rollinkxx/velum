@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Dimensi bersama kartu status koneksi. -->
+    <dimen name="status_icon_size">20dp</dimen>
+    <dimen name="status_icon_label_gap">8dp</dimen>
+    <dimen name="status_row_vertical_padding">3dp</dimen>
+    <dimen name="status_divider_start">28dp</dimen>
+    <dimen name="status_divider_height">1dp</dimen>
+</resources>

@@ -81,7 +81,7 @@ class MainActivity : AppCompatActivity(), VelumController.Ui {
 
     private val ticker = object : Runnable {
         override fun run() {
-            infoDuration.text = VelumFormat.formatDuration(connectedMs())
+            setTextIfChanged(infoDuration, VelumFormat.formatDuration(connectedMs()))
             pollStats()
             main.postDelayed(this, 1000)
         }
@@ -494,8 +494,8 @@ class MainActivity : AppCompatActivity(), VelumController.Ui {
 
     override fun refreshStaticInfo() {
         val prefs = Prefs.of(this)
-        infoEndpoint.text = prefs.effectiveEndpoint ?: getString(R.string.value_none)
-        infoTest.text = renderTest(prefs.lastTest)
+        setTextIfChanged(infoEndpoint, prefs.effectiveEndpoint ?: getString(R.string.value_none))
+        setTextIfChanged(infoTest, renderTest(prefs.lastTest))
         // Subjudul baris endpoint menunjukkan nilai manualnya bila diisi — keputusan
         // yang mematikan proba otomatis harus terlihat, bukan tersembunyi di prefs.
         endpointSub.text = prefs.manualEndpoint ?: getString(R.string.sub_endpoint_manual)
@@ -527,7 +527,7 @@ class MainActivity : AppCompatActivity(), VelumController.Ui {
         lastTxBytes = -1L
         lastTrafficMs = SystemClock.elapsedRealtime()
         staleWarned = false
-        infoData.setText(R.string.value_none)
+        setTextIfChanged(infoData, getString(R.string.value_none))
     }
 
     override fun onDisconnectedVisual() {
@@ -535,8 +535,8 @@ class MainActivity : AppCompatActivity(), VelumController.Ui {
         stopPulse()
         // `StatusNotifier.hide` dipanggil oleh VelumTunnel saat status berubah, bukan di
         // sini: layar bisa saja sudah tidak ada ketika tunnel mati di latar.
-        infoDuration.setText(R.string.value_none)
-        infoData.setText(R.string.value_none)
+        setTextIfChanged(infoDuration, getString(R.string.value_none))
+        setTextIfChanged(infoData, getString(R.string.value_none))
         refreshAlwaysOn()
     }
 
@@ -602,12 +602,12 @@ class MainActivity : AppCompatActivity(), VelumController.Ui {
         controller.runStats { t ->
             if (controller.state != Tunnel.State.UP) return@runStats
             if (t == null) {
-                infoData.setText(R.string.value_none)
+                setTextIfChanged(infoData, getString(R.string.value_none))
                 return@runStats
             }
             val nowMs = SystemClock.elapsedRealtime()
             val rates = rate.add(t.rxBytes, t.txBytes, nowMs)
-            infoData.text = renderData(rates, t.rxBytes, t.txBytes)
+            setTextIfChanged(infoData, renderData(rates, t.rxBytes, t.txBytes))
             if (t.rxBytes != lastRxBytes || t.txBytes != lastTxBytes) {
                 lastRxBytes = t.rxBytes
                 lastTxBytes = t.txBytes
@@ -623,6 +623,11 @@ class MainActivity : AppCompatActivity(), VelumController.Ui {
                 setMessage(getString(R.string.stale_warn))
             }
         }
+    }
+
+    /** Menghindari invalidasi/redraw ketika ticker menghasilkan nilai yang sama. */
+    private fun setTextIfChanged(view: TextView, value: CharSequence) {
+        if (view.text != value) view.text = value
     }
 
     /**
