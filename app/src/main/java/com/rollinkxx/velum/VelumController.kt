@@ -393,6 +393,9 @@ class VelumController(context: Context, private val ui: Ui) {
 
     fun disconnect() {
         nextIntent()
+        // Putuskan juga harus membatalkan retry uji yang tertunda; jika tidak, retry
+        // dapat menulis kembali status uji setelah tunnel sudah dimatikan pengguna.
+        cancelPendingTest()
         setBusy(true)
         onUi { ui.setStatusText(R.string.status_disconnecting) }
         prefs.wasUp = false // putus manual: jangan sambung lagi saat boot
@@ -661,10 +664,11 @@ class VelumController(context: Context, private val ui: Ui) {
         if (invalidate) testJobId.incrementAndGet()
         pendingTest?.let { main.removeCallbacks(it) }
         pendingTest = null
-        if (invalidate && testInFlight) {
+        if (invalidate && (testInFlight || buttonTestStatusShown)) {
+            val wasInFlight = testInFlight
             testInFlight = false
             onUi {
-                ui.showTest(prefs.lastTest)
+                if (wasInFlight) ui.showTest(prefs.lastTest)
                 if (buttonTestStatusShown) {
                     buttonTestStatusShown = false
                     ui.render(VelumTunnel.state)
