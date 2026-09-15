@@ -470,7 +470,10 @@ class VelumController(context: Context, private val ui: Ui) {
         testInFlight = true
         if (fromButton) {
             buttonTestStatusShown = true
-            onUi { ui.setStatusText(R.string.test_on) }
+            onUi {
+                ui.setStatusText(R.string.test_on)
+                ui.setMessage("")
+            }
         }
         onUi { ui.setTestTextRes(R.string.test_waiting) }
         submit(testWorker) {
@@ -591,7 +594,7 @@ class VelumController(context: Context, private val ui: Ui) {
                     // "Belum ada data" juga diberitahukan saat uji otomatis: pengguna melihat
                     // status "Tersambung" tetapi tidak ada yang berjalan, dan tanpa penjelasan
                     // keadaan itu tampak seperti kegagalan yang tidak bisa ditindaklanjuti.
-                    if (fromButton || result.kind == VelumTestResult.Kind.NO_DATA) {
+                    if (!fromButton && result.kind == VelumTestResult.Kind.NO_DATA) {
                         ui.setMessage(messageFor(result))
                     }
                 }
