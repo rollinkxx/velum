@@ -19,9 +19,9 @@
     android:gravity="center_horizontal"
     android:orientation="vertical"
     android:paddingStart="20dp"
-    android:paddingTop="8dp"
+    android:paddingTop="4dp"
     android:paddingEnd="20dp"
-    android:paddingBottom="12dp">
+    android:paddingBottom="8dp">
 
     <!-- ===== Header: logo premium + tagline dalam satu kolom rata tengah ===== -->
     <LinearLayout
@@ -64,14 +64,14 @@
         <View
             android:layout_width="52dp"
             android:layout_height="1dp"
-            android:layout_marginTop="10dp"
+            android:layout_marginTop="4dp"
             android:background="@drawable/divider_gold" />
 
         <!-- Kartu status: padding simetris (atas = bawah = 10dp, kiri = kanan = 16dp). -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="14dp"
+            android:layout_marginTop="8dp"
             android:background="@drawable/card_bg"
             android:gravity="center_horizontal"
             android:orientation="vertical"
@@ -248,7 +248,7 @@
             android:id="@+id/toggle"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
+            android:layout_marginTop="10dp"
             android:background="@drawable/btn_primary"
             android:fontFamily="sans-serif-medium"
             android:letterSpacing="0.03"
@@ -262,7 +262,7 @@
             android:id="@+id/test"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
+            android:layout_marginTop="4dp"
             android:background="@drawable/btn_outline"
             android:minHeight="52dp"
             android:text="@string/btn_test"
@@ -274,11 +274,11 @@
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
+            android:layout_marginTop="6dp"
             android:background="@drawable/card_bg"
             android:orientation="vertical"
             android:paddingTop="4dp"
-            android:paddingBottom="10dp">
+            android:paddingBottom="4dp">
 
             <LinearLayout
                 android:id="@+id/reset"
