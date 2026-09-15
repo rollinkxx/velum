@@ -278,7 +278,7 @@
             android:background="@drawable/card_bg"
             android:orientation="vertical"
             android:paddingTop="4dp"
-            android:paddingBottom="4dp">
+            android:paddingBottom="10dp">
 
             <LinearLayout
                 android:id="@+id/reset"

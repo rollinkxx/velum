@@ -73,6 +73,10 @@ class MainActivity : AppCompatActivity(), VelumController.Ui {
     private var pulse: ValueAnimator? = null
     /** Pelacak laju trafik (jendela geser 5 dtk); satu per sesi tunnel. */
     private val rate = VelumRate.Tracker()
+    /** Dipilih sekali per sesi tunnel dan tidak berubah saat statistik diperbarui. */
+    private val activeStatusText = RotatingTextPicker<String>()
+    /** Dipilih sekali per hasil uji aktif dan stabil selama hasil itu ditampilkan. */
+    private val activeTestText = RotatingTextPicker<String>()
     private var lastRxBytes = -1L
     private var lastTxBytes = -1L
     /** Kapan terakhir penghitung trafik berubah (elapsedRealtime); untuk deteksi basi. */
@@ -475,7 +479,12 @@ class MainActivity : AppCompatActivity(), VelumController.Ui {
         if (result == null) return getString(R.string.value_none)
         val time = VelumFormat.formatClock(result.atEpochMs)
         return when (result.kind) {
-            VelumTestResult.Kind.ACTIVE -> getString(R.string.test_on_dc, result.colo ?: "?", time)
+            VelumTestResult.Kind.ACTIVE -> getString(
+                R.string.test_on_dc,
+                activeTestText.valueFor(result.atEpochMs, testActiveVariants()),
+                result.colo ?: "?",
+                time
+            )
             VelumTestResult.Kind.OFF -> getString(R.string.test_off_time, time)
             VelumTestResult.Kind.NO_DATA -> getString(R.string.test_no_data_time, time)
             VelumTestResult.Kind.FAILED -> getString(R.string.test_failed)
@@ -520,6 +529,7 @@ class MainActivity : AppCompatActivity(), VelumController.Ui {
     }
 
     override fun onDisconnectedVisual() {
+        activeStatusText.clear()
         stopTicker()
         stopPulse()
         // `StatusNotifier.hide` dipanggil oleh VelumTunnel saat status berubah, bukan di
@@ -535,7 +545,10 @@ class MainActivity : AppCompatActivity(), VelumController.Ui {
         if (controller.busy) return
         when (state) {
             Tunnel.State.UP -> {
-                statusView.setText(R.string.status_connected)
+                statusView.text = activeStatusText.valueFor(
+                    VelumTunnel.upSinceElapsedMs,
+                    activeStatusVariants()
+                )
                 statusView.setTextColor(getColor(R.color.ok))
                 statusDot.setBackgroundResource(R.drawable.dot_ok)
                 statusDot.contentDescription = getString(R.string.cd_status_up)
@@ -550,6 +563,22 @@ class MainActivity : AppCompatActivity(), VelumController.Ui {
             }
         }
     }
+
+    /** Variasi status aktif yang hanya ditampilkan setelah tunnel benar-benar UP. */
+    private fun activeStatusVariants(): List<String> = listOf(
+        getString(R.string.status_connected_variant_1),
+        getString(R.string.status_connected_variant_2),
+        getString(R.string.status_connected_variant_3),
+        getString(R.string.status_connected_variant_4)
+    )
+
+    /** Variasi hasil uji yang hanya dipakai untuk hasil ACTIVE. */
+    private fun testActiveVariants(): List<String> = listOf(
+        getString(R.string.test_on_variant_1),
+        getString(R.string.test_on_variant_2),
+        getString(R.string.test_on_variant_3),
+        getString(R.string.test_on_variant_4)
+    )
 
     // ---------- Tampilan ----------
 
